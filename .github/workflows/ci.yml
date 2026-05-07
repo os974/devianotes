@@ -1,0 +1,66 @@
+# Workflow CI/CD du site DevIA Notes
+# - Vérifie les liens (internes + externes) à chaque push et chaque PR
+# - Déploie sur GitHub Pages uniquement si la vérif passe ET qu'on est sur main
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Permissions minimales nécessaires pour publier sur GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Si un nouveau push arrive pendant qu'un déploiement tourne, on attend
+# que le précédent finisse (cancel-in-progress: false) pour ne pas casser
+# une publication en cours.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  link-check:
+    name: Vérifier les liens
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Lancer lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # --no-progress : pas de barre de progression dans les logs CI
+          # --max-retries 2 : retente 2 fois en cas d'échec réseau passager
+          # --exclude-mail : ignore les liens mailto:
+          # './**/*.html' : ne scanne que les fichiers HTML du repo
+          args: --no-progress --max-retries 2 --exclude-mail './**/*.html'
+          fail: true
+
+  deploy:
+    name: Déployer sur GitHub Pages
+    needs: link-check
+    # On ne déploie QUE sur push vers main, pas sur les pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Uploader le site comme artifact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
