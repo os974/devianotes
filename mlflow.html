@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>MLflow — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / MLflow</div>
+                <h1>MLflow</h1>
+                <p class="subtitle">
+                    La boîte à outils open source pour suivre tes expériences de machine learning,
+                    versionner tes modèles et les amener jusqu'en production — sans réinventer la
+                    roue à chaque projet.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand tu entraînes un modèle, tu fais en réalité <em>plein</em> d'essais : tu changes
+                    un hyperparamètre, tu testes un autre algorithme, tu modifies tes features… À la fin
+                    de la journée, tu as 30 modèles entraînés et une question : <strong>lequel était le
+                    meilleur, et avec quels paramètres ?</strong>
+                </p>
+                <p>MLflow répond à ce problème (et à quelques autres) avec quatre briques :</p>
+                <ul>
+                    <li><strong>Tracking</strong> — enregistrer pour chaque entraînement : les paramètres
+                        utilisés, les métriques obtenues, le code, et le modèle produit.</li>
+                    <li><strong>Models</strong> — emballer un modèle dans un format standard,
+                        rechargeable n'importe où (Python, REST, Docker…).</li>
+                    <li><strong>Model Registry</strong> — un « catalogue » centralisé des modèles
+                        validés, avec des versions et des étapes (<em>Staging</em>, <em>Production</em>).</li>
+                    <li><strong>Projects</strong> — décrire un entraînement reproductible (moins utilisé
+                        au début, on peut zapper).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>MLflow = le carnet de bord de tes expériences ML + le coffre à modèles versionnés, le tout dans une UI web.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu travailles sur un modèle de classification (par exemple, prédire si un client va
+                    résilier). Tu testes plusieurs profondeurs d'arbre de décision et tu veux savoir
+                    laquelle donne la meilleure précision.
+                </p>
+                <p>Sans MLflow, tu finis avec un fichier Excel à la main et beaucoup de prints. Avec MLflow :</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> mlflow
+<span class="tk-keyword">from</span> sklearn.tree <span class="tk-keyword">import</span> DecisionTreeClassifier
+<span class="tk-keyword">from</span> sklearn.metrics <span class="tk-keyword">import</span> accuracy_score
+
+<span class="tk-keyword">for</span> depth <span class="tk-keyword">in</span> [<span class="tk-num">3</span>, <span class="tk-num">5</span>, <span class="tk-num">10</span>]:
+    <span class="tk-keyword">with</span> mlflow.<span class="tk-fn">start_run</span>():
+        model = <span class="tk-fn">DecisionTreeClassifier</span>(max_depth=depth)
+        model.<span class="tk-fn">fit</span>(X_train, y_train)
+        acc = <span class="tk-fn">accuracy_score</span>(y_test, model.<span class="tk-fn">predict</span>(X_test))
+
+        mlflow.<span class="tk-fn">log_param</span>(<span class="tk-string">"max_depth"</span>, depth)
+        mlflow.<span class="tk-fn">log_metric</span>(<span class="tk-string">"accuracy"</span>, acc)
+        mlflow.sklearn.<span class="tk-fn">log_model</span>(model, <span class="tk-string">"model"</span>)</code></pre>
+                </div>
+                <p>
+                    En 6 lignes utiles, tu obtiens : 3 « runs » enregistrés, comparables côte à côte
+                    dans une UI web, avec leurs paramètres, leurs scores, et le modèle entraîné prêt à
+                    être rechargé. Tu peux trier par <code>accuracy</code> et identifier le meilleur en
+                    un clic.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser MLflow</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer MLflow</h4>
+                        <p>
+                            On part du principe que tu utilises <a href="uv.html">UV</a> pour gérer ton
+                            projet Python. Dans le dossier de ton projet :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add mlflow scikit-learn</code></pre>
+                        </div>
+                        <p>Vérifie que tout est OK :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run mlflow --version</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer l'interface MLflow</h4>
+                        <p>
+                            MLflow est livré avec une UI web. Lance-la dans un terminal séparé — elle va
+                            tourner en continu pendant que tu entraînes :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run mlflow ui</code></pre>
+                        </div>
+                        <p>
+                            Ouvre <code>http://127.0.0.1:5000</code> dans ton navigateur. Pour le moment
+                            la liste est vide — c'est normal, on n'a encore rien tracké.
+                        </p>
+                        <div class="info-box">
+                            <div class="info-title">Où sont stockées les données ?</div>
+                            <p>
+                                Par défaut, MLflow crée un dossier <code>mlruns/</code> dans le
+                                répertoire courant. C'est là que vivent tes runs et tes modèles. Pense à
+                                l'ajouter à ton <code>.gitignore</code> : ces fichiers n'ont rien à
+                                faire dans Git.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Écrire un script d'entraînement instrumenté</h4>
+                        <p>Crée un fichier <code>train.py</code> avec ce contenu :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> mlflow
+<span class="tk-keyword">import</span> mlflow.sklearn
+<span class="tk-keyword">from</span> sklearn.datasets <span class="tk-keyword">import</span> load_iris
+<span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> train_test_split
+<span class="tk-keyword">from</span> sklearn.tree <span class="tk-keyword">import</span> DecisionTreeClassifier
+<span class="tk-keyword">from</span> sklearn.metrics <span class="tk-keyword">import</span> accuracy_score
+
+<span class="tk-comment"># 1. Données</span>
+X, y = <span class="tk-fn">load_iris</span>(return_X_y=<span class="tk-keyword">True</span>)
+X_train, X_test, y_train, y_test = <span class="tk-fn">train_test_split</span>(X, y, random_state=<span class="tk-num">42</span>)
+
+<span class="tk-comment"># 2. On nomme l'expérience (visible dans l'UI)</span>
+mlflow.<span class="tk-fn">set_experiment</span>(<span class="tk-string">"iris-decision-tree"</span>)
+
+<span class="tk-keyword">for</span> depth <span class="tk-keyword">in</span> [<span class="tk-num">2</span>, <span class="tk-num">5</span>, <span class="tk-num">10</span>]:
+    <span class="tk-keyword">with</span> mlflow.<span class="tk-fn">start_run</span>(run_name=<span class="tk-fn">f</span><span class="tk-string">"depth={depth}"</span>):
+        model = <span class="tk-fn">DecisionTreeClassifier</span>(max_depth=depth, random_state=<span class="tk-num">42</span>)
+        model.<span class="tk-fn">fit</span>(X_train, y_train)
+
+        preds = model.<span class="tk-fn">predict</span>(X_test)
+        acc = <span class="tk-fn">accuracy_score</span>(y_test, preds)
+
+        <span class="tk-comment"># 3. On enregistre tout ce qu'on veut comparer ensuite</span>
+        mlflow.<span class="tk-fn">log_param</span>(<span class="tk-string">"max_depth"</span>, depth)
+        mlflow.<span class="tk-fn">log_metric</span>(<span class="tk-string">"accuracy"</span>, acc)
+        mlflow.sklearn.<span class="tk-fn">log_model</span>(model, name=<span class="tk-string">"model"</span>)
+
+        <span class="tk-fn">print</span>(<span class="tk-fn">f</span><span class="tk-string">"depth={depth} -> accuracy={acc:.3f}"</span>)</code></pre>
+                        </div>
+                        <p>Lance-le :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run python train.py</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Comparer les runs dans l'UI</h4>
+                        <p>
+                            Rafraîchis <code>http://127.0.0.1:5000</code>. Tu vois maintenant
+                            l'expérience <code>iris-decision-tree</code> avec 3 runs. Coche-les tous,
+                            clique sur <strong>« Compare »</strong> : tu obtiens un tableau
+                            paramètre/métrique et même des graphiques pour visualiser l'effet de
+                            <code>max_depth</code> sur l'<code>accuracy</code>.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce</div>
+                            <p>
+                                Tu peux ajouter <code>mlflow.sklearn.<span class="tk-fn">autolog</span>()</code>
+                                au début de ton script : MLflow capture <em>automatiquement</em> les
+                                hyperparamètres, les métriques d'entraînement et le modèle. Très utile
+                                pour ne rien oublier.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Recharger un modèle entraîné</h4>
+                        <p>
+                            Chaque run a un <code>run_id</code> visible dans l'UI. Pour réutiliser le
+                            modèle ailleurs (script, API, notebook) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> mlflow
+
+run_id = <span class="tk-string">"&lt;colle ici l'id depuis l'UI&gt;"</span>
+model = mlflow.<span class="tk-fn">pyfunc</span>.<span class="tk-fn">load_model</span>(<span class="tk-fn">f</span><span class="tk-string">"runs:/{run_id}/model"</span>)
+
+preds = model.<span class="tk-fn">predict</span>(X_test)</code></pre>
+                        </div>
+                        <p>
+                            <code>pyfunc</code> est un format universel : peu importe que le modèle ait
+                            été entraîné avec sklearn, PyTorch ou XGBoost, l'interface
+                            <code>.predict()</code> est la même.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Enregistrer un modèle dans le Registry</h4>
+                        <p>
+                            Quand un modèle est « assez bon » pour être candidat à la production, on
+                            l'enregistre dans le Model Registry pour le versionner :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>mlflow.<span class="tk-fn">register_model</span>(
+    model_uri=<span class="tk-fn">f</span><span class="tk-string">"runs:/{run_id}/model"</span>,
+    name=<span class="tk-string">"iris-classifier"</span>,
+)</code></pre>
+                        </div>
+                        <p>
+                            Dans l'onglet <strong>Models</strong> de l'UI, tu vois maintenant
+                            <code>iris-classifier</code> avec ses versions (v1, v2…). Tu peux assigner
+                            des aliases (<code>@champion</code>, <code>@challenger</code>) pour pointer
+                            vers la version « courante » dans ton code de prod.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Configurer VS Code</h4>
+                        <p>
+                            Rien de spécifique à MLflow : tant que VS Code utilise l'interpréteur du
+                            <code>.venv</code> créé par UV, tout marche (cf. la fiche
+                            <a href="uv.html">UV</a>). Quelques extensions utiles :
+                        </p>
+                        <ul>
+                            <li><strong>Python</strong> de Microsoft (obligatoire).</li>
+                            <li><strong>Jupyter</strong> si tu prototypes en notebook.</li>
+                        </ul>
+                        <p>
+                            Pour ouvrir l'UI MLflow depuis VS Code, lance <code>uv run mlflow ui</code>
+                            dans le terminal intégré : VS Code détecte l'URL et propose de l'ouvrir.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (API la plus utilisée)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> mlflow
+
+<span class="tk-comment"># Organisation</span>
+mlflow.<span class="tk-fn">set_experiment</span>(<span class="tk-string">"nom-projet"</span>)
+<span class="tk-keyword">with</span> mlflow.<span class="tk-fn">start_run</span>(run_name=<span class="tk-string">"essai-1"</span>):
+    ...
+
+<span class="tk-comment"># Logging manuel</span>
+mlflow.<span class="tk-fn">log_param</span>(<span class="tk-string">"lr"</span>, <span class="tk-num">0.01</span>)
+mlflow.<span class="tk-fn">log_metric</span>(<span class="tk-string">"loss"</span>, <span class="tk-num">0.123</span>, step=<span class="tk-num">10</span>)
+mlflow.<span class="tk-fn">log_artifact</span>(<span class="tk-string">"plot.png"</span>)
+mlflow.sklearn.<span class="tk-fn">log_model</span>(model, name=<span class="tk-string">"model"</span>)
+
+<span class="tk-comment"># Logging automatique (sklearn, pytorch, xgboost…)</span>
+mlflow.sklearn.<span class="tk-fn">autolog</span>()
+
+<span class="tk-comment"># Recharger</span>
+m = mlflow.<span class="tk-fn">pyfunc</span>.<span class="tk-fn">load_model</span>(<span class="tk-string">"runs:/&lt;run_id&gt;/model"</span>)
+m = mlflow.<span class="tk-fn">pyfunc</span>.<span class="tk-fn">load_model</span>(<span class="tk-string">"models:/iris-classifier@champion"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (CLI)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">mlflow</span> ui                                    <span class="tk-comment"># UI sur :5000</span>
+<span class="tk-cmd">mlflow</span> ui --port 5050                         <span class="tk-comment"># autre port</span>
+<span class="tk-cmd">mlflow</span> server --backend-store-uri sqlite:///mlflow.db \
+              --default-artifact-root ./mlruns
+<span class="tk-cmd">mlflow</span> models serve -m runs:/&lt;id&gt;/model -p 5001 <span class="tk-comment"># servir un modèle en REST</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>MLflow et le reste de l'écosystème</h2>
+                <p>
+                    MLflow ne vit pas seul : il est conçu pour s'intégrer dans une stack MLOps. Voici
+                    comment il se branche aux autres briques déjà couvertes sur ce site.
+                </p>
+                <ul>
+                    <li>
+                        <strong><a href="uv.html">UV</a></strong> — installer MLflow et figer sa
+                        version dans <code>uv.lock</code> garantit que les coéquipiers et le CI
+                        utiliseront <em>exactement</em> la même version. Important : un modèle loggé
+                        avec MLflow 2.x ne se recharge pas toujours avec une autre version majeure.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — MLflow peut générer un
+                        Dockerfile pour servir un modèle en REST :
+                        <code>mlflow models build-docker -m runs:/&lt;id&gt;/model -n mon-image</code>.
+                        Tu obtiens une image standalone, déployable sur n'importe quel runtime
+                        (<a href="kubernetes.html">Kubernetes</a> compris).
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pour exposer un modèle
+                        avec une API custom (auth, validation, logique métier), tu charges le modèle
+                        avec <code>mlflow.pyfunc.load_model()</code> au démarrage et tu l'appelles dans
+                        ton endpoint. Plus flexible que <code>mlflow models serve</code>.
+                    </li>
+                    <li>
+                        <strong><a href="pytest.html">pytest</a></strong> — dans tes tests, tu peux
+                        charger un modèle depuis le Model Registry (par alias <code>@champion</code>)
+                        et vérifier qu'il dépasse un seuil minimum d'accuracy sur un jeu de
+                        régression. C'est la base du <em>model testing</em>.
+                    </li>
+                    <li>
+                        <strong><a href="cicd.html">CI/CD</a></strong> — un pipeline GitHub Actions
+                        peut entraîner, logger dans MLflow, comparer aux versions précédentes, et
+                        promouvoir automatiquement le modèle en <em>Staging</em> si les métriques sont
+                        meilleures.
+                    </li>
+                    <li>
+                        <strong><a href="sqlalchemy.html">SQLAlchemy</a></strong> — par défaut MLflow
+                        stocke ses runs dans des fichiers locaux. En équipe, on lance un
+                        <code>mlflow server</code> avec un backend SQL (PostgreSQL ou MySQL). MLflow
+                        utilise SQLAlchemy en interne pour parler à cette base.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Vue d'ensemble MLOps</div>
+                    <p>
+                        Dans un projet de fin de formation type : tu entraînes avec un script tracké par
+                        MLflow → tu enregistres le meilleur modèle dans le Registry → tu construis une
+                        image Docker autour → tu l'exposes via FastAPI → tu déploies sur Kubernetes →
+                        tu réentraînes périodiquement via un pipeline CI/CD. Chaque brique a sa fiche
+                        sur ce site.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://mlflow.org/docs/latest/index.html" target="_blank" rel="noopener noreferrer">mlflow.org/docs</a></li>
+                    <li>Tutoriel pas à pas : <a href="https://mlflow.org/docs/latest/getting-started/index.html" target="_blank" rel="noopener noreferrer">Getting Started</a></li>
+                    <li>Repo GitHub : <a href="https://github.com/mlflow/mlflow" target="_blank" rel="noopener noreferrer">github.com/mlflow/mlflow</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

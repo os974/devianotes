@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Jupyter — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Jupyter</div>
+                <h1>Jupyter</h1>
+                <p class="subtitle">
+                    Le carnet de bord interactif où l'on mélange du code Python, du texte explicatif et
+                    des graphiques dans un même document. L'outil de prédilection pour explorer des
+                    données, prototyper un modèle ou raconter une analyse.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand tu écris un script Python classique, il s'exécute du début à la fin et tu vois
+                    tout le résultat à la fin. Pas pratique pour <strong>explorer</strong> : à chaque
+                    petite question (« combien de lignes a mon CSV ? », « à quoi ressemble la
+                    distribution de l'âge ? »), tu dois relancer le script entier.
+                </p>
+                <p>
+                    Un <strong>notebook Jupyter</strong>, c'est un fichier découpé en <em>cellules</em>.
+                    Chaque cellule contient soit du code, soit du texte (Markdown). Tu lances une cellule
+                    à la fois — les variables restent en mémoire (le « kernel »), donc tu peux itérer
+                    rapidement. Les résultats (tableaux, graphiques) s'affichent juste sous la cellule
+                    qui les a produits.
+                </p>
+                <p>C'est devenu le standard de fait pour :</p>
+                <ul>
+                    <li><strong>L'exploration de données</strong> — charger un dataset, regarder ce
+                        qu'il y a dedans, faire des graphiques en quelques lignes.</li>
+                    <li><strong>Le prototypage de modèles ML</strong> — entraîner, ajuster, comparer
+                        sans recharger les données à chaque essai.</li>
+                    <li><strong>La pédagogie et la communication</strong> — un notebook se lit comme un
+                        article, avec le code reproductible à côté du raisonnement.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Notebook, JupyterLab, Jupyter Notebook (classique)… c'est quoi la différence ?</div>
+                    <p>
+                        Un <strong>notebook</strong> est un fichier <code>.ipynb</code>. Pour l'éditer,
+                        tu as plusieurs interfaces : <strong>JupyterLab</strong> (la plus moderne,
+                        recommandée), <strong>Jupyter Notebook</strong> (l'interface classique, plus
+                        simple), ou directement <strong>VS Code</strong> via son extension Jupyter. Les
+                        trois ouvrent les mêmes fichiers <code>.ipynb</code>.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu reçois un CSV avec les ventes mensuelles d'un magasin. Tu veux <em>juste
+                    regarder</em> avant de te lancer dans une analyse. Dans un notebook :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">cellule 1 — chargement</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"ventes.csv"</span>)
+df.<span class="tk-fn">head</span>()</code></pre>
+                </div>
+                <p>Tu lances cette cellule (<code>Shift+Enter</code>), tu vois les 5 premières lignes. Tu enchaînes :</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">cellule 2 — résumé</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df.<span class="tk-fn">describe</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">cellule 3 — graphique</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df[<span class="tk-string">"montant"</span>].<span class="tk-fn">plot</span>(kind=<span class="tk-string">"hist"</span>, bins=<span class="tk-num">30</span>)</code></pre>
+                </div>
+                <p>
+                    Le DataFrame <code>df</code> est resté en mémoire entre les cellules. Tu n'as pas
+                    rechargé le CSV. Tu peux modifier la cellule 3 (changer le nombre de bins,
+                    sélectionner une autre colonne) et la relancer instantanément. C'est cette
+                    <strong>boucle d'itération courte</strong> qui rend Jupyter indispensable en data.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Jupyter</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer JupyterLab dans ton projet</h4>
+                        <p>
+                            On reste dans la logique <a href="uv.html">UV</a> : on installe JupyterLab
+                            comme dépendance de développement.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add --dev jupyterlab pandas matplotlib</code></pre>
+                        </div>
+                        <p>
+                            <code>jupyterlab</code> est l'interface, <code>pandas</code> et
+                            <code>matplotlib</code> sont les compagnons habituels pour l'exploration de
+                            données.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Lancer JupyterLab</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run jupyter lab</code></pre>
+                        </div>
+                        <p>
+                            Ton navigateur s'ouvre automatiquement sur <code>http://localhost:8888</code>
+                            avec un token déjà rempli. Tu vois l'arborescence de ton projet à gauche.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer ton premier notebook</h4>
+                        <p>
+                            Dans le panneau de gauche, clique sur <strong>« + »</strong> puis sur
+                            <strong>Notebook → Python 3</strong>. Un fichier <code>Untitled.ipynb</code>
+                            s'ouvre. Renomme-le (clic droit → <em>Rename</em>) en
+                            <code>exploration.ipynb</code>.
+                        </p>
+                        <p>Tape ton premier code dans la cellule :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-fn">print</span>(<span class="tk-string">"Hello Jupyter"</span>)
+<span class="tk-num">2</span> + <span class="tk-num">2</span></code></pre>
+                        </div>
+                        <p>
+                            Lance avec <code>Shift+Enter</code>. Tu verras s'afficher
+                            <code>Hello Jupyter</code> et le résultat <code>4</code> sous la cellule.
+                            Note que <strong>seule la dernière expression</strong> d'une cellule est
+                            affichée automatiquement (en plus des <code>print</code>).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Mélanger code et texte</h4>
+                        <p>
+                            Une cellule peut être en mode <strong>Code</strong> ou <strong>Markdown</strong>.
+                            Clique sur la cellule, puis utilise le menu déroulant en haut (ou le raccourci
+                            <code>M</code> en mode commande) pour la passer en Markdown :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">markdown</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code># Mon analyse des ventes
+
+On regarde d'abord la **distribution** des montants pour repérer
+d'éventuelles valeurs aberrantes.</code></pre>
+                        </div>
+                        <p>
+                            Lancer la cellule (toujours <code>Shift+Enter</code>) la rend en HTML. C'est
+                            ce mélange code + texte qui fait qu'un notebook se lit comme un article.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Maîtriser les deux modes (édition / commande)</h4>
+                        <p>
+                            Une cellule peut être en <strong>mode édition</strong> (bordure bleue,
+                            curseur dans le code) ou en <strong>mode commande</strong> (bordure grise,
+                            raccourcis clavier actifs). Bascule avec <code>Esc</code> et
+                            <code>Enter</code>.
+                        </p>
+                        <p>Raccourcis essentiels en mode commande :</p>
+                        <ul>
+                            <li><code>A</code> / <code>B</code> — insérer une cellule au-dessus / en-dessous</li>
+                            <li><code>D D</code> — supprimer la cellule</li>
+                            <li><code>M</code> / <code>Y</code> — passer en Markdown / Code</li>
+                            <li><code>Z</code> — annuler la suppression</li>
+                            <li><code>Shift+Enter</code> — exécuter et passer à la suivante</li>
+                            <li><code>Ctrl+Enter</code> — exécuter sans bouger</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser Jupyter directement dans VS Code</h4>
+                        <p>
+                            Pas envie de jongler entre VS Code et un onglet de navigateur ? VS Code
+                            ouvre les <code>.ipynb</code> nativement.
+                        </p>
+                        <ol>
+                            <li>Installe l'extension <strong>Jupyter</strong> de Microsoft (et l'extension <strong>Python</strong>).</li>
+                            <li>Ouvre n'importe quel fichier <code>.ipynb</code> dans VS Code.</li>
+                            <li>En haut à droite, clique sur <strong>Select Kernel</strong> et choisis
+                                l'interpréteur du <code>.venv</code> de ton projet (celui créé par UV).</li>
+                            <li>Tu peux lancer les cellules avec les mêmes raccourcis qu'en JupyterLab.</li>
+                        </ol>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce VS Code</div>
+                            <p>
+                                Dans un script Python normal (<code>.py</code>), tu peux écrire
+                                <code># %%</code> au-dessus d'une portion de code : VS Code la traite
+                                comme une cellule Jupyter exécutable. Tu obtiens le confort des
+                                notebooks <strong>sans</strong> les inconvénients des
+                                <code>.ipynb</code> (cf. ci-dessous).
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Bien gérer les notebooks dans Git</h4>
+                        <p>
+                            Un <code>.ipynb</code> contient le code <em>et</em> les sorties (graphiques
+                            inclus, parfois en base64). Résultat : des diffs Git énormes et illisibles
+                            dès que tu relances une cellule.
+                        </p>
+                        <p>Deux bonnes pratiques :</p>
+                        <ul>
+                            <li><strong>Vider les sorties avant de commit</strong> :
+                                <em>Edit → Clear All Outputs</em> dans JupyterLab.</li>
+                            <li>Automatiser avec <strong>nbstripout</strong> :
+                                <code>uv add --dev nbstripout && uv run nbstripout --install</code>
+                                — il vide les sorties à chaque commit, automatiquement.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (CLI)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">uv</span> run jupyter lab            <span class="tk-comment"># JupyterLab (recommandé)</span>
+<span class="tk-cmd">uv</span> run jupyter notebook       <span class="tk-comment"># interface classique</span>
+<span class="tk-cmd">uv</span> run jupyter lab --port 9000
+<span class="tk-cmd">uv</span> run jupyter nbconvert --to html notebook.ipynb  <span class="tk-comment"># export HTML</span>
+<span class="tk-cmd">uv</span> run jupyter nbconvert --to script notebook.ipynb <span class="tk-comment"># export .py</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (commandes magiques utiles)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Mesurer le temps</span>
+%time df.<span class="tk-fn">describe</span>()         <span class="tk-comment"># une fois</span>
+%%timeit                       <span class="tk-comment"># sur toute la cellule (moyenne)</span>
+expensive_function()
+
+<span class="tk-comment"># Recharger un module modifié sans redémarrer le kernel</span>
+%load_ext autoreload
+%autoreload <span class="tk-num">2</span>
+
+<span class="tk-comment"># Exécuter une commande shell depuis une cellule</span>
+!ls -lh data/
+!uv add seaborn
+
+<span class="tk-comment"># Afficher les graphiques inline (rarement nécessaire avec JupyterLab récent)</span>
+%matplotlib inline</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Jupyter et le reste de l'écosystème</h2>
+                <p>
+                    Le notebook est un point d'entrée — il prend tout son sens quand on le branche aux
+                    autres briques d'un workflow data/ML.
+                </p>
+                <ul>
+                    <li>
+                        <strong><a href="uv.html">UV</a></strong> — c'est UV qui fournit
+                        l'interpréteur Python utilisé par le kernel Jupyter. Quand tu lances
+                        <code>uv run jupyter lab</code>, le kernel pointe automatiquement sur
+                        le <code>.venv</code> du projet, donc toutes les libs ajoutées avec
+                        <code>uv add</code> sont disponibles dans tes notebooks.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — un notebook est l'endroit
+                        naturel pour appeler <code>mlflow.start_run()</code> et tester plusieurs
+                        modèles. Avec <code>mlflow.sklearn.autolog()</code>, chaque cellule
+                        d'entraînement crée un run trackable. Mais attention : pour la production,
+                        on ré-écrit en script <code>.py</code> propre (cf. ci-dessous).
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — l'image officielle
+                        <code>quay.io/jupyter/scipy-notebook</code> donne un JupyterLab préinstallé
+                        avec pandas/scikit-learn/matplotlib. Pratique pour partager un environnement
+                        avec un coéquipier sans qu'il ait à l'installer.
+                    </li>
+                    <li>
+                        <strong><a href="pytest.html">pytest</a></strong> — le notebook est génial
+                        pour explorer, mais pas pour <em>tester</em>. Le pattern habituel : extraire
+                        les fonctions stables d'un notebook vers un module <code>.py</code>, écrire
+                        des tests pytest dessus, et garder le notebook comme « scratchpad ».
+                    </li>
+                    <li>
+                        <strong><a href="sphinx.html">Sphinx</a></strong> — l'extension
+                        <code>nbsphinx</code> permet d'inclure des notebooks directement dans une
+                        documentation Sphinx. Utile pour des tutoriels où le code et les sorties
+                        graphiques sont essentiels.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Notebook ≠ code de production</div>
+                    <p>
+                        Règle d'or en MLOps : un notebook sert à <strong>explorer</strong>. Dès qu'une
+                        logique est stable et doit tourner en prod (entraînement régulier, API…),
+                        on l'extrait dans des modules <code>.py</code> testés avec pytest. Le notebook
+                        reste comme trace de la phase d'exploration, mais ce n'est pas lui qu'on
+                        déploie.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://jupyter.org/" target="_blank" rel="noopener noreferrer">jupyter.org</a></li>
+                    <li>Documentation JupyterLab : <a href="https://jupyterlab.readthedocs.io/" target="_blank" rel="noopener noreferrer">jupyterlab.readthedocs.io</a></li>
+                    <li>Extension Jupyter pour VS Code : <a href="https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter" target="_blank" rel="noopener noreferrer">marketplace.visualstudio.com</a></li>
+                    <li><strong>nbstripout</strong> (vider les sorties dans Git) : <a href="https://github.com/kynan/nbstripout" target="_blank" rel="noopener noreferrer">github.com/kynan/nbstripout</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

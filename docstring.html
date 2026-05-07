@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Docstring — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Docstring</div>
+                <h1>Docstring</h1>
+                <p class="subtitle">
+                    Documenter ses fonctions, classes et modules Python directement dans le code, avec une
+                    syntaxe normée. Le moyen le plus simple d'expliquer <em>ce que fait</em> un bout de
+                    code à ton futur toi (et à tes collègues).
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Une <strong>docstring</strong> est une chaîne de caractères placée juste après la
+                    déclaration d'une fonction, classe ou module Python. Elle explique le rôle, les
+                    paramètres, la valeur de retour et les éventuelles exceptions.
+                </p>
+                <p>Trois bonnes raisons d'en écrire :</p>
+                <ul>
+                    <li><strong>Pour toi</strong> — survoler une fonction trois mois plus tard et comprendre
+                        son rôle sans la relire ligne à ligne.</li>
+                    <li><strong>Pour ton IDE</strong> — VS Code, PyCharm et autres affichent la docstring
+                        au survol et dans l'autocomplétion.</li>
+                    <li><strong>Pour la documentation auto</strong> — outils comme Sphinx, MkDocs ou la
+                        page <code>/docs</code> de FastAPI les exploitent pour générer une vraie doc.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">À retenir</div>
+                    <p>
+                        Une docstring n'est pas un simple commentaire : elle est accessible au runtime via
+                        <code>fonction.__doc__</code> et par <code>help(fonction)</code>.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Prenons une fonction utilitaire. Sans docstring :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (sans doc)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">def</span> <span class="tk-fn">moyenne</span>(valeurs):
+    <span class="tk-keyword">return</span> <span class="tk-fn">sum</span>(valeurs) / <span class="tk-fn">len</span>(valeurs)</code></pre>
+                </div>
+                <p>Avec une docstring (style Google) :</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (avec doc)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">def</span> <span class="tk-fn">moyenne</span>(valeurs: <span class="tk-fn">list</span>[<span class="tk-fn">float</span>]) -> <span class="tk-fn">float</span>:
+    <span class="tk-string">"""Calcule la moyenne arithmétique d'une liste de nombres.
+
+    Args:
+        valeurs: Liste de nombres dont on veut la moyenne.
+
+    Returns:
+        La moyenne arithmétique.
+
+    Raises:
+        ZeroDivisionError: Si la liste est vide.
+
+    Example:
+        >>> moyenne([1, 2, 3])
+        2.0
+    """</span>
+    <span class="tk-keyword">return</span> <span class="tk-fn">sum</span>(valeurs) / <span class="tk-fn">len</span>(valeurs)</code></pre>
+                </div>
+                <p>
+                    Maintenant, dans VS Code, quand tu survoleras <code>moyenne(...)</code>, tu verras
+                    directement cette description, et <code>help(moyenne)</code> te l'affichera dans la
+                    console.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>Les 3 styles principaux</h2>
+                <p>
+                    Il n'y a pas de « bonne » réponse — c'est une convention d'équipe. Choisis-en un et
+                    tiens-toi à lui dans tout le projet.
+                </p>
+
+                <h3>Style Google (très lisible, recommandé pour débuter)</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">def</span> <span class="tk-fn">diviser</span>(a: <span class="tk-fn">float</span>, b: <span class="tk-fn">float</span>) -> <span class="tk-fn">float</span>:
+    <span class="tk-string">"""Divise a par b.
+
+    Args:
+        a: Le numérateur.
+        b: Le dénominateur (non nul).
+
+    Returns:
+        Le résultat de a / b.
+
+    Raises:
+        ValueError: Si b vaut 0.
+    """</span></code></pre>
+                </div>
+
+                <h3>Style NumPy (très utilisé en data science)</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">def</span> <span class="tk-fn">diviser</span>(a: <span class="tk-fn">float</span>, b: <span class="tk-fn">float</span>) -> <span class="tk-fn">float</span>:
+    <span class="tk-string">"""Divise a par b.
+
+    Parameters
+    ----------
+    a : float
+        Le numérateur.
+    b : float
+        Le dénominateur (non nul).
+
+    Returns
+    -------
+    float
+        Le résultat de a / b.
+
+    Raises
+    ------
+    ValueError
+        Si b vaut 0.
+    """</span></code></pre>
+                </div>
+
+                <h3>Style reStructuredText / Sphinx (par défaut de Sphinx)</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">def</span> <span class="tk-fn">diviser</span>(a: <span class="tk-fn">float</span>, b: <span class="tk-fn">float</span>) -> <span class="tk-fn">float</span>:
+    <span class="tk-string">"""Divise a par b.
+
+    :param a: Le numérateur.
+    :param b: Le dénominateur (non nul).
+    :return: Le résultat de a / b.
+    :raises ValueError: Si b vaut 0.
+    """</span></code></pre>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Conseil perso</div>
+                    <p>
+                        Le style <strong>Google</strong> est le plus lisible et celui qui rend le mieux dans
+                        l'auto-completion VS Code. C'est mon défaut.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>How-to : bien documenter avec VS Code</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer l'extension autoDocstring</h4>
+                        <p>
+                            <strong>autoDocstring</strong> (id : <code>njpwerner.autodocstring</code>)
+                            génère le squelette d'une docstring à partir de la signature de ta fonction.
+                            Énorme gain de temps.
+                        </p>
+                        <ol>
+                            <li>Ouvre VS Code → onglet Extensions (<code>Ctrl+Shift+X</code>).</li>
+                            <li>Cherche <em>autoDocstring</em> et installe.</li>
+                            <li>Choisis le format dans les paramètres :
+                                <code>Auto Docstring: Docstring Format</code> → <code>google</code> (ou
+                                <code>numpy</code>, <code>sphinx</code>).</li>
+                        </ol>
+                    </li>
+
+                    <li>
+                        <h4>Générer une docstring en 1 raccourci</h4>
+                        <ol>
+                            <li>Place le curseur sur la ligne juste sous la signature de la fonction.</li>
+                            <li>Tape <code>"""</code> puis appuie sur <kbd>Entrée</kbd>.</li>
+                            <li>L'extension génère le squelette avec <code>Args</code>, <code>Returns</code>,
+                                <code>Raises</code> en fonction de la signature.</li>
+                            <li>Il ne reste qu'à remplir les descriptions.</li>
+                        </ol>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce</div>
+                            <p>
+                                Plus tu mets de type hints dans ta signature, plus le squelette généré est
+                                précis (types pré-remplis).
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer le style par défaut dans le projet</h4>
+                        <p>Crée <code>.vscode/settings.json</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">json</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>{
+    <span class="tk-string">"autoDocstring.docstringFormat"</span>: <span class="tk-string">"google"</span>,
+    <span class="tk-string">"autoDocstring.startOnNewLine"</span>: <span class="tk-keyword">true</span>,
+    <span class="tk-string">"autoDocstring.guessTypes"</span>: <span class="tk-keyword">true</span>
+}</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Vérifier la qualité avec un linter</h4>
+                        <p>
+                            <code>pydocstyle</code> (ou son successeur <code>ruff</code>) vérifie que tes
+                            docstrings respectent une convention.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add --dev ruff
+<span class="tk-cmd">uv</span> run ruff check .</code></pre>
+                        </div>
+                        <p>Pour activer les règles docstring, ajoute dans <code>pyproject.toml</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">toml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>[tool.ruff.lint]
+select = [<span class="tk-string">"D"</span>]   <span class="tk-comment"># règles pydocstyle</span>
+
+[tool.ruff.lint.pydocstyle]
+convention = <span class="tk-string">"google"</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Tester ses exemples avec doctest</h4>
+                        <p>
+                            Si tu mets des <code>&gt;&gt;&gt;</code> dans tes docstrings, Python peut
+                            <em>tester</em> que les exemples renvoient bien ce que tu prétends :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run python -m doctest mon_module.py -v</code></pre>
+                        </div>
+                        <p>
+                            Si la doc dit <code>moyenne([1, 2, 3]) == 2.0</code> mais que la fonction
+                            renvoie autre chose, doctest te le signale.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Générer un site de doc avec Sphinx ou MkDocs</h4>
+                        <p>
+                            Quand tes docstrings sont en place, tu peux les transformer en site web
+                            navigable avec deux outils principaux :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Option 1 : Sphinx (le classique)</span>
+<span class="tk-cmd">uv</span> add --dev sphinx sphinx-rtd-theme
+
+<span class="tk-comment"># Option 2 : MkDocs + mkdocstrings (plus moderne)</span>
+<span class="tk-cmd">uv</span> add --dev mkdocs mkdocs-material mkdocstrings[python]</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Bonnes pratiques</h2>
+                <ul>
+                    <li><strong>Première ligne courte et au présent</strong> — résume en une phrase ce que
+                        fait la fonction (pas <em>« cette fonction calcule… »</em>, mais <em>« calcule… »</em>).</li>
+                    <li><strong>Documente le pourquoi, pas le comment</strong> — le code dit déjà <em>comment</em>,
+                        la docstring dit <em>à quoi ça sert</em> et <em>quand l'utiliser</em>.</li>
+                    <li><strong>Reste cohérent</strong> dans tout le projet : un seul style, partout.</li>
+                    <li><strong>Type hints + docstring</strong> = combo gagnant. Les types vivent dans la
+                        signature, la prose dans la docstring.</li>
+                    <li><strong>Mets à jour</strong> la docstring quand tu changes la fonction. Une doc
+                        fausse est pire qu'une doc absente.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>PEP 257 (la convention officielle) : <a href="https://peps.python.org/pep-0257/" target="_blank" rel="noopener noreferrer">peps.python.org/pep-0257</a></li>
+                    <li>Guide de style Google : <a href="https://google.github.io/styleguide/pyguide.html#383-functions-and-methods" target="_blank" rel="noopener noreferrer">google.github.io/styleguide/pyguide</a></li>
+                    <li>Extension autoDocstring : <a href="https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring" target="_blank" rel="noopener noreferrer">marketplace.visualstudio.com</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>pandas — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / pandas</div>
+                <h1>pandas</h1>
+                <p class="subtitle">
+                    La bibliothèque Python de référence pour manipuler des données tabulaires :
+                    charger un CSV, filtrer, regrouper, calculer des statistiques. Le couteau suisse
+                    de toute analyse de données en Python.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Dès que tu travailles avec des données qui ressemblent à un tableau Excel — des
+                    lignes, des colonnes, des en-têtes — pandas est l'outil naturel en Python. Il
+                    introduit deux structures principales : la <strong>Series</strong> (une colonne
+                    avec un index) et le <strong>DataFrame</strong> (un tableau entier).
+                </p>
+                <p>
+                    Concrètement, pandas te permet de faire en quelques lignes ce qui prendrait
+                    des dizaines de lignes en Python pur :
+                </p>
+                <ul>
+                    <li><strong>Charger</strong> un fichier CSV, Excel, JSON, Parquet, ou même une
+                        table SQL.</li>
+                    <li><strong>Explorer</strong> : combien de lignes, quelles colonnes, valeurs
+                        manquantes, statistiques de base.</li>
+                    <li><strong>Filtrer et transformer</strong> : sélectionner des lignes selon des
+                        critères, créer de nouvelles colonnes, nettoyer.</li>
+                    <li><strong>Agréger</strong> : grouper par catégorie, calculer des moyennes,
+                        des sommes, des comptages (le fameux <code>groupby</code>).</li>
+                    <li><strong>Joindre</strong> deux tableaux entre eux (merge/join, comme en SQL).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">pandas, NumPy, Excel… c'est quoi la différence ?</div>
+                    <p>
+                        <strong>NumPy</strong> manipule des tableaux de nombres (matrices) — pandas
+                        est construit dessus et y ajoute la notion de colonnes nommées et d'index.
+                        <strong>Excel</strong> fait à peu près la même chose que pandas mais à la
+                        souris, sans automatisation ni reproductibilité. pandas, c'est Excel
+                        scriptable, capable de traiter des millions de lignes.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu reçois un CSV avec les ventes d'un magasin (date, produit, montant). Tu veux
+                    savoir quels produits rapportent le plus :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+
+<span class="tk-comment"># Charger le CSV en DataFrame</span>
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"ventes.csv"</span>)
+
+<span class="tk-comment"># Aperçu rapide</span>
+df.<span class="tk-fn">head</span>()
+df.<span class="tk-fn">info</span>()
+df.<span class="tk-fn">describe</span>()
+
+<span class="tk-comment"># Filtrer les ventes &gt; 100€</span>
+grosses = df[df[<span class="tk-string">"montant"</span>] &gt; <span class="tk-num">100</span>]
+
+<span class="tk-comment"># Total des ventes par produit, trié</span>
+totaux = (
+    df.<span class="tk-fn">groupby</span>(<span class="tk-string">"produit"</span>)[<span class="tk-string">"montant"</span>]
+      .<span class="tk-fn">sum</span>()
+      .<span class="tk-fn">sort_values</span>(ascending=<span class="tk-keyword">False</span>)
+)
+<span class="tk-fn">print</span>(totaux.<span class="tk-fn">head</span>(<span class="tk-num">10</span>))</code></pre>
+                </div>
+                <p>
+                    En 5 lignes utiles, tu as chargé, exploré, filtré et agrégé le fichier. Le
+                    DataFrame <code>df</code> se manipule comme un objet Python normal, mais
+                    chaque opération est optimisée pour traiter des millions de lignes rapidement
+                    (pandas s'appuie sur NumPy en dessous).
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser pandas</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer pandas dans ton projet</h4>
+                        <p>
+                            On reste dans la logique <a href="uv.html">UV</a> : pandas est une
+                            dépendance principale (pas de dev) puisqu'on l'utilise dans le code,
+                            pas seulement pour les tests.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add pandas</code></pre>
+                        </div>
+                        <p>
+                            Souvent on l'installe avec ses compagnons : <code>matplotlib</code>
+                            pour les graphiques, <code>openpyxl</code> pour lire des fichiers
+                            Excel, <code>pyarrow</code> pour le format Parquet.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add pandas matplotlib openpyxl pyarrow</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Charger un fichier en DataFrame</h4>
+                        <p>
+                            pandas reconnaît tout seul de très nombreux formats. Les plus courants :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"data.csv"</span>)
+df = pd.<span class="tk-fn">read_excel</span>(<span class="tk-string">"data.xlsx"</span>)
+df = pd.<span class="tk-fn">read_json</span>(<span class="tk-string">"data.json"</span>)
+df = pd.<span class="tk-fn">read_parquet</span>(<span class="tk-string">"data.parquet"</span>)</code></pre>
+                        </div>
+                        <p>
+                            <code>read_csv</code> a beaucoup d'options utiles :
+                            <code>sep=";"</code> pour les CSV à point-virgule,
+                            <code>encoding="latin-1"</code> pour les fichiers Windows,
+                            <code>parse_dates=["date"]</code> pour convertir une colonne en date.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Explorer un DataFrame</h4>
+                        <p>Les premiers réflexes après un chargement :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">head</span>()           <span class="tk-comment"># 5 premières lignes</span>
+df.<span class="tk-fn">tail</span>(<span class="tk-num">10</span>)         <span class="tk-comment"># 10 dernières</span>
+df.shape             <span class="tk-comment"># (nb_lignes, nb_colonnes)</span>
+df.columns           <span class="tk-comment"># noms des colonnes</span>
+df.dtypes            <span class="tk-comment"># type de chaque colonne</span>
+df.<span class="tk-fn">info</span>()           <span class="tk-comment"># résumé général + valeurs manquantes</span>
+df.<span class="tk-fn">describe</span>()       <span class="tk-comment"># stats sur les colonnes numériques</span>
+df.<span class="tk-fn">isna</span>().<span class="tk-fn">sum</span>()    <span class="tk-comment"># nombre de NaN par colonne</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sélectionner colonnes et lignes</h4>
+                        <p>Trois patterns à connaître par cœur :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># 1. Une colonne (renvoie une Series)</span>
+df[<span class="tk-string">"montant"</span>]
+
+<span class="tk-comment"># 2. Plusieurs colonnes (renvoie un DataFrame)</span>
+df[[<span class="tk-string">"produit"</span>, <span class="tk-string">"montant"</span>]]
+
+<span class="tk-comment"># 3. Filtrer des lignes par condition (booléen)</span>
+df[df[<span class="tk-string">"montant"</span>] &gt; <span class="tk-num">100</span>]
+df[(df[<span class="tk-string">"montant"</span>] &gt; <span class="tk-num">100</span>) &amp; (df[<span class="tk-string">"produit"</span>] == <span class="tk-string">"A"</span>)]
+
+<span class="tk-comment"># 4. Sélection par label (loc) ou par position (iloc)</span>
+df.loc[<span class="tk-num">0</span>, <span class="tk-string">"montant"</span>]      <span class="tk-comment"># ligne 0, colonne "montant"</span>
+df.iloc[<span class="tk-num">0</span>, <span class="tk-num">2</span>]              <span class="tk-comment"># ligne 0, 3e colonne</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Le piège des conditions multiples</div>
+                            <p>
+                                En Python on écrirait <code>and</code>, <code>or</code>. En pandas,
+                                il faut <code>&amp;</code> et <code>|</code>, et <strong>parenthéser
+                                chaque condition</strong>. Sinon : <code>ValueError</code>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer et modifier des colonnes</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Ajouter une colonne calculée</span>
+df[<span class="tk-string">"ttc"</span>] = df[<span class="tk-string">"montant"</span>] * <span class="tk-num">1.20</span>
+
+<span class="tk-comment"># Renommer</span>
+df = df.<span class="tk-fn">rename</span>(columns={<span class="tk-string">"montant"</span>: <span class="tk-string">"montant_ht"</span>})
+
+<span class="tk-comment"># Supprimer</span>
+df = df.<span class="tk-fn">drop</span>(columns=[<span class="tk-string">"colonne_inutile"</span>])
+
+<span class="tk-comment"># Appliquer une fonction sur une colonne</span>
+df[<span class="tk-string">"produit_maj"</span>] = df[<span class="tk-string">"produit"</span>].<span class="tk-fn">str</span>.<span class="tk-fn">upper</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Grouper et agréger (groupby)</h4>
+                        <p>
+                            L'opération la plus puissante de pandas, l'équivalent du
+                            <code>GROUP BY</code> en SQL :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Total des ventes par produit</span>
+df.<span class="tk-fn">groupby</span>(<span class="tk-string">"produit"</span>)[<span class="tk-string">"montant"</span>].<span class="tk-fn">sum</span>()
+
+<span class="tk-comment"># Plusieurs agrégations en même temps</span>
+df.<span class="tk-fn">groupby</span>(<span class="tk-string">"produit"</span>).<span class="tk-fn">agg</span>(
+    total=(<span class="tk-string">"montant"</span>, <span class="tk-string">"sum"</span>),
+    moyenne=(<span class="tk-string">"montant"</span>, <span class="tk-string">"mean"</span>),
+    nb_ventes=(<span class="tk-string">"montant"</span>, <span class="tk-string">"count"</span>),
+)
+
+<span class="tk-comment"># Grouper par plusieurs colonnes</span>
+df.<span class="tk-fn">groupby</span>([<span class="tk-string">"region"</span>, <span class="tk-string">"produit"</span>])[<span class="tk-string">"montant"</span>].<span class="tk-fn">sum</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Gérer les valeurs manquantes</h4>
+                        <p>
+                            Les vraies données ont des trous. pandas représente les valeurs
+                            manquantes par <code>NaN</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Compter les manquants</span>
+df.<span class="tk-fn">isna</span>().<span class="tk-fn">sum</span>()
+
+<span class="tk-comment"># Supprimer les lignes avec des NaN</span>
+df.<span class="tk-fn">dropna</span>()
+
+<span class="tk-comment"># Remplacer par une valeur par défaut</span>
+df[<span class="tk-string">"montant"</span>] = df[<span class="tk-string">"montant"</span>].<span class="tk-fn">fillna</span>(<span class="tk-num">0</span>)
+
+<span class="tk-comment"># Remplacer par la moyenne</span>
+df[<span class="tk-string">"age"</span>] = df[<span class="tk-string">"age"</span>].<span class="tk-fn">fillna</span>(df[<span class="tk-string">"age"</span>].<span class="tk-fn">mean</span>())</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder le résultat</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">to_csv</span>(<span class="tk-string">"resultat.csv"</span>, index=<span class="tk-keyword">False</span>)
+df.<span class="tk-fn">to_excel</span>(<span class="tk-string">"resultat.xlsx"</span>, index=<span class="tk-keyword">False</span>)
+df.<span class="tk-fn">to_parquet</span>(<span class="tk-string">"resultat.parquet"</span>)</code></pre>
+                        </div>
+                        <p>
+                            <code>index=False</code> évite d'écrire l'index automatique de pandas
+                            (0, 1, 2…) comme première colonne du CSV — sinon tu te retrouves avec
+                            une colonne <code>Unnamed: 0</code> à la prochaine relecture.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (lecture / écriture)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"f.csv"</span>, sep=<span class="tk-string">";"</span>, encoding=<span class="tk-string">"latin-1"</span>)
+pd.<span class="tk-fn">read_excel</span>(<span class="tk-string">"f.xlsx"</span>, sheet_name=<span class="tk-string">"Feuil1"</span>)
+pd.<span class="tk-fn">read_parquet</span>(<span class="tk-string">"f.parquet"</span>)
+df.<span class="tk-fn">to_csv</span>(<span class="tk-string">"out.csv"</span>, index=<span class="tk-keyword">False</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (exploration)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df.<span class="tk-fn">head</span>(), df.<span class="tk-fn">tail</span>(), df.shape, df.columns, df.dtypes
+df.<span class="tk-fn">info</span>(), df.<span class="tk-fn">describe</span>()
+df[<span class="tk-string">"col"</span>].<span class="tk-fn">value_counts</span>()        <span class="tk-comment"># comptage par valeur</span>
+df[<span class="tk-string">"col"</span>].<span class="tk-fn">unique</span>()              <span class="tk-comment"># valeurs distinctes</span>
+df.<span class="tk-fn">sort_values</span>(<span class="tk-string">"col"</span>, ascending=<span class="tk-keyword">False</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (transformations)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df.<span class="tk-fn">groupby</span>(<span class="tk-string">"cat"</span>)[<span class="tk-string">"val"</span>].<span class="tk-fn">sum</span>()
+df.<span class="tk-fn">merge</span>(other, on=<span class="tk-string">"id"</span>, how=<span class="tk-string">"left"</span>)   <span class="tk-comment"># jointure SQL-like</span>
+pd.<span class="tk-fn">concat</span>([df1, df2], axis=<span class="tk-num">0</span>)        <span class="tk-comment"># empiler verticalement</span>
+df.<span class="tk-fn">pivot_table</span>(index=<span class="tk-string">"r"</span>, columns=<span class="tk-string">"c"</span>, values=<span class="tk-string">"v"</span>)
+df[<span class="tk-string">"col"</span>].<span class="tk-fn">apply</span>(<span class="tk-keyword">lambda</span> x: x * <span class="tk-num">2</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (dates)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df[<span class="tk-string">"date"</span>] = pd.<span class="tk-fn">to_datetime</span>(df[<span class="tk-string">"date"</span>])
+df[<span class="tk-string">"annee"</span>] = df[<span class="tk-string">"date"</span>].dt.year
+df[<span class="tk-string">"mois"</span>]  = df[<span class="tk-string">"date"</span>].dt.month</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>pandas et le reste de l'écosystème</h2>
+                <p>
+                    pandas est rarement utilisé seul. Il est le maillon central entre les sources
+                    de données et les outils d'analyse ou de modélisation.
+                </p>
+                <ul>
+                    <li>
+                        <strong><a href="jupyter.html">Jupyter</a></strong> — l'environnement
+                        naturel pour explorer un DataFrame. Les sorties s'affichent en tableau
+                        formaté juste sous la cellule, idéal pour itérer.
+                    </li>
+                    <li>
+                        <strong><a href="sqlalchemy.html">SQLAlchemy</a></strong> —
+                        <code>pd.read_sql(query, engine)</code> charge directement le résultat
+                        d'une requête SQL en DataFrame. À l'inverse, <code>df.to_sql()</code>
+                        écrit un DataFrame dans une table.
+                    </li>
+                    <li>
+                        <strong><a href="streamlit.html">Streamlit</a></strong> — passer un
+                        DataFrame à <code>st.dataframe(df)</code> affiche un tableau interactif
+                        triable. C'est la base de tout dashboard data en Streamlit.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pandas n'est pas
+                        idéal pour servir une API (on préfère des objets Pydantic), mais on
+                        l'utilise souvent dans les fonctions internes de calcul, puis on
+                        convertit le résultat en dict avec <code>df.to_dict(orient="records")</code>.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — les datasets passés
+                        aux modèles scikit-learn sont quasi toujours des DataFrames pandas.
+                        MLflow sait logger un DataFrame d'exemple comme « signature » du modèle
+                        pour documenter les colonnes attendues.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">pandas est lent au-delà de quelques Go</div>
+                    <p>
+                        pandas charge tout en mémoire et utilise un seul cœur CPU. Au-delà de
+                        quelques millions de lignes, regarde du côté de <strong>Polars</strong>
+                        (API similaire, beaucoup plus rapide) ou <strong>DuckDB</strong> (SQL
+                        sur fichiers). En MLOps, c'est un signal classique de passage à
+                        l'échelle.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://pandas.pydata.org/" target="_blank" rel="noopener noreferrer">pandas.pydata.org</a></li>
+                    <li>Guide « 10 minutes to pandas » : <a href="https://pandas.pydata.org/docs/user_guide/10min.html" target="_blank" rel="noopener noreferrer">pandas.pydata.org/docs/user_guide/10min.html</a></li>
+                    <li>Cheat sheet officielle (PDF) : <a href="https://pandas.pydata.org/Pandas_Cheat_Sheet.pdf" target="_blank" rel="noopener noreferrer">Pandas_Cheat_Sheet.pdf</a></li>
+                    <li><strong>Polars</strong> (alternative rapide) : <a href="https://pola.rs/" target="_blank" rel="noopener noreferrer">pola.rs</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

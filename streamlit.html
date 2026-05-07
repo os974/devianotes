@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Streamlit — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Streamlit</div>
+                <h1>Streamlit</h1>
+                <p class="subtitle">
+                    Un framework Python qui transforme un script en application web interactive en quelques
+                    lignes. Idéal pour partager un modèle, un dashboard ou une démo de data sans toucher au
+                    HTML/CSS/JS.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand tu fais de la data ou de l'IA, tu veux souvent <strong>montrer</strong> ton travail :
+                    un graphique, les prédictions de ton modèle, un explorateur de jeu de données. Faire un
+                    site web complet pour ça, c'est lourd. Faire un notebook, c'est pas partageable au grand
+                    public.
+                </p>
+                <p>
+                    Streamlit te permet d'écrire un <strong>simple script Python</strong> qui devient
+                    automatiquement une appli web : sliders, boutons, graphiques, formulaires. Pas une ligne
+                    de HTML à écrire.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Streamlit transforme un script Python en site web interactif sans front-end à coder.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as entraîné un modèle de classification d'images. Tu veux que ton prof / ton équipe
+                    puisse <em>uploader</em> une image et voir la prédiction, sans rien installer. Avec
+                    Streamlit, ça tient en quelques lignes :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> streamlit <span class="tk-keyword">as</span> st
+
+st.<span class="tk-fn">title</span>(<span class="tk-string">"Démo de mon modèle"</span>)
+fichier = st.<span class="tk-fn">file_uploader</span>(<span class="tk-string">"Choisis une image"</span>)
+
+<span class="tk-keyword">if</span> fichier:
+    st.<span class="tk-fn">image</span>(fichier)
+    st.<span class="tk-fn">success</span>(<span class="tk-string">"Prédiction : chat 🐱"</span>)</code></pre>
+                </div>
+                <p>
+                    Tu lances <code>streamlit run app.py</code> et hop, une page web s'ouvre dans ton
+                    navigateur avec un titre, un uploader et un retour visuel.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Streamlit</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Créer un environnement et installer Streamlit</h4>
+                        <p>Avec UV (recommandé, voir la <a href="uv.html">fiche UV</a>) :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> init demo-streamlit
+<span class="tk-cmd">cd</span> demo-streamlit
+<span class="tk-cmd">uv</span> add streamlit</code></pre>
+                        </div>
+                        <p>Ou avec pip classique :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">python3</span> -m venv .venv
+<span class="tk-cmd">source</span> .venv/bin/activate
+<span class="tk-cmd">pip</span> install streamlit</code></pre>
+                        </div>
+                        <p>Vérifie l'installation avec la démo officielle :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run streamlit hello</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Écrire ta première app</h4>
+                        <p>Crée un fichier <code>app.py</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> streamlit <span class="tk-keyword">as</span> st
+<span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+<span class="tk-keyword">import</span> numpy <span class="tk-keyword">as</span> np
+
+st.<span class="tk-fn">set_page_config</span>(page_title=<span class="tk-string">"Mon dashboard"</span>, page_icon=<span class="tk-string">"📊"</span>)
+
+st.<span class="tk-fn">title</span>(<span class="tk-string">"📊 Mon premier dashboard"</span>)
+st.<span class="tk-fn">write</span>(<span class="tk-string">"Bienvenue ! Joue avec les contrôles à gauche."</span>)
+
+<span class="tk-comment"># Sidebar avec des contrôles</span>
+st.sidebar.<span class="tk-fn">header</span>(<span class="tk-string">"Paramètres"</span>)
+n_points = st.sidebar.<span class="tk-fn">slider</span>(<span class="tk-string">"Nombre de points"</span>, <span class="tk-num">10</span>, <span class="tk-num">500</span>, <span class="tk-num">100</span>)
+couleur = st.sidebar.<span class="tk-fn">selectbox</span>(<span class="tk-string">"Série"</span>, [<span class="tk-string">"A"</span>, <span class="tk-string">"B"</span>, <span class="tk-string">"C"</span>])
+
+<span class="tk-comment"># Données aléatoires</span>
+df = pd.<span class="tk-fn">DataFrame</span>(
+    np.random.<span class="tk-fn">randn</span>(n_points, <span class="tk-num">3</span>),
+    columns=[<span class="tk-string">"A"</span>, <span class="tk-string">"B"</span>, <span class="tk-string">"C"</span>]
+)
+
+st.<span class="tk-fn">subheader</span>(<span class="tk-string">f"Courbe — série </span>{couleur}<span class="tk-string">"</span>)
+st.<span class="tk-fn">line_chart</span>(df[couleur])
+
+<span class="tk-keyword">with</span> st.<span class="tk-fn">expander</span>(<span class="tk-string">"Voir les données brutes"</span>):
+    st.<span class="tk-fn">dataframe</span>(df)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer l'application</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run streamlit run app.py</code></pre>
+                        </div>
+                        <p>
+                            Ton navigateur s'ouvre sur <code>http://localhost:8501</code>. À chaque sauvegarde
+                            du fichier, Streamlit propose un rechargement automatique.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce — auto-reload</div>
+                            <p>
+                                Dans le menu en haut à droite de l'app, choisis <em>Settings → Run on save</em>
+                                pour que la page se recharge automatiquement à chaque modification.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer VS Code</h4>
+                        <ol>
+                            <li>Installe l'extension <strong>Python</strong> de Microsoft.</li>
+                            <li>Sélectionne le bon interpréteur (<code>Python: Select Interpreter</code> →
+                                <code>./.venv/bin/python</code>).</li>
+                            <li>Pour lancer Streamlit avec le bouton « play » de VS Code, crée
+                                <code>.vscode/launch.json</code> :</li>
+                        </ol>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">json</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>{
+    <span class="tk-string">"version"</span>: <span class="tk-string">"0.2.0"</span>,
+    <span class="tk-string">"configurations"</span>: [
+        {
+            <span class="tk-string">"name"</span>: <span class="tk-string">"Streamlit"</span>,
+            <span class="tk-string">"type"</span>: <span class="tk-string">"python"</span>,
+            <span class="tk-string">"request"</span>: <span class="tk-string">"launch"</span>,
+            <span class="tk-string">"module"</span>: <span class="tk-string">"streamlit"</span>,
+            <span class="tk-string">"args"</span>: [<span class="tk-string">"run"</span>, <span class="tk-string">"app.py"</span>]
+        }
+    ]
+}</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Aller plus loin : cache et état</h4>
+                        <p>
+                            Streamtlit ré-exécute le script entier à chaque interaction. Pour éviter de
+                            recharger un gros fichier ou de relancer un modèle à chaque clic, utilise le cache :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">@</span>st.cache_data
+<span class="tk-keyword">def</span> <span class="tk-fn">charger_donnees</span>(chemin):
+    <span class="tk-keyword">return</span> pd.<span class="tk-fn">read_csv</span>(chemin)
+
+<span class="tk-keyword">@</span>st.cache_resource
+<span class="tk-keyword">def</span> <span class="tk-fn">charger_modele</span>():
+    <span class="tk-keyword">import</span> joblib
+    <span class="tk-keyword">return</span> joblib.<span class="tk-fn">load</span>(<span class="tk-string">"model.pkl"</span>)</code></pre>
+                        </div>
+                        <p>
+                            <code>cache_data</code> pour les DataFrames, JSON, etc. <code>cache_resource</code>
+                            pour les objets non-sérialisables (modèles, connexions).
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire des composants</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Texte</span>
+st.<span class="tk-fn">title</span>(...)         st.<span class="tk-fn">header</span>(...)        st.<span class="tk-fn">write</span>(...)
+st.<span class="tk-fn">markdown</span>(...)      st.<span class="tk-fn">code</span>(...)          st.<span class="tk-fn">latex</span>(...)
+
+<span class="tk-comment"># Inputs</span>
+st.<span class="tk-fn">text_input</span>(...)    st.<span class="tk-fn">number_input</span>(...)
+st.<span class="tk-fn">slider</span>(...)        st.<span class="tk-fn">selectbox</span>(...)     st.<span class="tk-fn">checkbox</span>(...)
+st.<span class="tk-fn">button</span>(...)        st.<span class="tk-fn">file_uploader</span>(...)
+
+<span class="tk-comment"># Affichage data</span>
+st.<span class="tk-fn">dataframe</span>(df)     st.<span class="tk-fn">table</span>(df)         st.<span class="tk-fn">metric</span>(...)
+st.<span class="tk-fn">line_chart</span>(df)    st.<span class="tk-fn">bar_chart</span>(df)     st.<span class="tk-fn">map</span>(df)
+
+<span class="tk-comment"># Layout</span>
+st.<span class="tk-fn">columns</span>(...)       st.<span class="tk-fn">tabs</span>(...)          st.<span class="tk-fn">expander</span>(...)
+st.sidebar.<span class="tk-fn">xxx</span>(...)   <span class="tk-comment"># dans la barre latérale</span>
+
+<span class="tk-comment"># Feedback</span>
+st.<span class="tk-fn">success</span>(...)       st.<span class="tk-fn">error</span>(...)         st.<span class="tk-fn">warning</span>(...)
+st.<span class="tk-fn">spinner</span>(...)       st.<span class="tk-fn">progress</span>(...)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://docs.streamlit.io/" target="_blank" rel="noopener noreferrer">docs.streamlit.io</a></li>
+                    <li>Galerie d'exemples : <a href="https://streamlit.io/gallery" target="_blank" rel="noopener noreferrer">streamlit.io/gallery</a></li>
+                    <li>Déploiement gratuit : <a href="https://streamlit.io/cloud" target="_blank" rel="noopener noreferrer">Streamlit Community Cloud</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

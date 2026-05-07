@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>pytest — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / pytest</div>
+                <h1>pytest</h1>
+                <p class="subtitle">
+                    Le framework de tests Python le plus utilisé. Syntaxe simple (un <code>assert</code>
+                    suffit), découverte automatique des tests, fixtures puissantes — c'est l'outil de référence
+                    pour vérifier que ton code fait ce qu'il dit.
+                </p>
+                <div class="badge-row">
+                    <span class="tag">Tests</span>
+                    <span class="tag">Qualité</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Tester son code, c'est écrire d'autres morceaux de code qui <em>vérifient</em> que ton
+                    code se comporte comme prévu. Pourquoi s'embêter ?
+                </p>
+                <ul>
+                    <li><strong>Confiance</strong> — quand tu modifies une fonction, tu sais immédiatement
+                        si tu as cassé autre chose.</li>
+                    <li><strong>Documentation vivante</strong> — un test montre comment utiliser ta fonction.</li>
+                    <li><strong>Détection précoce</strong> — un bug attrapé en local coûte 10× moins cher
+                        qu'un bug en prod.</li>
+                </ul>
+                <p>
+                    Python a un module <code>unittest</code> intégré, mais il est verbeux. <strong>pytest</strong>
+                    propose la même chose en plus simple, avec en bonus des fixtures, du paramétrage et un
+                    écosystème énorme de plugins.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>pytest = écrire des tests Python en quelques lignes, et savoir en un coup d'œil si ton code marche encore.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as une fonction qui calcule le prix TTC à partir d'un prix HT. Tu veux t'assurer
+                    qu'elle est correcte. Crée un fichier <code>test_prix.py</code> à côté de ton code :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> prix <span class="tk-keyword">import</span> calcul_ttc
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_ttc_simple</span>():
+    <span class="tk-keyword">assert</span> <span class="tk-fn">calcul_ttc</span>(<span class="tk-num">100</span>) == <span class="tk-num">120.0</span>
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_ttc_zero</span>():
+    <span class="tk-keyword">assert</span> <span class="tk-fn">calcul_ttc</span>(<span class="tk-num">0</span>) == <span class="tk-num">0</span>
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_ttc_refuse_negatif</span>():
+    <span class="tk-keyword">import</span> pytest
+    <span class="tk-keyword">with</span> pytest.<span class="tk-fn">raises</span>(ValueError):
+        <span class="tk-fn">calcul_ttc</span>(-<span class="tk-num">10</span>)</code></pre>
+                </div>
+                <p>Tu lances <code>pytest</code> dans le terminal, et tu obtiens :</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sortie console</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code>collected 3 items
+
+test_prix.py ...                                          [100%]
+
+============== 3 passed in 0.02s ===============</code></pre>
+                </div>
+                <p>
+                    Trois tests passent. Si tu casses la fonction, pytest pointe la ligne <code>assert</code>
+                    qui échoue, avec la valeur attendue et la valeur obtenue.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser pytest</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer pytest comme dépendance de dev</h4>
+                        <p>Avec UV (voir la <a href="uv.html">fiche UV</a>) :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add --dev pytest</code></pre>
+                        </div>
+                        <p>Ou avec pip :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pip</span> install pytest</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce</div>
+                            <p>
+                                Le flag <code>--dev</code> indique que pytest n'est pas une dépendance de
+                                <em>production</em> : on n'en a besoin que pour développer et tester.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Structurer ton projet</h4>
+                        <p>pytest suit une convention simple :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">arbo</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code>mon-projet/
+├── src/
+│   └── calculs.py
+├── tests/
+│   └── test_calculs.py
+└── pyproject.toml</code></pre>
+                        </div>
+                        <p>
+                            pytest découvre automatiquement les fichiers <code>test_*.py</code> ou
+                            <code>*_test.py</code>, et dans chacun, les fonctions commençant par
+                            <code>test_</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Écrire un premier test</h4>
+                        <p>Fichier <code>src/calculs.py</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">def</span> <span class="tk-fn">addition</span>(a, b):
+    <span class="tk-keyword">return</span> a + b
+
+<span class="tk-keyword">def</span> <span class="tk-fn">division</span>(a, b):
+    <span class="tk-keyword">if</span> b == <span class="tk-num">0</span>:
+        <span class="tk-keyword">raise</span> <span class="tk-fn">ValueError</span>(<span class="tk-string">"division par zéro"</span>)
+    <span class="tk-keyword">return</span> a / b</code></pre>
+                        </div>
+                        <p>Fichier <code>tests/test_calculs.py</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pytest
+<span class="tk-keyword">from</span> calculs <span class="tk-keyword">import</span> addition, division
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_addition</span>():
+    <span class="tk-keyword">assert</span> <span class="tk-fn">addition</span>(<span class="tk-num">2</span>, <span class="tk-num">3</span>) == <span class="tk-num">5</span>
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_division_normale</span>():
+    <span class="tk-keyword">assert</span> <span class="tk-fn">division</span>(<span class="tk-num">10</span>, <span class="tk-num">2</span>) == <span class="tk-num">5</span>
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_division_par_zero</span>():
+    <span class="tk-keyword">with</span> pytest.<span class="tk-fn">raises</span>(ValueError, match=<span class="tk-string">"division par zéro"</span>):
+        <span class="tk-fn">division</span>(<span class="tk-num">10</span>, <span class="tk-num">0</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer les tests</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Tous les tests</span>
+<span class="tk-cmd">uv</span> run pytest
+
+<span class="tk-comment"># Mode verbeux (un nom de test par ligne)</span>
+<span class="tk-cmd">uv</span> run pytest -v
+
+<span class="tk-comment"># Un seul fichier</span>
+<span class="tk-cmd">uv</span> run pytest tests/test_calculs.py
+
+<span class="tk-comment"># Un seul test</span>
+<span class="tk-cmd">uv</span> run pytest tests/test_calculs.py::test_addition
+
+<span class="tk-comment"># Filtre par nom (mots-clés)</span>
+<span class="tk-cmd">uv</span> run pytest -k <span class="tk-string">"division and not zero"</span>
+
+<span class="tk-comment"># S'arrêter au premier échec</span>
+<span class="tk-cmd">uv</span> run pytest -x</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Paramétrer un test (data-driven)</h4>
+                        <p>
+                            Plutôt que d'écrire 5 fois le même test avec des valeurs différentes, utilise
+                            <code>parametrize</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pytest
+<span class="tk-keyword">from</span> calculs <span class="tk-keyword">import</span> addition
+
+<span class="tk-keyword">@</span>pytest.mark.<span class="tk-fn">parametrize</span>(<span class="tk-string">"a, b, attendu"</span>, [
+    (<span class="tk-num">2</span>, <span class="tk-num">3</span>, <span class="tk-num">5</span>),
+    (<span class="tk-num">0</span>, <span class="tk-num">0</span>, <span class="tk-num">0</span>),
+    (-<span class="tk-num">1</span>, <span class="tk-num">1</span>, <span class="tk-num">0</span>),
+    (<span class="tk-num">1.5</span>, <span class="tk-num">2.5</span>, <span class="tk-num">4.0</span>),
+])
+<span class="tk-keyword">def</span> <span class="tk-fn">test_addition</span>(a, b, attendu):
+    <span class="tk-keyword">assert</span> <span class="tk-fn">addition</span>(a, b) == attendu</code></pre>
+                        </div>
+                        <p>pytest crée automatiquement 4 tests à partir de cette définition.</p>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser des fixtures (données partagées)</h4>
+                        <p>
+                            Une <strong>fixture</strong> prépare un objet réutilisable par plusieurs tests
+                            (un fichier temporaire, une connexion DB, un client HTTP…).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pytest
+
+<span class="tk-keyword">@</span>pytest.fixture
+<span class="tk-keyword">def</span> <span class="tk-fn">utilisateur</span>():
+    <span class="tk-keyword">return</span> {<span class="tk-string">"nom"</span>: <span class="tk-string">"Alice"</span>, <span class="tk-string">"role"</span>: <span class="tk-string">"admin"</span>}
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_nom</span>(utilisateur):
+    <span class="tk-keyword">assert</span> utilisateur[<span class="tk-string">"nom"</span>] == <span class="tk-string">"Alice"</span>
+
+<span class="tk-keyword">def</span> <span class="tk-fn">test_role</span>(utilisateur):
+    <span class="tk-keyword">assert</span> utilisateur[<span class="tk-string">"role"</span>] == <span class="tk-string">"admin"</span></code></pre>
+                        </div>
+                        <p>
+                            pytest voit le paramètre <code>utilisateur</code> dans la signature et injecte
+                            automatiquement la valeur retournée par la fixture du même nom.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Fixtures partagées</div>
+                            <p>
+                                Place tes fixtures communes dans <code>tests/conftest.py</code> : pytest
+                                les rendra disponibles dans tous les fichiers de test sans import.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Mesurer la couverture (coverage)</h4>
+                        <p>
+                            Pour savoir quelle proportion de ton code est testée, ajoute le plugin
+                            <code>pytest-cov</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add --dev pytest-cov
+<span class="tk-cmd">uv</span> run pytest --cov=src --cov-report=term-missing</code></pre>
+                        </div>
+                        <p>
+                            Tu vois ligne par ligne ce qui est couvert et ce qui ne l'est pas.
+                            <code>--cov-report=html</code> génère un rapport HTML navigable.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Configurer VS Code</h4>
+                        <ol>
+                            <li>Installe l'extension <strong>Python</strong> de Microsoft.</li>
+                            <li>Ouvre la palette (<kbd>Ctrl+Shift+P</kbd>) → <code>Python: Configure Tests</code>.</li>
+                            <li>Choisis <strong>pytest</strong> puis le dossier <code>tests</code>.</li>
+                            <li>Une icône « bécher » apparaît dans la barre latérale : tu y vois tous tes
+                                tests, tu peux les lancer ou les déboguer en un clic.</li>
+                        </ol>
+                        <p>Pour figer la config dans le projet, ajoute à <code>pyproject.toml</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">toml</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code>[tool.pytest.ini_options]
+testpaths = [<span class="tk-string">"tests"</span>]
+pythonpath = [<span class="tk-string">"src"</span>]
+addopts = <span class="tk-string">"-v --tb=short"</span></code></pre>
+                        </div>
+                        <p>
+                            <code>pythonpath</code> évite les imports cassés quand tes tests sont dans un
+                            dossier séparé du code.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">pytest</span>                       <span class="tk-comment"># tous les tests</span>
+<span class="tk-cmd">pytest</span> -v                    <span class="tk-comment"># détaillé</span>
+<span class="tk-cmd">pytest</span> -x                    <span class="tk-comment"># stop au 1er échec</span>
+<span class="tk-cmd">pytest</span> -k <span class="tk-string">"motif"</span>            <span class="tk-comment"># filtre par nom</span>
+<span class="tk-cmd">pytest</span> --lf                  <span class="tk-comment"># rejouer uniquement les derniers échoués</span>
+<span class="tk-cmd">pytest</span> -s                    <span class="tk-comment"># affiche les print()</span>
+<span class="tk-cmd">pytest</span> --pdb                 <span class="tk-comment"># debugger sur échec</span>
+<span class="tk-cmd">pytest</span> --cov=src             <span class="tk-comment"># couverture (avec pytest-cov)</span></code></pre>
+                </div>
+
+                <h3>Marqueurs utiles</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">@</span>pytest.mark.<span class="tk-fn">skip</span>(reason=<span class="tk-string">"non implémenté"</span>)
+<span class="tk-keyword">@</span>pytest.mark.<span class="tk-fn">skipif</span>(sys.platform == <span class="tk-string">"win32"</span>, reason=<span class="tk-string">"Linux only"</span>)
+<span class="tk-keyword">@</span>pytest.mark.<span class="tk-fn">xfail</span>                   <span class="tk-comment"># attendu en échec</span>
+<span class="tk-keyword">@</span>pytest.mark.<span class="tk-fn">parametrize</span>(...)        <span class="tk-comment"># multi-valeurs</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://docs.pytest.org/" target="_blank" rel="noopener noreferrer">docs.pytest.org</a></li>
+                    <li>Cookbook de fixtures : <a href="https://docs.pytest.org/en/stable/how-to/fixtures.html" target="_blank" rel="noopener noreferrer">docs.pytest.org/.../fixtures</a></li>
+                    <li>Plugins populaires : <a href="https://docs.pytest.org/en/stable/reference/plugin_list.html" target="_blank" rel="noopener noreferrer">liste officielle</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

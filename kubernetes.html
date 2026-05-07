@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Kubernetes — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Kubernetes</div>
+                <h1>Kubernetes</h1>
+                <p class="subtitle">
+                    Le chef d'orchestre de tes conteneurs Docker. Quand tu as plus d'un conteneur à faire
+                    tourner et qu'il faut gérer le déploiement, le passage à l'échelle, la résilience et le
+                    réseau, c'est lui qui prend le relais.
+                </p>
+                <div class="badge-row">
+                    <span class="tag">Orchestration</span>
+                    <span class="tag">DevOps</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Avec <a href="docker.html">Docker</a>, tu sais empaqueter une application dans un
+                    conteneur. Mais en production, on n'a jamais un seul conteneur : on en a
+                    <strong>des dizaines</strong>, sur plusieurs machines, avec des contraintes : si l'un
+                    crashe, il faut le relancer ; si la charge monte, il en faut plus ; il faut router le
+                    trafic, gérer les mises à jour sans coupure, partager des secrets…
+                </p>
+                <p>
+                    Kubernetes (souvent abrégé <strong>K8s</strong>) automatise tout ça. Tu lui décris
+                    <em>l'état désiré</em> (« je veux 3 répliques de mon API exposées sur le port 80 ») et
+                    il se charge de l'atteindre et de le maintenir, peu importe ce qui se passe.
+                </p>
+                <p>Les concepts à connaître pour démarrer :</p>
+                <ul>
+                    <li><strong>Pod</strong> — la plus petite unité ; généralement 1 conteneur, parfois plusieurs liés.</li>
+                    <li><strong>Deployment</strong> — gère un groupe de Pods identiques (réplicas, mises à jour).</li>
+                    <li><strong>Service</strong> — donne une adresse réseau stable à un groupe de Pods.</li>
+                    <li><strong>Ingress</strong> — expose des Services sur l'extérieur (HTTP/HTTPS).</li>
+                    <li><strong>Namespace</strong> — un espace logique pour isoler des projets / environnements.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Kubernetes prend une description de ce que tu veux et garde ton infra dans cet état, automatiquement, en réagissant aux pannes et à la charge.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as une API FastAPI conteneurisée. En prod, tu veux 3 instances qui tournent en parallèle
+                    pour encaisser la charge, qu'elles redémarrent automatiquement en cas de crash, et que le
+                    trafic soit réparti entre elles. Avec Kubernetes, tu écris ce manifeste :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">yaml</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">apiVersion</span>: apps/v1
+<span class="tk-keyword">kind</span>: Deployment
+<span class="tk-keyword">metadata</span>:
+  <span class="tk-keyword">name</span>: mon-api
+<span class="tk-keyword">spec</span>:
+  <span class="tk-keyword">replicas</span>: <span class="tk-num">3</span>
+  <span class="tk-keyword">selector</span>:
+    <span class="tk-keyword">matchLabels</span>:
+      <span class="tk-keyword">app</span>: mon-api
+  <span class="tk-keyword">template</span>:
+    <span class="tk-keyword">metadata</span>:
+      <span class="tk-keyword">labels</span>:
+        <span class="tk-keyword">app</span>: mon-api
+    <span class="tk-keyword">spec</span>:
+      <span class="tk-keyword">containers</span>:
+        - <span class="tk-keyword">name</span>: api
+          <span class="tk-keyword">image</span>: mon-api:1.0
+          <span class="tk-keyword">ports</span>:
+            - <span class="tk-keyword">containerPort</span>: <span class="tk-num">8000</span></code></pre>
+                </div>
+                <p>
+                    Tu lances <code>kubectl apply -f mon-api.yaml</code> et Kubernetes crée 3 Pods. Si l'un
+                    meurt, il en relance un. Si tu veux 5 répliques, tu changes <code>replicas: 5</code> et
+                    re-appliques. C'est tout.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : essayer Kubernetes en local</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer kubectl (le CLI Kubernetes)</h4>
+                        <p><code>kubectl</code> est l'outil en ligne de commande qui te permet de parler à un cluster.</p>
+                        <p><strong>Linux / macOS</strong> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># macOS</span>
+<span class="tk-cmd">brew</span> install kubectl
+
+<span class="tk-comment"># Linux (binaire)</span>
+<span class="tk-cmd">curl</span> -LO <span class="tk-string">"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"</span>
+<span class="tk-cmd">sudo</span> install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl</code></pre>
+                        </div>
+                        <p><strong>Windows</strong> (avec winget) :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">powershell</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">winget</span> install -e --id Kubernetes.kubectl</code></pre>
+                        </div>
+                        <p>Vérifie l'installation :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">kubectl</span> version --client</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer un cluster local avec Minikube</h4>
+                        <p>
+                            Pour expérimenter, on utilise un mini-cluster qui tourne sur ta machine.
+                            <strong>Minikube</strong> est l'option la plus populaire ; <strong>kind</strong>
+                            ou <strong>Docker Desktop</strong> (case « Enable Kubernetes ») marchent aussi.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># macOS</span>
+<span class="tk-cmd">brew</span> install minikube
+
+<span class="tk-comment"># Linux</span>
+<span class="tk-cmd">curl</span> -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+<span class="tk-cmd">sudo</span> install minikube-linux-amd64 /usr/local/bin/minikube
+
+<span class="tk-comment"># Démarrer le cluster (nécessite Docker)</span>
+<span class="tk-cmd">minikube</span> start
+
+<span class="tk-comment"># Vérifier</span>
+<span class="tk-cmd">kubectl</span> get nodes</code></pre>
+                        </div>
+                        <p>Tu devrais voir un nœud nommé <code>minikube</code> au statut <code>Ready</code>.</p>
+                    </li>
+
+                    <li>
+                        <h4>Déployer une application de démo</h4>
+                        <p>Crée <code>app.yaml</code> avec un Deployment + un Service :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">apiVersion</span>: apps/v1
+<span class="tk-keyword">kind</span>: Deployment
+<span class="tk-keyword">metadata</span>:
+  <span class="tk-keyword">name</span>: hello
+<span class="tk-keyword">spec</span>:
+  <span class="tk-keyword">replicas</span>: <span class="tk-num">2</span>
+  <span class="tk-keyword">selector</span>:
+    <span class="tk-keyword">matchLabels</span>:
+      <span class="tk-keyword">app</span>: hello
+  <span class="tk-keyword">template</span>:
+    <span class="tk-keyword">metadata</span>:
+      <span class="tk-keyword">labels</span>:
+        <span class="tk-keyword">app</span>: hello
+    <span class="tk-keyword">spec</span>:
+      <span class="tk-keyword">containers</span>:
+        - <span class="tk-keyword">name</span>: web
+          <span class="tk-keyword">image</span>: nginxdemos/hello:latest
+          <span class="tk-keyword">ports</span>:
+            - <span class="tk-keyword">containerPort</span>: <span class="tk-num">80</span>
+---
+<span class="tk-keyword">apiVersion</span>: v1
+<span class="tk-keyword">kind</span>: Service
+<span class="tk-keyword">metadata</span>:
+  <span class="tk-keyword">name</span>: hello
+<span class="tk-keyword">spec</span>:
+  <span class="tk-keyword">type</span>: NodePort
+  <span class="tk-keyword">selector</span>:
+    <span class="tk-keyword">app</span>: hello
+  <span class="tk-keyword">ports</span>:
+    - <span class="tk-keyword">port</span>: <span class="tk-num">80</span>
+      <span class="tk-keyword">targetPort</span>: <span class="tk-num">80</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Appliquer le manifeste et observer</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">kubectl</span> apply -f app.yaml
+<span class="tk-cmd">kubectl</span> get pods       <span class="tk-comment"># 2 pods en cours de démarrage</span>
+<span class="tk-cmd">kubectl</span> get deploy
+<span class="tk-cmd">kubectl</span> get svc
+
+<span class="tk-comment"># Ouvrir l'app dans le navigateur (Minikube)</span>
+<span class="tk-cmd">minikube</span> service hello</code></pre>
+                        </div>
+                        <p>
+                            Une page nginx s'ouvre. Recharge plusieurs fois : tu verras le nom du Pod
+                            changer entre les deux instances.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Tester la résilience</h4>
+                        <p>Supprime un Pod manuellement et regarde Kubernetes en relancer un :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">kubectl</span> get pods
+<span class="tk-cmd">kubectl</span> delete pod &lt;nom-d-un-pod&gt;
+<span class="tk-cmd">kubectl</span> get pods       <span class="tk-comment"># un nouveau Pod prend la place</span></code></pre>
+                        </div>
+                        <p>
+                            Pour mettre à l'échelle :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">kubectl</span> scale deployment hello --replicas=5</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer VS Code</h4>
+                        <p>Deux extensions très utiles pour bosser avec Kubernetes :</p>
+                        <ol>
+                            <li>
+                                <strong>Kubernetes</strong> de Microsoft (<code>ms-kubernetes-tools.vscode-kubernetes-tools</code>) :
+                                vue arborescente de ton cluster, déploiement en un clic, logs, exec dans les Pods.
+                            </li>
+                            <li>
+                                <strong>YAML</strong> de Red Hat (<code>redhat.vscode-yaml</code>) :
+                                autocomplétion et validation des manifestes Kubernetes.
+                            </li>
+                        </ol>
+                        <p>Pour activer la validation Kubernetes, ajoute dans <code>.vscode/settings.json</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">json</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code>{
+    <span class="tk-string">"yaml.schemas"</span>: {
+        <span class="tk-string">"kubernetes"</span>: <span class="tk-string">"*.yaml"</span>
+    }
+}</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce</div>
+                            <p>
+                                L'extension Kubernetes affiche un panneau « Clusters » à gauche : tu peux y
+                                naviguer dans tes Pods, voir les logs en direct, ouvrir un terminal dans un
+                                conteneur — sans quitter VS Code.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Nettoyer</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">kubectl</span> delete -f app.yaml
+<span class="tk-cmd">minikube</span> stop
+<span class="tk-cmd">minikube</span> delete       <span class="tk-comment"># supprime complètement le cluster</span></code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire kubectl</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Voir les ressources</span>
+<span class="tk-cmd">kubectl</span> get pods
+<span class="tk-cmd">kubectl</span> get deploy,svc,ingress
+<span class="tk-cmd">kubectl</span> get all -A             <span class="tk-comment"># tout, tous namespaces</span>
+
+<span class="tk-comment"># Détails &amp; logs</span>
+<span class="tk-cmd">kubectl</span> describe pod &lt;nom&gt;
+<span class="tk-cmd">kubectl</span> logs &lt;pod&gt; -f          <span class="tk-comment"># suivre les logs</span>
+<span class="tk-cmd">kubectl</span> exec -it &lt;pod&gt; -- bash <span class="tk-comment"># shell dans le pod</span>
+
+<span class="tk-comment"># Appliquer / supprimer</span>
+<span class="tk-cmd">kubectl</span> apply -f fichier.yaml
+<span class="tk-cmd">kubectl</span> delete -f fichier.yaml
+
+<span class="tk-comment"># Mise à l'échelle</span>
+<span class="tk-cmd">kubectl</span> scale deploy &lt;nom&gt; --replicas=<span class="tk-num">5</span>
+
+<span class="tk-comment"># Port-forward (accéder à un service depuis ta machine)</span>
+<span class="tk-cmd">kubectl</span> port-forward svc/hello <span class="tk-num">8080</span>:<span class="tk-num">80</span>
+
+<span class="tk-comment"># Contexte (basculer entre clusters)</span>
+<span class="tk-cmd">kubectl</span> config get-contexts
+<span class="tk-cmd">kubectl</span> config use-context &lt;nom&gt;</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://kubernetes.io/fr/docs/home/" target="_blank" rel="noopener noreferrer">kubernetes.io/fr/docs</a></li>
+                    <li>Tutoriel interactif : <a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/" target="_blank" rel="noopener noreferrer">Kubernetes Basics</a></li>
+                    <li>Minikube : <a href="https://minikube.sigs.k8s.io/docs/" target="_blank" rel="noopener noreferrer">minikube.sigs.k8s.io</a></li>
+                    <li>Helm (gestionnaire de packages K8s) : <a href="https://helm.sh/" target="_blank" rel="noopener noreferrer">helm.sh</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
