@@ -38,6 +38,14 @@
                             <a href="mlflow.html">MLflow</a>
                         </div>
                         <div class="dropdown-section">
+                            <div class="dropdown-title">Messagerie &amp; tâches</div>
+                            <a href="kafka.html">Kafka</a>
+                            <a href="rabbitmq.html">RabbitMQ</a>
+                            <a href="redis.html">Redis</a>
+                            <a href="celery.html">Celery</a>
+                            <a href="flower.html">Flower</a>
+                        </div>
+                        <div class="dropdown-section">
                             <div class="dropdown-title">Monitoring</div>
                             <a href="prometheus.html">Prometheus</a>
                             <a href="grafana.html">Grafana</a>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Kafka — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Kafka</div>
+                <h1>Apache Kafka</h1>
+                <p class="subtitle">
+                    Une plateforme de streaming distribuée : un journal d'événements géant,
+                    durable et ordonné, dans lequel des services écrivent (producteurs) et
+                    d'autres lisent (consommateurs), à très grande échelle.
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Kafka vs RabbitMQ — lequel choisir ?</div>
+                <p>
+                    Les deux font transiter des messages entre services, mais le modèle est
+                    différent. <a href="rabbitmq.html">RabbitMQ</a> = une poste : un message
+                    consommé est enlevé de la file. Kafka = un journal : les messages restent
+                    sur disque, plusieurs consommateurs peuvent rejouer le même flux à leur
+                    rythme. Choisis Kafka pour des flux <em>massifs</em> et de l'analytique,
+                    RabbitMQ pour de la distribution de tâches précise entre services.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Imagine que ton site e-commerce génère un événement à chaque clic, chaque
+                    ajout au panier, chaque commande. Plusieurs équipes en ont besoin : la
+                    facturation, les stats, la recommandation, l'envoi d'e-mails. Sans Kafka,
+                    chaque service appellerait chaque autre — et au bout d'un moment c'est
+                    l'enfer (graphe d'appels, latences, indispos en cascade).
+                </p>
+                <p>Kafka inverse le modèle :</p>
+                <ul>
+                    <li><strong>Topics</strong> — des « canaux » nommés (par ex.
+                        <code>orders</code>, <code>clicks</code>) où on dépose des
+                        événements.</li>
+                    <li><strong>Producers</strong> — n'importe quel service publie dans un
+                        topic, sans savoir qui lira.</li>
+                    <li><strong>Consumers</strong> — chaque service qui s'intéresse à un topic
+                        s'abonne et lit à son rythme. Plusieurs consommateurs indépendants
+                        peuvent lire le même topic.</li>
+                    <li><strong>Persistance</strong> — les événements restent sur disque (par
+                        défaut 7 jours, configurable). On peut <em>rejouer</em> l'historique
+                        — utile pour réindexer ou entraîner un modèle.</li>
+                    <li><strong>Partitions</strong> — chaque topic est découpé en partitions
+                        réparties sur plusieurs brokers (les serveurs Kafka). C'est ce qui
+                        permet de scaler à des millions de messages par seconde.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Kafka = un journal partagé, durable et ultra-rapide, où chaque équipe écrit ce qui se passe et où chaque autre équipe vient se servir.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu collectes les prédictions de ton modèle de classification d'images pour
+                    les analyser plus tard (et éventuellement réentraîner). Côté API, après
+                    chaque prédiction, tu publies un événement dans un topic
+                    <code>predictions</code> :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (producer)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> kafka <span class="tk-keyword">import</span> KafkaProducer
+<span class="tk-keyword">import</span> json
+
+producer = <span class="tk-fn">KafkaProducer</span>(
+    bootstrap_servers=<span class="tk-string">"localhost:9092"</span>,
+    value_serializer=<span class="tk-keyword">lambda</span> v: <span class="tk-fn">json</span>.<span class="tk-fn">dumps</span>(v).<span class="tk-fn">encode</span>(),
+)
+
+producer.<span class="tk-fn">send</span>(<span class="tk-string">"predictions"</span>, {
+    <span class="tk-string">"model"</span>: <span class="tk-string">"v3"</span>,
+    <span class="tk-string">"input"</span>: <span class="tk-string">"img_42.png"</span>,
+    <span class="tk-string">"label"</span>: <span class="tk-string">"chat"</span>,
+    <span class="tk-string">"score"</span>: <span class="tk-num">0.94</span>,
+})
+producer.<span class="tk-fn">flush</span>()</code></pre>
+                </div>
+                <p>De l'autre côté, un consommateur lit le flux pour archiver ou agréger :</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (consumer)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> kafka <span class="tk-keyword">import</span> KafkaConsumer
+<span class="tk-keyword">import</span> json
+
+consumer = <span class="tk-fn">KafkaConsumer</span>(
+    <span class="tk-string">"predictions"</span>,
+    bootstrap_servers=<span class="tk-string">"localhost:9092"</span>,
+    group_id=<span class="tk-string">"archiver"</span>,
+    value_deserializer=<span class="tk-keyword">lambda</span> v: <span class="tk-fn">json</span>.<span class="tk-fn">loads</span>(v),
+)
+
+<span class="tk-keyword">for</span> msg <span class="tk-keyword">in</span> consumer:
+    <span class="tk-fn">print</span>(msg.value)  <span class="tk-comment"># {"model":"v3", ...}</span></code></pre>
+                </div>
+                <p>
+                    Demain, tu ajoutes un deuxième consommateur (groupe
+                    <code>monitoring</code>) qui lit le <em>même</em> topic pour calculer la
+                    distribution des classes. Aucun changement côté producer.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : démarrer avec Kafka</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer Kafka avec Docker</h4>
+                        <p>
+                            Les versions récentes (Kafka 3.x+) tournent sans ZooKeeper, en mode
+                            <em>KRaft</em>. L'image officielle Bitnami est la plus simple à
+                            mettre en place :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># docker-compose.yml — Kafka mono-broker</span>
+services:
+  kafka:
+    image: bitnami/kafka:3.7
+    ports: [<span class="tk-string">"9092:9092"</span>]
+    environment:
+      KAFKA_CFG_NODE_ID: <span class="tk-string">"0"</span>
+      KAFKA_CFG_PROCESS_ROLES: <span class="tk-string">"controller,broker"</span>
+      KAFKA_CFG_LISTENERS: <span class="tk-string">"PLAINTEXT://:9092,CONTROLLER://:9093"</span>
+      KAFKA_CFG_ADVERTISED_LISTENERS: <span class="tk-string">"PLAINTEXT://localhost:9092"</span>
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: <span class="tk-string">"CONTROLLER"</span>
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: <span class="tk-string">"0@kafka:9093"</span>
+    volumes:
+      - kafka-data:/bitnami/kafka
+
+volumes:
+  kafka-data:</code></pre>
+                        </div>
+                        <p>
+                            <code>docker compose up -d</code>. En prod on ne tourne jamais sur
+                            un seul broker — vise au minimum 3 pour la réplication, mais pour
+                            apprendre c'est largement suffisant.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer un topic</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> exec -it $(docker ps -qf name=kafka) \
+  kafka-topics.sh --create \
+  --topic predictions \
+  --partitions 3 --replication-factor 1 \
+  --bootstrap-server localhost:9092</code></pre>
+                        </div>
+                        <p>
+                            <strong>Partitions</strong> : plus tu en as, plus tu pourras avoir
+                            de consommateurs en parallèle dans un même groupe (chaque
+                            consommateur lit ≥ 1 partition). 3 est un bon point de départ.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Installer le client Python</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add kafka-python</code></pre>
+                        </div>
+                        <p>
+                            Pour la production, regarde aussi <code>confluent-kafka</code>
+                            (binding du client C, plus rapide) ou <code>aiokafka</code>
+                            (async).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Producer + Consumer côte à côte</h4>
+                        <p>
+                            Lance le producer dans un terminal, le consumer dans un autre,
+                            puis envoie quelques messages. Tu vois apparaître les événements
+                            chez le consommateur en quasi-temps réel. Coupe le consommateur,
+                            envoie 10 messages, relance le consommateur : il reprend à partir
+                            du dernier <em>offset</em> commité (pas perdu).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Comprendre les groupes de consommateurs</h4>
+                        <p>
+                            Tous les consommateurs avec le même <code>group_id</code> forment
+                            un groupe : Kafka leur distribue les partitions. Avec 3 partitions
+                            et 3 consommateurs dans <code>group=archiver</code>, chacun en lit
+                            une — débit ×3. Si un 4ᵉ consommateur arrive, il reste oisif (il
+                            n'y a que 3 partitions). Si un consommateur tombe, ses partitions
+                            sont redistribuées automatiquement (<em>rebalance</em>).
+                        </p>
+                        <p>
+                            Deux groupes <em>différents</em> sur le même topic lisent le flux
+                            indépendamment, du début. C'est l'idée clé : <em>plusieurs
+                            audiences pour un même flux</em>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Inspecter avec une UI</h4>
+                        <p>
+                            La CLI marche mais une UI aide énormément. <strong>Kafka UI</strong>
+                            (provectus) est la plus simple :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>kafka-ui:
+  image: provectuslabs/kafka-ui:latest
+  ports: [<span class="tk-string">"8080:8080"</span>]
+  environment:
+    KAFKA_CLUSTERS_0_NAME: local
+    KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+  depends_on: [kafka]</code></pre>
+                        </div>
+                        <p>
+                            Ouvre <code>http://localhost:8080</code> : tu vois les topics,
+                            partitions, messages, et les groupes de consommateurs avec leur
+                            <em>lag</em> (retard en messages).
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">CLI (dans le conteneur Kafka)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">kafka-topics.sh</span> --bootstrap-server localhost:9092 --list
+<span class="tk-cmd">kafka-topics.sh</span> --bootstrap-server localhost:9092 --describe --topic predictions
+<span class="tk-cmd">kafka-console-producer.sh</span> --bootstrap-server localhost:9092 --topic predictions
+<span class="tk-cmd">kafka-console-consumer.sh</span> --bootstrap-server localhost:9092 --topic predictions --from-beginning
+<span class="tk-cmd">kafka-consumer-groups.sh</span> --bootstrap-server localhost:9092 --list
+<span class="tk-cmd">kafka-consumer-groups.sh</span> --bootstrap-server localhost:9092 --group archiver --describe</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">vocabulaire</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>broker        <span class="tk-comment"># un serveur Kafka</span>
+topic         <span class="tk-comment"># un canal nommé</span>
+partition     <span class="tk-comment"># sous-division d'un topic, ordonnée</span>
+offset        <span class="tk-comment"># position dans une partition</span>
+producer      <span class="tk-comment"># publie</span>
+consumer      <span class="tk-comment"># lit</span>
+consumer group<span class="tk-comment"># ensemble de consumers qui se partagent les partitions</span>
+lag           <span class="tk-comment"># retard d'un groupe par rapport à la fin du topic</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Kafka et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="rabbitmq.html">RabbitMQ</a></strong> — alternative
+                        plus légère pour de la distribution de tâches précises. Voir l'encart
+                        en haut.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — quasi tous les
+                        labs Kafka commencent en Docker. En prod, on déploie sur
+                        <a href="kubernetes.html">Kubernetes</a> via l'opérateur Strimzi.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — une route qui,
+                        à la place de faire le travail, publie un événement Kafka et répond
+                        immédiatement. Un consommateur en arrière-plan fait le boulot lourd.
+                    </li>
+                    <li>
+                        <strong><a href="prometheus.html">Prometheus</a> +
+                        <a href="grafana.html">Grafana</a></strong> — Kafka expose ses
+                        métriques via JMX → exporter Prometheus. Un dashboard Grafana montre
+                        en direct le débit, le lag par groupe, etc.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — pour entraîner un
+                        modèle sur les événements passés, on rejoue un topic depuis l'offset 0
+                        vers un job d'entraînement qui logge le résultat dans MLflow.
+                    </li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://kafka.apache.org/documentation/" target="_blank" rel="noopener noreferrer">kafka.apache.org/documentation</a></li>
+                    <li>Quickstart : <a href="https://kafka.apache.org/quickstart" target="_blank" rel="noopener noreferrer">kafka.apache.org/quickstart</a></li>
+                    <li>Client Python : <a href="https://github.com/dpkp/kafka-python" target="_blank" rel="noopener noreferrer">github.com/dpkp/kafka-python</a></li>
+                    <li>Kafka UI : <a href="https://github.com/provectus/kafka-ui" target="_blank" rel="noopener noreferrer">github.com/provectus/kafka-ui</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
