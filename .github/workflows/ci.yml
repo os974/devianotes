@@ -1,68 +1,241 @@
+# =============================================================================
 # Workflow CI/CD du site DevIA Notes
-# - Vérifie les liens (internes + externes) à chaque push et chaque PR
-# - Déploie sur GitHub Pages uniquement si la vérif passe ET qu'on est sur main
+# =============================================================================
+#
+# Ce fichier décrit ce que GitHub Actions doit faire à chaque push/PR.
+# Trois jobs s'enchaînent :
+#
+#     ┌──────────────────────────┐
+#     │ link-check-internal      │  STRICT  (offline, zéro réseau)
+#     │ → vérifie liens internes │
+#     └────────────┬─────────────┘
+#                  │ bloque si rouge
+#                  ▼
+#     ┌──────────────────────────┐
+#     │ deploy                   │  Publie sur GitHub Pages
+#     │ → uniquement push/main   │
+#     └──────────────────────────┘
+#
+#     ┌──────────────────────────┐
+#     │ link-check-external      │  INFORMATIF (best-effort)
+#     │ → vérifie URLs externes  │  continue-on-error: true
+#     └──────────────────────────┘  N'INFLUE PAS sur le déploiement.
+#
+# Pourquoi cette séparation ?
+#   - Liens internes (fiche→fiche, CSS, JS) : sous notre contrôle. Une erreur
+#     ici est un VRAI bug. → bloquant.
+#   - Liens externes (https://...) : dépendent du monde. Les runners GitHub
+#     se font régulièrement bloquer par les CDN (Cloudflare, etc.) sur des
+#     liens parfaitement valides. → informatif uniquement, sinon on ne peut
+#     plus jamais déployer dès qu'un site tiers a un hoquet.
+#
+# C'est le pattern "fail-loud / fail-soft" : on hurle fort sur ce qu'on
+# contrôle, on chuchote sur ce qu'on ne contrôle pas.
+#
+# Règle anti "cry-wolf" : pour que le job externe garde du sens, il doit être
+# vert la plupart du temps. Les URLs durablement flaky vont dans .lycheeignore
+# (à la racine du repo) pour qu'on ne lise les rouges QUE quand un VRAI lien
+# externe meurt.
+# =============================================================================
+
+# Nom affiché dans l'onglet "Actions" de GitHub. Purement cosmétique.
 name: CI/CD
 
+# -----------------------------------------------------------------------------
+# Déclencheurs : QUAND ce workflow tourne.
+# -----------------------------------------------------------------------------
+# - push sur main : on vérifie + on déploie.
+# - pull_request vers main : on vérifie SEULEMENT (pas de déploiement, voir
+#   le `if:` sur le job deploy plus bas). Utile si un jour ta promo ouvre
+#   des PRs : on attrape les liens cassés AVANT le merge.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# Permissions minimales nécessaires pour publier sur GitHub Pages
+# -----------------------------------------------------------------------------
+# Permissions du token GITHUB_TOKEN injecté dans le workflow.
+# -----------------------------------------------------------------------------
+# Principe du moindre privilège : on autorise EXACTEMENT ce qu'il faut.
+# - contents: read   → permet à actions/checkout de cloner le repo.
+# - pages: write     → permet à actions/deploy-pages de publier.
+# - id-token: write  → nécessaire pour l'authentification OIDC moderne
+#                       de Pages (publication sans mot de passe).
+#
+# Sans ces lignes, le token aurait des droits par défaut plus larges.
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Si un nouveau push arrive pendant qu'un déploiement tourne, on attend
-# que le précédent finisse (cancel-in-progress: false) pour ne pas casser
-# une publication en cours.
+# -----------------------------------------------------------------------------
+# Concurrence : éviter deux déploiements simultanés.
+# -----------------------------------------------------------------------------
+# Si tu pushes 2 fois en 30 secondes, deux workflows démarrent en parallèle.
+# Sans cette section, l'ordre de publication finale serait imprévisible
+# (course critique). Ici, on dit :
+#   - group: pages          → tous les workflows portant ce groupe font la queue
+#   - cancel-in-progress: false → on ne tue PAS celui en cours,
+#                                  on attend qu'il finisse avant de démarrer
+#                                  le suivant.
+# Mettre cancel-in-progress: true serait dangereux ici : un déploiement
+# coupé en plein milieu peut laisser GitHub Pages dans un état bancal.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  link-check:
-    name: Vérifier les liens
-    runs-on: ubuntu-latest
+  # ===========================================================================
+  # JOB 1 — Liens internes (STRICT)
+  # ===========================================================================
+  # Lychee en mode --offline ne fait AUCUNE requête réseau. Il ouvre les
+  # fichiers HTML et résout les chemins relatifs sur le disque :
+  #   <a href="mlflow.html">          → vérifie qu'il existe un mlflow.html
+  #   <link href="css/style.css">     → vérifie le fichier CSS
+  #   <script src="js/script.js">     → vérifie le fichier JS
+  #   <a href="https://...">          → ignoré (c'est le boulot du job 2)
+  #
+  # Avantages du mode offline :
+  #   1. Très rapide (~2s) car aucun réseau.
+  #   2. Déterministe : ne dépend pas de l'humeur des CDN.
+  #   3. Strict pertinent : les SEULES erreurs possibles sont des vrais bugs
+  #      chez nous (typo dans un nom de fichier, fiche renommée pas mise à
+  #      jour partout, etc.).
+  #
+  # → C'est l'endroit où mettre `fail: true` sans risque de faux positif.
+  # ===========================================================================
+  link-check-internal:
+    name: Liens internes (strict)
+    runs-on: ubuntu-latest  # VM Ubuntu jetable, détruite à la fin du job
     steps:
-      - name: Récupérer le code
-        uses: actions/checkout@v4
+      # Clone le repo dans la VM. Sans ça, la VM est vide.
+      - uses: actions/checkout@v4
 
-      - name: Lancer lychee
+      # Lance lychee, l'outil qui scanne les fichiers HTML.
+      # `lycheeverse/lychee-action` est le wrapper officiel autour du
+      # binaire Rust `lychee`.
+      - name: Lancer lychee en mode offline
         uses: lycheeverse/lychee-action@v2
         with:
-          # --no-progress : pas de barre de progression dans les logs CI
-          # --max-retries 3 : retente 3 fois en cas d'échec réseau passager
-          # --timeout 30 : 30s par requête (défaut 20s, certains sites sont lents)
-          # --exclude-loopback : ignore localhost / 127.0.0.1 / ::1 (URLs d'exemple)
-          # './**/*.html' : ne scanne que les fichiers HTML du repo
-          # (les URLs spécifiques à ignorer sont dans .lycheeignore à la racine)
-          args: --no-progress --max-retries 3 --timeout 30 --exclude-loopback './**/*.html'
+          # --no-progress : pas de barre de progression animée
+          #                 (illisible dans les logs CI).
+          # --offline     : interdit toute requête réseau,
+          #                 ne valide que les chemins locaux.
+          # './**/*.html' : glob pour ne scanner que les fichiers HTML.
+          args: --no-progress --offline './**/*.html'
+
+          # fail: true → si une erreur est trouvée, le step (et donc le job)
+          # passe en rouge. Sans ce flag, lychee logge mais le job reste vert
+          # et le check ne sert à rien.
           fail: true
 
+  # ===========================================================================
+  # JOB 2 — Liens externes (BEST EFFORT)
+  # ===========================================================================
+  # Vérifie les URLs http(s) externes pour repérer celles qui pourrissent
+  # (doc officielle qui change d'URL, repo GitHub déplacé, etc.).
+  #
+  # Ce job tourne en parallèle du job 1 (pas de `needs:` entre eux), car
+  # il est lent et n'est pas bloquant : pas la peine de faire attendre le
+  # job interne.
+  #
+  # Particularité : `continue-on-error: true` au niveau job dit à GitHub
+  # "si ce job échoue, ne fais PAS échouer le workflow global". Le job
+  # apparaît en rouge dans l'UI Actions, mais le workflow reste vert et
+  # le job `deploy` peut tourner.
+  #
+  # → C'est le mécanisme qui implémente "fail-soft" : on voit l'erreur,
+  #   mais elle ne bloque pas la publication.
+  # ===========================================================================
+  link-check-external:
+    name: Liens externes (informatif)
+    runs-on: ubuntu-latest
+
+    # ⬇ Le flag clé du pattern. Sans lui, ce job aurait le même poids
+    # que le job 1 et bloquerait le déploiement.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lancer lychee sur les URLs externes
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # --scheme http --scheme https
+          #     → ne suit QUE les URLs externes (skip les chemins locaux,
+          #       déjà couverts par le job 1). Évite la double vérification.
+          #
+          # --max-retries 3
+          #     → retente 3 fois en cas d'échec réseau passager
+          #       (un site lent ou un hoquet TCP).
+          #
+          # --timeout 30
+          #     → 30 secondes par requête (défaut 20s).
+          #       Trade-off : trop court = faux positifs sur les sites
+          #       lents (cold start) ; trop long = un seul lien lent
+          #       fait traîner tout le job. 30s est un bon équilibre.
+          #
+          # './**/*.html' : glob des fichiers à scanner.
+          #
+          # NB : les URLs durablement flaky (CDN qui filtre les runners
+          # GitHub) sont listées dans `.lycheeignore` à la racine du repo,
+          # automatiquement détecté par lychee.
+          args: --no-progress --scheme http --scheme https --max-retries 3 --timeout 30 './**/*.html'
+          fail: true
+
+  # ===========================================================================
+  # JOB 3 — Déploiement GitHub Pages
+  # ===========================================================================
+  # Publie le site sur https://<user>.github.io/<repo>/.
+  #
+  # Deux conditions pour que ce job tourne :
+  #   1. `needs: link-check-internal` → le check INTERNE doit être vert.
+  #      ⚠ NOTE IMPORTANTE : on ne met PAS `link-check-external` ici.
+  #      C'est volontaire : un lien externe cassé ne doit pas bloquer la
+  #      publication. C'est le cœur du pattern fail-soft.
+  #
+  #   2. `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`
+  #      → on ne déploie QUE sur push vers main. Sur une PR, le job existe
+  #      mais est skippé (affiché en gris dans l'UI).
+  #
+  # PRÉREQUIS CÔTÉ GITHUB :
+  #   Aller dans Settings → Pages → Source = "GitHub Actions"
+  #   (à faire UNE FOIS, à la main, sinon le déploiement échoue avec
+  #   "Pages site failed: not configured").
+  # ===========================================================================
   deploy:
     name: Déployer sur GitHub Pages
-    needs: link-check
-    # On ne déploie QUE sur push vers main, pas sur les pull requests
+    needs: link-check-internal
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+
+    # Associe une URL au job (apparaît dans l'onglet Environments du repo
+    # et sur la page du run, cliquable). `${{ steps.deployment.outputs.page_url }}`
+    # récupère l'URL renvoyée par le step `deployment` plus bas.
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Récupérer le code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configurer GitHub Pages
-        uses: actions/configure-pages@v5
+      # Prépare l'environnement Pages : récupère l'URL finale, vérifie
+      # les permissions. N'a aucune sortie visible.
+      - uses: actions/configure-pages@v5
 
+      # Empaquette le contenu du dossier indiqué dans `path:` en archive
+      # spéciale "Pages artifact". Ici `path: .` = tout le repo.
+      # En cas de site avec build (Vite, Hugo, Jekyll), on uploaderait
+      # plutôt le dossier `dist/` ou `_site/`.
       - name: Uploader le site comme artifact Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      - name: Déployer sur GitHub Pages
+      # Prend l'artifact uploadé juste avant et le publie sur Pages.
+      # `id: deployment` permet de récupérer son output `page_url`
+      # (utilisé plus haut dans `environment.url`).
+      - name: Déployer
         id: deployment
         uses: actions/deploy-pages@v4

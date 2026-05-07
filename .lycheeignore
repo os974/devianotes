@@ -1,8 +1,50 @@
-# Liste de regex d'URLs que lychee doit ignorer.
-# Utilisée par le workflow .github/workflows/ci.yml.
+# =============================================================================
+# .lycheeignore — URLs à ignorer par lychee
+# =============================================================================
 #
-# Une URL par ligne, format regex (lychee match avec `.contains` par défaut,
-# ancrer avec ^ pour éviter les faux positifs).
+# Pourquoi ce fichier existe ?
+# ----------------------------
+# Le workflow .github/workflows/ci.yml lance deux jobs lychee :
+#   1. Liens internes (strict, mode --offline) → bloque le déploiement.
+#   2. Liens externes (best effort) → informatif, ne bloque rien.
+#
+# Le job 2 est tolérant aux pannes, MAIS si plein d'URLs sont en rouge à
+# chaque run pour de fausses raisons (CDN qui filtre les runners GitHub,
+# démo lente, etc.), plus personne ne le regarde. C'est l'effet "cry-wolf"
+# du berger qui criait au loup : trop d'alertes → on ignore les vraies.
+#
+# Donc on liste ici les URLs DURABLEMENT flaky (= pas vraiment cassées,
+# juste injoignables depuis les runners) pour que le job externe soit
+# vert la plupart du temps. Ainsi quand il passe au rouge, c'est un VRAI
+# lien qui meurt et ça vaut le coup d'aller voir.
+#
+# Format
+# ------
+# Une regex par ligne. Lychee fait un match "substring" par défaut :
+#   redis.io           ← match "https://redis.io" MAIS AUSSI tout le reste
+#                        d'une URL contenant "redis.io" (faux positifs).
+#   ^https://redis\.io ← ancré au début, ne match QUE cette URL exacte
+#                        et ses sous-pages.
+#
+# Bonnes pratiques :
+#   - Toujours ancrer avec ^ pour éviter les faux positifs.
+#   - Échapper le point dans les domaines : `\.` (un `.` non échappé
+#     match n'importe quel caractère en regex).
+#   - Mettre un commentaire au-dessus expliquant POURQUOI cette URL
+#     est ignorée (tu ne t'en souviendras pas dans 6 mois).
+#
+# Quand ajouter une URL ici ?
+# ---------------------------
+# Quand le job "Liens externes (informatif)" devient rouge à cause d'une
+# URL qu'on a vérifiée à la main et qui marche bien depuis un navigateur.
+# C'est typiquement :
+#   - Un site protégé par Cloudflare/Fastly qui filtre les runners CI.
+#   - Une démo publique gratuite qui timeout souvent.
+#   - Un site qui répond avec un User-Agent non-navigateur.
+#
+# Si l'URL est VRAIMENT cassée (404 stable, domaine expiré), on ne
+# l'ajoute PAS ici : on corrige le lien dans la fiche concernée.
+# =============================================================================
 
 # Démo Redis interactive — souvent injoignable depuis les runners GitHub.
 ^https://try\.redis\.io
@@ -13,3 +55,6 @@
 # Site officiel Helm — connection reset depuis les runners GitHub
 # (CDN qui filtre les plages d'IPs cloud). Le lien est valide.
 ^https://helm\.sh
+
+# Streamlit gallery — bloqué côté CDN depuis les runners GitHub.
+^https://streamlit\.io
