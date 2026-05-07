@@ -29,6 +29,7 @@
                         <div class="dropdown-section">
                             <div class="dropdown-title">Outils &amp; Tests</div>
                             <a href="github.html">GitHub</a>
+                            <a href="git-setup.html">Mettre un projet sur GitHub</a>
                             <a href="cicd.html">CI/CD</a>
                             <a href="pytest.html">pytest</a>
                         </div>

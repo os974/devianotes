@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Mettre un projet sur GitHub — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Mettre un projet sur GitHub</div>
+                <h1>Mettre un projet sous Git et le publier sur GitHub</h1>
+                <p class="subtitle">
+                    De <code>git init</code> à un site live sur GitHub Pages : le parcours pas à pas
+                    tiré d'un cas réel, pour transformer un dossier de fichiers en projet versionné
+                    et publié en ligne.
+                </p>
+                <div class="badge-row">
+                    <span class="tag">Walkthrough complet</span>
+                    <span class="tag">Cas réel anonymisé</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Tu as un projet local (un dossier avec du code, des fichiers HTML, des notebooks…)
+                    et tu veux :
+                </p>
+                <ul>
+                    <li><strong>Versionner</strong> ton travail pour pouvoir revenir en arrière, suivre les évolutions, expérimenter sans casser.</li>
+                    <li><strong>Sauvegarder</strong> ton projet ailleurs que sur ton seul PC.</li>
+                    <li><strong>Partager</strong> avec d'autres (camarades de promo, formateurs, recruteurs).</li>
+                    <li><strong>Publier</strong> un site statique gratuitement via GitHub Pages.</li>
+                </ul>
+                <p>
+                    Cette fiche couvre exactement ce parcours : partir d'un dossier non versionné, et
+                    aboutir à un projet hébergé sur GitHub avec un site en ligne.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">Différence avec la fiche GitHub</div>
+                    <p>
+                        La <a href="github.html">fiche GitHub</a> présente l'écosystème (Git, compte,
+                        SSH, commandes). Cette fiche-ci enchaîne les étapes concrètes pour publier
+                        <em>un projet existant</em>, dans l'ordre où tu les rencontres en pratique.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as bossé une semaine sur un mini-site statique en local. Tu veux le partager
+                    avec ta promo et l'avoir en ligne. En une heure, tu peux :
+                </p>
+                <ol>
+                    <li>Initialiser Git dans le dossier (<code>git init</code>).</li>
+                    <li>Faire un premier commit qui capture l'état actuel.</li>
+                    <li>Créer un dépôt vide sur GitHub.</li>
+                    <li>Pousser ton commit vers ce dépôt.</li>
+                    <li>Activer GitHub Pages pour avoir une URL publique.</li>
+                </ol>
+                <p>
+                    Le site est en ligne, ton code est versionné, et chaque modification future
+                    se résume à <code>add</code> → <code>commit</code> → <code>push</code>.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : du dossier local au site en ligne</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Pré-requis : Git installé localement et un compte GitHub. Si ce n'est pas le cas,
+                    commence par la <a href="github.html">fiche GitHub</a>.
+                </p>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Vérifier la cohérence du projet local</h4>
+                        <p>
+                            Avant de versionner, range. Si tu as renommé le dossier ou refactoré, vérifie
+                            qu'il ne reste pas de chemins cassés, de vieux liens vers un ancien nom,
+                            ou de fichiers orphelins. Une recherche rapide sur l'ancien nom suffit
+                            souvent à débusquer les incohérences.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Pourquoi maintenant</div>
+                            <p>
+                                Mieux vaut corriger avant le premier commit que de polluer l'historique
+                                avec un commit "fix renommage" cinq minutes plus tard.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer un <code>.gitignore</code> adapté</h4>
+                        <p>
+                            Le <code>.gitignore</code> liste les fichiers et dossiers que Git doit ignorer.
+                            <strong>À créer avant le premier <code>git add</code></strong>, sinon tu risques
+                            de pousser des fichiers sensibles (secrets, env locaux) ou volumineux
+                            (caches, dépendances, données).
+                        </p>
+                        <p>Exemple de <code>.gitignore</code> polyvalent pour un projet qui peut évoluer :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">.gitignore</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># OS</span>
+.DS_Store
+Thumbs.db
+
+<span class="tk-comment"># IDE</span>
+.vscode/
+.idea/
+
+<span class="tk-comment"># Secrets &amp; variables d'environnement</span>
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+<span class="tk-comment"># Python</span>
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+<span class="tk-comment"># Node</span>
+node_modules/
+
+<span class="tk-comment"># Build / dist</span>
+dist/
+build/
+
+<span class="tk-comment"># Données &amp; modèles ML</span>
+data/
+models/
+*.csv
+*.pkl
+mlruns/</code></pre>
+                        </div>
+                        <div class="info-box warning">
+                            <div class="info-title">Si un fichier sensible est déjà commité</div>
+                            <p>
+                                Ajouter une ligne au <code>.gitignore</code> <em>ne le retire pas</em> de
+                                l'historique. Il faut désindexer (<code>git rm --cached &lt;fichier&gt;</code>)
+                                puis recommiter, et considérer le secret comme compromis (à régénérer).
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer un <code>README.md</code> minimal</h4>
+                        <p>
+                            Le <code>README</code> est la première chose qu'on voit sur la page GitHub
+                            du projet. Inutile d'écrire un roman pour démarrer : titre, une description
+                            courte, comment consulter, auteur. Ça suffit.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">markdown</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code># &lt;Mon projet&gt;
+
+Description courte du projet en une phrase ou deux.
+
+## Consultation
+
+- En ligne : https://&lt;ton-pseudo&gt;.github.io/&lt;mon-projet&gt;/
+- En local : ouvrir `index.html` dans un navigateur
+
+## Auteur
+
+&lt;Ton nom ou pseudo&gt;</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Initialiser Git dans le dossier</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> init
+<span class="tk-cmd">git</span> status</code></pre>
+                        </div>
+                        <p>
+                            <code>git init</code> crée un sous-dossier <code>.git/</code> qui contient toute
+                            la mécanique du versioning (commits, branches, config locale). Tant que tu
+                            ne supprimes pas ce dossier, ton historique est conservé.
+                        </p>
+                        <p>
+                            <code>git status</code> doit déjà tenir compte de ton <code>.gitignore</code> :
+                            les fichiers ignorés <em>n'apparaîtront pas</em> dans la liste des fichiers
+                            non suivis. C'est ta première vérification que le filtre fonctionne.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Renommer la branche par défaut <code>master</code> en <code>main</code></h4>
+                        <p>
+                            Sur les versions un peu anciennes de Git, <code>git init</code> crée une branche
+                            <code>master</code>. La convention GitHub depuis 2020 est <code>main</code>.
+                            Le faire <em>avant</em> le premier commit évite tout renommage post-push.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> branch -m master main
+<span class="tk-cmd">git</span> branch --show-current  <span class="tk-comment"># doit afficher : main</span></code></pre>
+                        </div>
+                        <p>
+                            Pour ne plus avoir à le faire dans tes futurs projets :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> config --global init.defaultBranch main</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Indexer les fichiers (<code>git add</code>) et vérifier</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> status</code></pre>
+                        </div>
+                        <p>
+                            <code>git add .</code> place tous les fichiers non ignorés dans la zone d'index
+                            (<em>staging area</em>). <code>git status</code> liste alors les fichiers prêts
+                            à être commités.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Le réflexe anti-fuite</div>
+                            <p>
+                                Avant chaque commit, lis la liste de <code>git status</code>. Aucun
+                                <code>.env</code>, aucun fichier de credentials, aucun dossier
+                                de config personnelle ne doit s'y trouver. Si oui :
+                                <code>git rm --cached &lt;fichier&gt;</code> et corrige le <code>.gitignore</code>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer ton identité Git pour ce projet</h4>
+                        <p>
+                            Git refuse de créer un commit s'il ne sait pas qui tu es. Tu peux configurer
+                            l'identité au niveau global (tous tes projets) ou local (uniquement ce dépôt).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Local : config limitée à ce dépôt</span>
+<span class="tk-cmd">git</span> config --local user.name <span class="tk-string">"&lt;ton-pseudo&gt;"</span>
+<span class="tk-cmd">git</span> config --local user.email <span class="tk-string">"&lt;ton-email&gt;"</span>
+
+<span class="tk-comment"># Ou global : config partagée par tous tes dépôts</span>
+<span class="tk-cmd">git</span> config --global user.name <span class="tk-string">"&lt;ton-pseudo&gt;"</span>
+<span class="tk-cmd">git</span> config --global user.email <span class="tk-string">"&lt;ton-email&gt;"</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Email "noreply" GitHub</div>
+                            <p>
+                                Pour ne pas exposer ton vrai e-mail dans les commits publics, GitHub
+                                fournit un alias du type
+                                <code>&lt;id&gt;+&lt;ton-pseudo&gt;@users.noreply.github.com</code> (Settings →
+                                Emails → <em>Keep my email addresses private</em>). Les commits restent
+                                liés à ton profil GitHub mais ton email réel reste privé.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Faire le premier commit</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> commit -m <span class="tk-string">"Initial commit"</span>
+<span class="tk-cmd">git</span> log --oneline</code></pre>
+                        </div>
+                        <p>
+                            <code>git log --oneline</code> doit te montrer une ligne avec le hash court
+                            du commit et son message. À ce stade, tout est versionné <em>en local</em>,
+                            rien n'est encore en ligne.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer le dépôt distant sur GitHub</h4>
+                        <ol>
+                            <li>Va sur <a href="https://github.com/new" target="_blank" rel="noopener noreferrer">github.com/new</a>.</li>
+                            <li>Nom : <code>&lt;mon-projet&gt;</code> (idéalement le même que ton dossier local).</li>
+                            <li>Description : optionnelle.</li>
+                            <li>Visibilité : <strong>Public</strong> ou <strong>Private</strong>.</li>
+                            <li>
+                                <strong>Ne coche RIEN</strong> dans "Initialize this repository with…"
+                                (pas de README, pas de .gitignore, pas de license).
+                            </li>
+                            <li>Crée le dépôt.</li>
+                        </ol>
+                        <div class="info-box warning">
+                            <div class="info-title">Pourquoi un dépôt distant vide</div>
+                            <p>
+                                Si GitHub crée automatiquement un README ou un .gitignore côté distant,
+                                ton historique local et l'historique distant seront <em>divergents</em>
+                                dès le départ, et ton premier <code>push</code> sera rejeté. En partant
+                                d'un dépôt distant vide, tu pousses simplement ton historique local
+                                tel quel.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Connecter le local au distant et pousser</h4>
+                        <p>Ajoute l'URL du dépôt distant comme <em>remote</em> nommé <code>origin</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> remote add origin https://github.com/&lt;ton-pseudo&gt;/&lt;mon-projet&gt;.git
+<span class="tk-cmd">git</span> remote -v   <span class="tk-comment"># vérifie l'URL fetch + push</span>
+<span class="tk-cmd">git</span> push -u origin main</code></pre>
+                        </div>
+                        <p>
+                            Le flag <code>-u</code> (<em>set upstream</em>) lie ta branche locale
+                            <code>main</code> à la distante <code>origin/main</code>. À partir de là,
+                            un simple <code>git push</code> ou <code>git pull</code> saura quoi faire
+                            sans répéter les arguments.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>S'authentifier sans retaper le mot de passe à chaque push</h4>
+                        <p>
+                            Au moment du <code>push</code>, GitHub te demande de t'authentifier. Le mot de
+                            passe classique n'est plus accepté depuis 2021. Plusieurs options :
+                        </p>
+                        <ol>
+                            <li>
+                                <strong>OAuth via Git Credential Manager (GCM)</strong> — si GCM est installé
+                                sur ta machine (souvent le cas sur Windows et macOS modernes), une fenêtre
+                                de navigateur s'ouvre automatiquement pour t'authentifier sur GitHub.
+                                Le credential est ensuite stocké et réutilisé pour les pushes suivants.
+                                <strong>Le plus simple si disponible.</strong>
+                            </li>
+                            <li>
+                                <strong>Personal Access Token (PAT) "fine-grained"</strong> — un token
+                                limité à un seul dépôt et à des permissions précises. Tu le crées sur
+                                <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">github.com/settings/personal-access-tokens/new</a>,
+                                tu sélectionnes <em>Only select repositories</em> →
+                                <code>&lt;mon-projet&gt;</code>, et tu donnes la permission
+                                <code>Contents: Read and write</code>. Quand Git demande le mot de passe,
+                                tu colles le token. Pour qu'il soit mémorisé localement (au repo seulement) :
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-lang">bash</span>
+                                        <button class="copy-btn" type="button">Copier</button>
+                                    </div>
+                                    <pre><code><span class="tk-cmd">git</span> config --local credential.helper <span class="tk-string">'store --file=.git/.git-credentials'</span></code></pre>
+                                </div>
+                                Le fichier <code>.git/.git-credentials</code> reste dans <code>.git/</code>,
+                                qui n'est jamais poussé.
+                            </li>
+                            <li>
+                                <strong>Clé SSH</strong> — couvert dans la <a href="github.html">fiche GitHub</a>.
+                                Plus pérenne, pas de token en clair, idéal une fois maîtrisé.
+                            </li>
+                        </ol>
+                        <div class="info-box warning">
+                            <div class="info-title">PAT en clair</div>
+                            <p>
+                                Le credential helper <code>store</code> écrit ton token <strong>en clair</strong>
+                                dans le fichier. Sur un poste partagé ou sensible, préfère SSH ou GCM.
+                                Sur ton poste perso, c'est acceptable si le fichier reste protégé
+                                (permissions <code>600</code> par défaut).
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Bonus : activer GitHub Pages pour publier le site</h4>
+                        <p>Si ton projet est un site statique HTML/CSS/JS, GitHub peut l'héberger gratuitement.</p>
+                        <ol>
+                            <li>Sur la page du dépôt : <strong>Settings → Pages</strong>.</li>
+                            <li>Source : <em>Deploy from a branch</em>.</li>
+                            <li>Branch : <code>main</code>, dossier : <code>/ (root)</code>.</li>
+                            <li><strong>Save</strong>.</li>
+                            <li>Attends 1 à 2 minutes : l'URL <code>https://&lt;ton-pseudo&gt;.github.io/&lt;mon-projet&gt;/</code> devient active.</li>
+                        </ol>
+                        <div class="info-box">
+                            <div class="info-title">Repo public ou privé ?</div>
+                            <p>
+                                GitHub Pages depuis un repo privé nécessite un compte payant. Mais pour
+                                un site statique, garder le repo en privé n'a qu'un intérêt limité :
+                                <em>tout le code servi au navigateur est de toute façon visible</em>
+                                (clic droit → Afficher le source). La mise en privé ne cache que
+                                l'historique, les drafts en branches et les fichiers non servis. Pour la
+                                plupart des cas pédagogiques, public + Pages est le plus simple.
+                            </p>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Workflow quotidien après publication</h2>
+                <p>Une fois le projet en ligne, chaque modification se résume à ce cycle :</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">git</span> status                        <span class="tk-comment"># voir ce qui a changé</span>
+<span class="tk-cmd">git</span> add &lt;fichier&gt;                  <span class="tk-comment"># ou : git add .</span>
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"docs: ajout lien live"</span>
+<span class="tk-cmd">git</span> push                          <span class="tk-comment"># plus besoin de -u</span></code></pre>
+                </div>
+                <p>
+                    Les messages de commit gagnent à suivre une convention type
+                    <code>type: description</code> (ex. <code>feat:</code>, <code>fix:</code>,
+                    <code>docs:</code>, <code>refactor:</code>). Cohérent, lisible, et facilement
+                    exploitable par des outils plus tard.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Initialisation</span>
+<span class="tk-cmd">git</span> init
+<span class="tk-cmd">git</span> branch -m master main
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> status
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"Initial commit"</span>
+
+<span class="tk-comment"># Identité (local au repo)</span>
+<span class="tk-cmd">git</span> config --local user.name <span class="tk-string">"&lt;ton-pseudo&gt;"</span>
+<span class="tk-cmd">git</span> config --local user.email <span class="tk-string">"&lt;ton-email&gt;"</span>
+
+<span class="tk-comment"># Connexion au distant</span>
+<span class="tk-cmd">git</span> remote add origin https://github.com/&lt;ton-pseudo&gt;/&lt;mon-projet&gt;.git
+<span class="tk-cmd">git</span> remote -v
+<span class="tk-cmd">git</span> push -u origin main
+
+<span class="tk-comment"># Stockage du PAT local au repo</span>
+<span class="tk-cmd">git</span> config --local credential.helper <span class="tk-string">'store --file=.git/.git-credentials'</span>
+
+<span class="tk-comment"># Cycle quotidien</span>
+<span class="tk-cmd">git</span> status
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"message"</span>
+<span class="tk-cmd">git</span> push
+
+<span class="tk-comment"># Vérifier l'état distant</span>
+<span class="tk-cmd">git</span> log --oneline
+<span class="tk-cmd">git</span> ls-remote origin</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation Git : <a href="https://git-scm.com/doc" target="_blank" rel="noopener noreferrer">git-scm.com/doc</a></li>
+                    <li>Pro Git (livre gratuit, en français) : <a href="https://git-scm.com/book/fr/v2" target="_blank" rel="noopener noreferrer">git-scm.com/book/fr</a></li>
+                    <li>GitHub Pages : <a href="https://docs.github.com/fr/pages" target="_blank" rel="noopener noreferrer">docs.github.com/fr/pages</a></li>
+                    <li>Personal Access Tokens : <a href="https://docs.github.com/fr/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens" target="_blank" rel="noopener noreferrer">docs.github.com — gestion des PAT</a></li>
+                    <li>Conventional Commits : <a href="https://www.conventionalcommits.org/fr/" target="_blank" rel="noopener noreferrer">conventionalcommits.org</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
