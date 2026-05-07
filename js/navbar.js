@@ -62,6 +62,10 @@
                             <a href="docstring.html">Docstring</a>
                             <a href="sphinx.html">Sphinx</a>
                         </div>
+                        <div class="dropdown-section">
+                            <div class="dropdown-title">Retours d'expérience</div>
+                            <a href="experience-cicd.html">CI/CD du site</a>
+                        </div>
                     </div>
                 </li>
                 <li><a href="about.html">À propos</a></li>
