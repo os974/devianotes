@@ -9,3 +9,7 @@
 
 # Démo publique d'Uptime Kuma — fréquemment en timeout (instance partagée).
 ^https://demo\.uptime\.kuma\.pet
+
+# Site officiel Helm — connection reset depuis les runners GitHub
+# (CDN qui filtre les plages d'IPs cloud). Le lien est valide.
+^https://helm\.sh
