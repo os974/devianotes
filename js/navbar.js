@@ -1,13 +1,50 @@
+// =============================================================================
+// Web Component <site-navbar> — barre de navigation partagée par toutes les pages
+// =============================================================================
+//
+// La navbar est incluse depuis :
+//   - index.html, about.html       (à la RACINE du site)
+//   - sujets/<fiche>.html          (1 niveau plus bas)
+//   - retex/<fiche>.html           (1 niveau plus bas)
+//
+// Les liens dans la navbar doivent donc s'adapter au niveau où on se trouve :
+//   - depuis la racine : href="sujets/uv.html"
+//   - depuis sujets/   : href="../sujets/uv.html"
+//   - depuis retex/    : href="../sujets/uv.html"
+//
+// La fonction `computeBasePath()` calcule ce préfixe à l'exécution en lisant
+// `window.location.pathname`. Si on est dans un sous-dossier sujets/ ou retex/,
+// elle renvoie "../" ; sinon "".
+//
+// Cette approche évite de devoir maintenir deux templates (un pour la racine,
+// un pour les sous-dossiers) et fonctionne aussi bien en local qu'une fois
+// déployé sur GitHub Pages (qui sert depuis /<repo>/...).
+// =============================================================================
 (function () {
     "use strict";
 
-    const TEMPLATE = `
+    // Renvoie "../" si la page courante est dans sujets/ ou retex/, sinon "".
+    function computeBasePath() {
+        const path = window.location.pathname;
+        // Match les chemins du type ".../sujets/xxx.html" ou ".../retex/xxx.html"
+        if (/\/(sujets|retex)\/[^/]+\.html?$/.test(path)) {
+            return "../";
+        }
+        return "";
+    }
+
+    function renderTemplate(basePath) {
+        const S = `${basePath}sujets/`;   // préfixe pour les fiches théoriques
+        const R = `${basePath}retex/`;    // préfixe pour les retours d'expérience
+        const ROOT = basePath;            // pour index.html / about.html
+
+        return `
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">DevIA Notes</a>
+        <a href="${ROOT}index.html" class="nav-logo">DevIA Notes</a>
         <div class="nav-right">
             <ul class="nav-links">
-                <li><a href="index.html">Accueil</a></li>
+                <li><a href="${ROOT}index.html">Accueil</a></li>
                 <li class="has-dropdown">
                     <button class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
                         Sujets
@@ -16,50 +53,50 @@
                     <div class="nav-dropdown" role="menu">
                         <div class="dropdown-section">
                             <div class="dropdown-title">Environnement</div>
-                            <a href="uv.html">UV</a>
-                            <a href="docker.html">Docker</a>
-                            <a href="kubernetes.html">Kubernetes</a>
-                            <a href="jupyter.html">Jupyter</a>
+                            <a href="${S}uv.html">UV</a>
+                            <a href="${S}docker.html">Docker</a>
+                            <a href="${S}kubernetes.html">Kubernetes</a>
+                            <a href="${S}jupyter.html">Jupyter</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Web &amp; API</div>
-                            <a href="fastapi.html">FastAPI</a>
-                            <a href="streamlit.html">Streamlit</a>
+                            <a href="${S}fastapi.html">FastAPI</a>
+                            <a href="${S}streamlit.html">Streamlit</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Outils &amp; Tests</div>
-                            <a href="github.html">GitHub</a>
-                            <a href="cicd.html">CI/CD</a>
-                            <a href="pytest.html">pytest</a>
+                            <a href="${S}github.html">GitHub</a>
+                            <a href="${S}cicd.html">CI/CD</a>
+                            <a href="${S}pytest.html">pytest</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">MLOps</div>
-                            <a href="mlflow.html">MLflow</a>
-                            <a href="prefect.html">Prefect</a>
+                            <a href="${S}mlflow.html">MLflow</a>
+                            <a href="${S}prefect.html">Prefect</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Messagerie &amp; tâches</div>
-                            <a href="kafka.html">Kafka</a>
-                            <a href="rabbitmq.html">RabbitMQ</a>
-                            <a href="redis.html">Redis</a>
-                            <a href="celery.html">Celery</a>
-                            <a href="flower.html">Flower</a>
+                            <a href="${S}kafka.html">Kafka</a>
+                            <a href="${S}rabbitmq.html">RabbitMQ</a>
+                            <a href="${S}redis.html">Redis</a>
+                            <a href="${S}celery.html">Celery</a>
+                            <a href="${S}flower.html">Flower</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Monitoring</div>
-                            <a href="prometheus.html">Prometheus</a>
-                            <a href="grafana.html">Grafana</a>
-                            <a href="uptime-kuma.html">Uptime Kuma</a>
+                            <a href="${S}prometheus.html">Prometheus</a>
+                            <a href="${S}grafana.html">Grafana</a>
+                            <a href="${S}uptime-kuma.html">Uptime Kuma</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Données</div>
-                            <a href="sqlalchemy.html">SQLAlchemy</a>
-                            <a href="pandas.html">pandas</a>
+                            <a href="${S}sqlalchemy.html">SQLAlchemy</a>
+                            <a href="${S}pandas.html">pandas</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>
-                            <a href="docstring.html">Docstring</a>
-                            <a href="sphinx.html">Sphinx</a>
+                            <a href="${S}docstring.html">Docstring</a>
+                            <a href="${S}sphinx.html">Sphinx</a>
                         </div>
                     </div>
                 </li>
@@ -70,12 +107,12 @@
                     </button>
                     <div class="nav-dropdown" role="menu">
                         <div class="dropdown-section">
-                            <a href="experience-cicd.html">CI/CD du site</a>
-                            <a href="git-setup.html">Mettre un projet sur GitHub</a>
+                            <a href="${R}experience-cicd.html">CI/CD du site</a>
+                            <a href="${R}git-setup.html">Mettre un projet sur GitHub</a>
                         </div>
                     </div>
                 </li>
-                <li><a href="about.html">À propos</a></li>
+                <li><a href="${ROOT}about.html">À propos</a></li>
             </ul>
             <button class="theme-toggle" aria-label="Basculer entre les thèmes clair et sombre" type="button">
                 <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
@@ -88,10 +125,11 @@
     </div>
 </nav>
 `;
+    }
 
     class SiteNavbar extends HTMLElement {
         connectedCallback() {
-            this.innerHTML = TEMPLATE;
+            this.innerHTML = renderTemplate(computeBasePath());
         }
     }
 
