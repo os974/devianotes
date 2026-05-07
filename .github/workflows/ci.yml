@@ -166,6 +166,16 @@ jobs:
           #     → ne suit QUE les URLs externes (skip les chemins locaux,
           #       déjà couverts par le job 1). Évite la double vérification.
           #
+          # --exclude-loopback
+          #     → ignore TOUTES les URLs localhost / 127.0.0.1 / ::1
+          #       quel que soit leur port. Indispensable car les fiches
+          #       contiennent des liens d'exemple comme
+          #       <a href="http://localhost:8000/docs"> qui ne sont JAMAIS
+          #       joignables depuis un runner CI (rien ne tourne dessus).
+          #       Préférable à lister chaque URL localhost dans
+          #       .lycheeignore : le flag couvre automatiquement toute
+          #       nouvelle référence ajoutée plus tard.
+          #
           # --max-retries 3
           #     → retente 3 fois en cas d'échec réseau passager
           #       (un site lent ou un hoquet TCP).
@@ -178,10 +188,10 @@ jobs:
           #
           # './**/*.html' : glob des fichiers à scanner.
           #
-          # NB : les URLs durablement flaky (CDN qui filtre les runners
-          # GitHub) sont listées dans `.lycheeignore` à la racine du repo,
-          # automatiquement détecté par lychee.
-          args: --no-progress --scheme http --scheme https --max-retries 3 --timeout 30 './**/*.html'
+          # NB : les URLs publiques durablement flaky (CDN qui filtre les
+          # runners GitHub) sont listées dans `.lycheeignore` à la racine
+          # du repo, automatiquement détecté par lychee.
+          args: --no-progress --scheme http --scheme https --exclude-loopback --max-retries 3 --timeout 30 './**/*.html'
           fail: true
 
   # ===========================================================================
