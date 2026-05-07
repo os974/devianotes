@@ -324,43 +324,6 @@
             </section>
 
             <section class="section">
-                <h2>6. Ce que je ferais ensuite</h2>
-                <p>
-                    La CI actuelle fait son travail. Voici les améliorations que je
-                    pourrais ajouter, par ordre de rapport valeur/effort :
-                </p>
-                <ul>
-                    <li>
-                        <strong>Badge CI dans le README.md</strong> — une ligne Markdown,
-                        coup d'œil instantané sur la santé de la prod.
-                        <br><code>![CI](https://github.com/&lt;user&gt;/&lt;repo&gt;/actions/workflows/ci.yml/badge.svg)</code>
-                    </li>
-                    <li>
-                        <strong>Lighthouse CI</strong> — score auto sur performance,
-                        accessibilité, SEO à chaque push, posté en commentaire de PR. Un
-                        peu lent (1-2 min/page), donc on cible quelques pages
-                        représentatives, pas les 25.
-                    </li>
-                    <li>
-                        <strong>Pinner les actions au SHA</strong> — préempter les ruptures
-                        comme la Leçon 1.
-                        <code>uses: lycheeverse/lychee-action@&lt;sha40&gt;</code>. Plus
-                        rigoureux mais on perd les bug fixes automatiques.
-                    </li>
-                    <li>
-                        <strong>Codespell</strong> — un job qui détecte les coquilles dans
-                        le HTML français. Penser à charger un dictionnaire FR.
-                    </li>
-                    <li>
-                        <strong>Deploy previews sur PR</strong> — chaque PR déploie sur une
-                        URL temporaire (<code>https://&lt;user&gt;.github.io/&lt;repo&gt;/pr-42/</code>)
-                        pour vérifier le rendu avant merge. Plus complexe à câbler, vraiment
-                        utile à partir du moment où plusieurs personnes contribuent.
-                    </li>
-                </ul>
-            </section>
-
-            <section class="section">
                 <h2>Liens vers les fiches concernées</h2>
                 <ul>
                     <li><a href="cicd.html">CI/CD</a> — la théorie générale (concepts,

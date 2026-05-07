@@ -29,7 +29,6 @@
                         <div class="dropdown-section">
                             <div class="dropdown-title">Outils &amp; Tests</div>
                             <a href="github.html">GitHub</a>
-                            <a href="git-setup.html">Mettre un projet sur GitHub</a>
                             <a href="cicd.html">CI/CD</a>
                             <a href="pytest.html">pytest</a>
                         </div>
@@ -62,9 +61,17 @@
                             <a href="docstring.html">Docstring</a>
                             <a href="sphinx.html">Sphinx</a>
                         </div>
+                    </div>
+                </li>
+                <li class="has-dropdown">
+                    <button class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+                        Retours d'expérience
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="nav-dropdown" role="menu">
                         <div class="dropdown-section">
-                            <div class="dropdown-title">Retours d'expérience</div>
                             <a href="experience-cicd.html">CI/CD du site</a>
+                            <a href="git-setup.html">Mettre un projet sur GitHub</a>
                         </div>
                     </div>
                 </li>
