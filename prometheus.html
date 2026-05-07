@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Prometheus — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Prometheus</div>
+                <h1>Prometheus</h1>
+                <p class="subtitle">
+                    Le moteur open source de collecte de métriques : il interroge tes services à
+                    intervalles réguliers, stocke les chiffres dans une base time-series, et te laisse
+                    poser des questions dessus avec un langage de requête (PromQL).
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Le duo Prometheus + Grafana</div>
+                <p>
+                    Prometheus <strong>collecte et stocke</strong> les métriques.
+                    <a href="grafana.html">Grafana</a> <strong>les affiche</strong> sous forme de
+                    dashboards interactifs. C'est le tandem standard du monitoring open source : on
+                    branche Grafana sur Prometheus en tant que <em>source de données</em>, et on
+                    construit ses graphiques côté Grafana. Si tu débutes, lis cette fiche puis
+                    enchaîne sur la <a href="grafana.html">fiche Grafana</a>.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand ton API FastAPI tourne en production, tu veux savoir : combien de requêtes
+                    par seconde elle reçoit, combien échouent, combien de temps elle met à répondre,
+                    combien de prédictions ton modèle fait par minute… Ces chiffres sont des
+                    <strong>métriques</strong>, et elles changent dans le temps.
+                </p>
+                <p>Prometheus s'occupe de trois choses :</p>
+                <ul>
+                    <li><strong>Scraping</strong> — il va chercher tout seul, toutes les 15 secondes
+                        par défaut, les métriques exposées par tes services sur une URL
+                        <code>/metrics</code>.</li>
+                    <li><strong>Stockage time-series</strong> — il garde l'historique de chaque
+                        métrique avec son timestamp, dans une base optimisée pour ça.</li>
+                    <li><strong>Requêtes (PromQL)</strong> — un langage pour calculer taux, moyennes,
+                        percentiles, et déclencher des alertes (« si le taux d'erreur dépasse 5 %
+                        pendant 2 minutes, préviens-moi »).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Prometheus = un robot qui passe toutes les 15 secondes demander leurs chiffres à tes services, les range dans une base, et te laisse poser des questions dessus.</p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Pull vs push</div>
+                    <p>
+                        Prometheus fonctionne en <em>pull</em> : c'est lui qui va chercher les
+                        métriques, pas tes services qui les envoient. Conséquence pratique : tes
+                        services n'ont qu'à exposer <code>/metrics</code> en HTTP, sans rien savoir de
+                        Prometheus. Pour les jobs courts (cron, batch) qui n'existent pas assez
+                        longtemps pour être scrapés, il existe un <em>Pushgateway</em> intermédiaire.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as déployé une <a href="fastapi.html">API FastAPI</a> qui sert un modèle de
+                    prédiction. Tu veux mesurer le nombre de prédictions par seconde et le temps de
+                    réponse. Avec la lib <code>prometheus-client</code>, ça tient en quelques lignes :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> fastapi <span class="tk-keyword">import</span> FastAPI
+<span class="tk-keyword">from</span> prometheus_client <span class="tk-keyword">import</span> Counter, Histogram, make_asgi_app
+
+app = <span class="tk-fn">FastAPI</span>()
+
+predictions = <span class="tk-fn">Counter</span>(<span class="tk-string">"predictions_total"</span>, <span class="tk-string">"Nombre total de prédictions"</span>)
+latency = <span class="tk-fn">Histogram</span>(<span class="tk-string">"prediction_latency_seconds"</span>, <span class="tk-string">"Temps de prédiction"</span>)
+
+<span class="tk-comment"># Expose /metrics au format Prometheus</span>
+app.<span class="tk-fn">mount</span>(<span class="tk-string">"/metrics"</span>, <span class="tk-fn">make_asgi_app</span>())
+
+<span class="tk-decorator">@app.post(<span class="tk-string">"/predict"</span>)</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">predict</span>(payload: <span class="tk-keyword">dict</span>):
+    <span class="tk-keyword">with</span> latency.<span class="tk-fn">time</span>():
+        result = {<span class="tk-string">"label"</span>: <span class="tk-string">"chat"</span>}  <span class="tk-comment"># ton vrai modèle ici</span>
+    predictions.<span class="tk-fn">inc</span>()
+    <span class="tk-keyword">return</span> result</code></pre>
+                </div>
+                <p>
+                    Une fois l'API lancée, <code>curl http://localhost:8000/metrics</code> renvoie un
+                    texte brut comme :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">text</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>predictions_total 42.0
+prediction_latency_seconds_bucket{le="0.1"} 38.0
+prediction_latency_seconds_bucket{le="0.5"} 41.0
+prediction_latency_seconds_count 42.0
+prediction_latency_seconds_sum 2.137</code></pre>
+                </div>
+                <p>
+                    C'est ce format que Prometheus va aspirer toutes les 15 secondes pour en faire un
+                    historique exploitable.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Prometheus</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer Prometheus avec Docker</h4>
+                        <p>
+                            Le plus simple est d'utiliser l'image officielle. Crée d'abord un fichier
+                            de config <code>prometheus.yml</code> à la racine de ton projet :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># prometheus.yml — configuration minimale</span>
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: <span class="tk-string">"mon-api"</span>
+    static_configs:
+      - targets: [<span class="tk-string">"host.docker.internal:8000"</span>]</code></pre>
+                        </div>
+                        <p>
+                            <code>host.docker.internal</code> permet au conteneur Prometheus de
+                            joindre un service qui tourne sur ta machine hôte (sous Linux, ajoute
+                            <code>--add-host=host.docker.internal:host-gateway</code>).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name prometheus \
+  -p 9090:9090 \
+  -v <span class="tk-string">"$(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml"</span> \
+  prom/prometheus</code></pre>
+                        </div>
+                        <p>
+                            Ouvre <code>http://localhost:9090</code> : c'est l'UI web (basique mais
+                            utile pour tester des requêtes).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Instrumenter une app Python</h4>
+                        <p>Installe la lib cliente :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add prometheus-client</code></pre>
+                        </div>
+                        <p>Quatre types de métriques à connaître :</p>
+                        <ul>
+                            <li><strong>Counter</strong> — un compteur qui ne fait que monter
+                                (requêtes reçues, erreurs, prédictions). Jamais décrémenté.</li>
+                            <li><strong>Gauge</strong> — une valeur instantanée qui peut monter ou
+                                descendre (mémoire utilisée, nombre de connexions actives).</li>
+                            <li><strong>Histogram</strong> — distribue les valeurs dans des
+                                « buckets » (idéal pour les latences : combien sous 100ms, sous
+                                500ms…).</li>
+                            <li><strong>Summary</strong> — calcule directement les percentiles côté
+                                app. Plus rare, préfère <em>Histogram</em> en général.</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Vérifier que ça scrape</h4>
+                        <p>
+                            Dans l'UI Prometheus (<code>:9090</code>), va dans
+                            <strong>Status → Targets</strong>. Tu dois y voir ton job
+                            <code>mon-api</code> en <code>UP</code>. Si c'est <code>DOWN</code>,
+                            vérifie l'URL et que <code>/metrics</code> répond bien quand tu fais un
+                            <code>curl</code> dessus.
+                        </p>
+                        <div class="info-box warn">
+                            <div class="info-title">Erreur classique</div>
+                            <p>
+                                Si Prometheus tourne dans Docker et ton API en local,
+                                <code>localhost</code> dans <code>prometheus.yml</code> ne marchera
+                                <em>pas</em> (il pointe sur le conteneur lui-même, pas sur ta
+                                machine). Utilise <code>host.docker.internal</code>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Premières requêtes PromQL</h4>
+                        <p>
+                            Toujours dans l'UI Prometheus, onglet <strong>Graph</strong>. Quelques
+                            requêtes utiles :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">promql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Valeur courante du compteur</span>
+predictions_total
+
+<span class="tk-comment"># Taux de prédictions par seconde, moyenné sur 1 min</span>
+rate(predictions_total[1m])
+
+<span class="tk-comment"># Latence p95 sur 5 min</span>
+histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m]))
+
+<span class="tk-comment"># Taux d'erreur HTTP 5xx (si tu as un Counter avec un label "status")</span>
+rate(http_requests_total{status=~"5.."}[5m])</code></pre>
+                        </div>
+                        <p>
+                            <code>rate()</code> est l'opérateur le plus important : il transforme un
+                            compteur cumulé en « événements par seconde ».
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter des labels</h4>
+                        <p>
+                            Une métrique seule, c'est limité. Avec des <strong>labels</strong>, tu
+                            peux découper la même métrique selon plusieurs dimensions :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>predictions = <span class="tk-fn">Counter</span>(
+    <span class="tk-string">"predictions_total"</span>,
+    <span class="tk-string">"Nombre de prédictions"</span>,
+    [<span class="tk-string">"model_version"</span>, <span class="tk-string">"label"</span>],  <span class="tk-comment"># dimensions</span>
+)
+
+predictions.<span class="tk-fn">labels</span>(model_version=<span class="tk-string">"v2"</span>, label=<span class="tk-string">"chat"</span>).<span class="tk-fn">inc</span>()</code></pre>
+                        </div>
+                        <p>
+                            Tu peux ensuite filtrer en PromQL :
+                            <code>rate(predictions_total{model_version="v2"}[1m])</code>.
+                        </p>
+                        <div class="info-box warn">
+                            <div class="info-title">Attention à l'explosion de cardinalité</div>
+                            <p>
+                                N'utilise <em>jamais</em> un user_id ou un timestamp comme label :
+                                chaque combinaison crée une nouvelle série. Quelques centaines de
+                                valeurs maxi par label, sinon Prometheus s'écroule.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Brancher Grafana par-dessus</h4>
+                        <p>
+                            L'UI Prometheus dépanne pour tester une requête, mais pour les vrais
+                            dashboards on passe à Grafana. Le plus rapide : ajouter un service
+                            Grafana à ton <code>docker-compose.yml</code>, et configurer Prometheus
+                            comme source de données (URL : <code>http://prometheus:9090</code> si
+                            les deux conteneurs sont sur le même réseau Docker). La suite est
+                            détaillée dans la <a href="grafana.html">fiche Grafana</a>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter des exporters</h4>
+                        <p>
+                            Pour monitorer des choses que tu n'écris pas toi-même (machine, base de
+                            données, conteneurs Docker), Prometheus utilise des
+                            <strong>exporters</strong> : des petits programmes qui exposent
+                            <code>/metrics</code> à la place du système qu'ils mesurent. Les plus
+                            utiles :
+                        </p>
+                        <ul>
+                            <li><code>node_exporter</code> — CPU, RAM, disque, réseau de la
+                                machine.</li>
+                            <li><code>cadvisor</code> — métriques par conteneur Docker.</li>
+                            <li><code>postgres_exporter</code> — métriques d'une base
+                                PostgreSQL.</li>
+                        </ul>
+                        <p>
+                            Tu les ajoutes simplement comme un nouveau <code>job</code> dans
+                            <code>prometheus.yml</code>.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (prometheus-client)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> prometheus_client <span class="tk-keyword">import</span> Counter, Gauge, Histogram
+
+c = <span class="tk-fn">Counter</span>(<span class="tk-string">"events_total"</span>, <span class="tk-string">"desc"</span>, [<span class="tk-string">"kind"</span>])
+c.<span class="tk-fn">labels</span>(kind=<span class="tk-string">"ok"</span>).<span class="tk-fn">inc</span>()
+
+g = <span class="tk-fn">Gauge</span>(<span class="tk-string">"queue_size"</span>, <span class="tk-string">"desc"</span>)
+g.<span class="tk-fn">set</span>(<span class="tk-num">12</span>)
+g.<span class="tk-fn">inc</span>()  <span class="tk-comment"># ou .dec()</span>
+
+h = <span class="tk-fn">Histogram</span>(<span class="tk-string">"duration_seconds"</span>, <span class="tk-string">"desc"</span>)
+<span class="tk-keyword">with</span> h.<span class="tk-fn">time</span>():
+    <span class="tk-fn">do_work</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">promql (requêtes courantes)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Taux par seconde sur 5 min</span>
+rate(metric_total[5m])
+
+<span class="tk-comment"># Somme par label</span>
+sum by (status) (rate(http_requests_total[5m]))
+
+<span class="tk-comment"># Pourcentage d'erreurs</span>
+sum(rate(http_requests_total{status=~"5.."}[5m]))
+  / sum(rate(http_requests_total[5m]))
+
+<span class="tk-comment"># Percentile depuis un Histogram</span>
+histogram_quantile(0.99, rate(latency_bucket[5m]))</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (Docker)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d -p 9090:9090 \
+  -v <span class="tk-string">"$(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml"</span> \
+  prom/prometheus
+
+<span class="tk-comment"># Recharger la config sans restart (si --web.enable-lifecycle)</span>
+<span class="tk-cmd">curl</span> -X POST http://localhost:9090/-/reload</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Prometheus et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="grafana.html">Grafana</a></strong> — l'UI Prometheus est
+                        rudimentaire. En vrai, on connecte Grafana à Prometheus comme source de
+                        données et on construit les dashboards là-bas. Voir l'encart en haut de
+                        page : c'est le duo standard.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — instrumentation en 3
+                        lignes avec <code>prometheus-client</code> ou la lib
+                        <code>prometheus-fastapi-instrumentator</code> qui ajoute automatiquement
+                        latence et codes HTTP.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — Prometheus tourne
+                        typiquement en conteneur, à côté de tes services, dans un même
+                        <code>docker-compose.yml</code>.
+                    </li>
+                    <li>
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> — l'opérateur
+                        <em>kube-prometheus-stack</em> (un Helm chart) déploie en une commande
+                        Prometheus + Grafana + alertmanager + exporters K8s. C'est l'installation
+                        standard en prod.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — MLflow suit tes
+                        <em>entraînements</em> (offline), Prometheus suit ton <em>modèle en
+                        production</em> (online). Les deux sont complémentaires : MLflow pour
+                        choisir le modèle, Prometheus pour vérifier qu'il se comporte bien une fois
+                        déployé.
+                    </li>
+                    <li>
+                        <strong><a href="cicd.html">CI/CD</a></strong> — un pipeline peut lancer un
+                        test de charge et vérifier que la latence p95 mesurée par Prometheus reste
+                        sous un seuil avant de promouvoir une nouvelle version.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quoi monitorer en MLOps</div>
+                    <p>
+                        Pour un service qui sert un modèle, vise au minimum : nombre de prédictions
+                        par seconde, latence p50/p95/p99, taux d'erreur, distribution des classes
+                        prédites (pour détecter une dérive : si ton modèle prédit soudain 90 % de
+                        « chat », il y a peut-être un problème en amont).
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://prometheus.io/docs/" target="_blank" rel="noopener noreferrer">prometheus.io/docs</a></li>
+                    <li>Guide PromQL : <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/" target="_blank" rel="noopener noreferrer">Querying basics</a></li>
+                    <li>Exporters officiels : <a href="https://prometheus.io/docs/instrumenting/exporters/" target="_blank" rel="noopener noreferrer">prometheus.io/docs/instrumenting/exporters</a></li>
+                    <li>Lib Python : <a href="https://github.com/prometheus/client_python" target="_blank" rel="noopener noreferrer">github.com/prometheus/client_python</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

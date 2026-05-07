@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Grafana — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Grafana</div>
+                <h1>Grafana</h1>
+                <p class="subtitle">
+                    L'outil de référence pour visualiser des métriques : tu lui branches une source
+                    de données (Prometheus, PostgreSQL, Loki…) et tu construis des dashboards
+                    interactifs où chaque graphique répond à une question.
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Le duo Prometheus + Grafana</div>
+                <p>
+                    Grafana ne stocke <strong>pas</strong> de données : il interroge des sources
+                    externes. La plus courante en MLOps est <a href="prometheus.html">Prometheus</a>,
+                    qui collecte et stocke les métriques de tes services. Grafana se branche dessus
+                    pour les afficher. Si tu n'as pas encore lu la <a href="prometheus.html">fiche
+                    Prometheus</a>, commence par là — Grafana sans source de données, c'est juste
+                    une UI vide.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Tu as des métriques quelque part (Prometheus, une base SQL, des logs…). Tu veux
+                    les <em>voir</em> : courbes dans le temps, jauges, alertes quand un seuil est
+                    dépassé, le tout dans un tableau de bord partageable avec ton équipe.
+                </p>
+                <p>Grafana fait exactement ça :</p>
+                <ul>
+                    <li><strong>Dashboards</strong> — des pages web composées de
+                        <em>panels</em> (graphiques, jauges, tableaux). Chaque panel exécute une
+                        requête sur une source de données.</li>
+                    <li><strong>Sources de données</strong> — Prometheus, PostgreSQL, MySQL, Loki
+                        (logs), Tempo (traces), CSV, Google Sheets… plus de 150 connecteurs.</li>
+                    <li><strong>Alertes</strong> — règles déclenchées quand une métrique sort d'un
+                        seuil, avec notifications par e-mail, Slack, webhook, etc.</li>
+                    <li><strong>Variables</strong> — pour rendre un dashboard générique : un menu
+                        déroulant change le service ou l'environnement affiché.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Grafana = la fenêtre par laquelle tu regardes ce qui se passe dans tes systèmes, en temps réel et avec de jolis graphiques.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Reprenons l'API FastAPI de la fiche <a href="prometheus.html">Prometheus</a>,
+                    qui expose <code>predictions_total</code> et
+                    <code>prediction_latency_seconds</code>. Une fois Prometheus branché comme
+                    source de données dans Grafana, tu crées un dashboard avec trois panels :
+                </p>
+                <ul>
+                    <li>
+                        <strong>Prédictions par seconde</strong> (graphique en courbe) :
+                        <code>rate(predictions_total[1m])</code>
+                    </li>
+                    <li>
+                        <strong>Latence p95</strong> (graphique en courbe) :
+                        <code>histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m]))</code>
+                    </li>
+                    <li>
+                        <strong>Total prédictions sur 1h</strong> (jauge / stat) :
+                        <code>increase(predictions_total[1h])</code>
+                    </li>
+                </ul>
+                <p>
+                    Tu obtiens en quelques minutes une vue temps réel de ton service. Tu peux
+                    ensuite ajouter une alerte : « si la latence p95 dépasse 500 ms pendant 2
+                    minutes, envoie un message Slack ».
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Grafana</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer Grafana avec Docker</h4>
+                        <p>Image officielle, un seul conteneur :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name grafana \
+  -p 3000:3000 \
+  -v grafana-data:/var/lib/grafana \
+  grafana/grafana</code></pre>
+                        </div>
+                        <p>
+                            Le volume <code>grafana-data</code> persiste tes dashboards et tes
+                            réglages : sans ça, tout disparaît au prochain
+                            <code>docker rm</code>.
+                        </p>
+                        <p>
+                            Ouvre <code>http://localhost:3000</code>. Login par défaut :
+                            <code>admin</code> / <code>admin</code>. Grafana te demande un nouveau
+                            mot de passe à la première connexion.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Lancer Prometheus + Grafana ensemble</h4>
+                        <p>
+                            En pratique tu lances toujours les deux. Voici un
+                            <code>docker-compose.yml</code> minimal qui les met sur le même réseau :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># docker-compose.yml</span>
+services:
+  prometheus:
+    image: prom/prometheus
+    ports: [<span class="tk-string">"9090:9090"</span>]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports: [<span class="tk-string">"3000:3000"</span>]
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on: [prometheus]
+
+volumes:
+  grafana-data:</code></pre>
+                        </div>
+                        <p>
+                            Lance avec <code>docker compose up -d</code>. Les deux conteneurs
+                            peuvent maintenant se parler par leur nom de service :
+                            <code>http://prometheus:9090</code> depuis Grafana.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter Prometheus comme source de données</h4>
+                        <p>
+                            Dans l'UI Grafana, menu <strong>Connections → Data sources → Add data
+                            source</strong>. Choisis <strong>Prometheus</strong>, puis renseigne
+                            l'URL :
+                        </p>
+                        <ul>
+                            <li>Si Grafana et Prometheus sont dans le même <code>docker compose</code> :
+                                <code>http://prometheus:9090</code></li>
+                            <li>Si Prometheus tourne sur l'hôte et Grafana en conteneur :
+                                <code>http://host.docker.internal:9090</code></li>
+                            <li>Tout en local sans Docker :
+                                <code>http://localhost:9090</code></li>
+                        </ul>
+                        <p>Clique sur <strong>Save &amp; test</strong> : tu dois voir « Successfully queried ».</p>
+                    </li>
+
+                    <li>
+                        <h4>Créer ton premier dashboard</h4>
+                        <p>
+                            Menu <strong>Dashboards → New → New dashboard → Add visualization</strong>.
+                            Choisis ta source Prometheus, puis tape une requête PromQL dans le champ
+                            <code>Query</code>, par exemple :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">promql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>rate(predictions_total[1m])</code></pre>
+                        </div>
+                        <p>
+                            Le graphique se met à jour en direct. Sur la droite, choisis le type de
+                            visualisation (<em>Time series</em>, <em>Stat</em>, <em>Gauge</em>,
+                            <em>Bar chart</em>…), donne un titre au panel, puis
+                            <strong>Apply</strong>. Répète pour chaque métrique que tu veux
+                            afficher, puis <strong>Save dashboard</strong>.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Importer un dashboard existant</div>
+                            <p>
+                                <a href="https://grafana.com/grafana/dashboards/" target="_blank" rel="noopener noreferrer">grafana.com/dashboards</a>
+                                contient des milliers de dashboards prêts à l'emploi. Repère un ID
+                                (par ex. <code>1860</code> pour <em>Node Exporter Full</em>) puis
+                                <strong>Dashboards → New → Import</strong>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser des variables</h4>
+                        <p>
+                            Pour qu'un même dashboard serve plusieurs services ou environnements,
+                            ajoute des <strong>variables</strong> (icône <em>Settings</em> du
+                            dashboard → <em>Variables</em>). Exemple : une variable
+                            <code>$service</code> qui liste tous les <code>job</code> de Prometheus,
+                            puis dans tes requêtes :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">promql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>rate(http_requests_total{job=<span class="tk-string">"$service"</span>}[5m])</code></pre>
+                        </div>
+                        <p>
+                            Un menu déroulant apparaît en haut du dashboard ; changer la valeur
+                            recharge tous les panels avec le nouveau filtre.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Configurer une alerte</h4>
+                        <p>
+                            Sur un panel, onglet <strong>Alert</strong> →
+                            <strong>Create alert rule</strong>. Tu définis une condition (« WHEN
+                            <code>last()</code> OF query A IS ABOVE 0.5 »), une durée
+                            (<code>FOR 2m</code>), et un <em>contact point</em> (e-mail, Slack,
+                            webhook). Grafana évalue la règle en boucle et déclenche la notif quand
+                            la condition tient.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Versionner ses dashboards</h4>
+                        <p>
+                            Les dashboards sont du JSON. Tu peux les exporter
+                            (<strong>Share → Export → Save to file</strong>) et les commiter dans
+                            ton repo. Mieux : Grafana sait charger des dashboards et data sources
+                            depuis des fichiers au démarrage (<em>provisioning</em>) — au lieu de
+                            cliquer dans l'UI, tu décris tout dans des YAML montés en volume. C'est
+                            l'approche <em>infrastructure as code</em>.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (Docker)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d -p 3000:3000 -v grafana-data:/var/lib/grafana grafana/grafana
+
+<span class="tk-comment"># Réinitialiser le mot de passe admin</span>
+<span class="tk-cmd">docker</span> exec -it grafana grafana-cli admin reset-admin-password nouveauMdp</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">yaml (provisioning d'une datasource)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># conf/provisioning/datasources/prometheus.yml</span>
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: <span class="tk-keyword">true</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">raccourcis UI</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>d s   <span class="tk-comment"># Save dashboard</span>
+d r   <span class="tk-comment"># Refresh</span>
+d k   <span class="tk-comment"># Kiosk mode (plein écran)</span>
+e     <span class="tk-comment"># Edit panel survolé</span>
+v     <span class="tk-comment"># Voir un panel en grand</span>
+?     <span class="tk-comment"># Liste de tous les raccourcis</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Grafana et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="prometheus.html">Prometheus</a></strong> — la source de
+                        données la plus utilisée avec Grafana. Voir l'encart en haut de page.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — Grafana se déploie en un
+                        conteneur, et se branche aux autres conteneurs via le réseau Docker.
+                    </li>
+                    <li>
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> — le chart Helm
+                        <em>kube-prometheus-stack</em> installe Prometheus + Grafana avec des
+                        dashboards K8s pré-configurés (CPU/RAM par pod, etc.).
+                    </li>
+                    <li>
+                        <strong><a href="sqlalchemy.html">SQLAlchemy</a></strong> — Grafana sait
+                        aussi parler directement à PostgreSQL ou MySQL. Pratique pour visualiser
+                        des données métier (commandes par jour, conversions…) sans passer par
+                        Prometheus.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — Grafana ne remplace pas
+                        l'UI MLflow (qui sert à comparer des entraînements), mais il peut afficher
+                        des métriques de production de ton modèle déployé : volume de prédictions,
+                        latence, taux d'erreur.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Cloud vs self-hosted</div>
+                    <p>
+                        Grafana existe aussi en SaaS (<em>Grafana Cloud</em>, free tier généreux)
+                        si tu ne veux pas héberger toi-même. Pour le projet de fin de formation,
+                        une instance Docker locale ou dans le cluster Kubernetes suffit largement
+                        et fait plus pédagogique.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://grafana.com/docs/grafana/latest/" target="_blank" rel="noopener noreferrer">grafana.com/docs/grafana</a></li>
+                    <li>Bibliothèque de dashboards : <a href="https://grafana.com/grafana/dashboards/" target="_blank" rel="noopener noreferrer">grafana.com/dashboards</a></li>
+                    <li>Tutoriel Getting Started : <a href="https://grafana.com/tutorials/grafana-fundamentals/" target="_blank" rel="noopener noreferrer">Grafana fundamentals</a></li>
+                    <li>Repo GitHub : <a href="https://github.com/grafana/grafana" target="_blank" rel="noopener noreferrer">github.com/grafana/grafana</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
