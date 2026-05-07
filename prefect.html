@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Prefect — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Prefect</div>
+                <h1>Prefect</h1>
+                <p class="subtitle">
+                    Un orchestrateur de workflows en Python : tu décores tes fonctions, tu les
+                    enchaînes en pipelines, et Prefect s'occupe du planning, des retries, du
+                    monitoring et de la visualisation. Une alternative moderne à Airflow.
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Prefect vs Celery — pas le même métier</div>
+                <p>
+                    Les deux exécutent du Python ailleurs que dans ton API, mais à des
+                    niveaux différents. <a href="celery.html">Celery</a> = file de
+                    <em>tâches</em> indépendantes (envoyer un e-mail, faire une prédiction).
+                    Prefect = orchestrateur de <em>pipelines</em> : un enchaînement de
+                    tâches avec dépendances, données qui circulent, planification, et une UI
+                    qui montre le DAG complet et son historique. Pour un pipeline
+                    d'entraînement ML, c'est Prefect ; pour décharger une route HTTP, c'est
+                    Celery.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Tu écris un pipeline d'entraînement : <em>charger les données →
+                    nettoyer → entraîner → évaluer → enregistrer le modèle</em>. Tant qu'il
+                    tourne dans un notebook, ça va. Le jour où tu veux le lancer toutes les
+                    nuits, qu'il réessaie tout seul si l'API source plante, qu'il t'alerte
+                    en cas d'échec et que tu puisses voir l'historique des runs, il te faut
+                    un orchestrateur.
+                </p>
+                <p>Prefect te donne :</p>
+                <ul>
+                    <li><strong>Tasks et Flows</strong> — décore tes fonctions, le code
+                        reste du Python normal. Pas de DSL exotique.</li>
+                    <li><strong>Planification</strong> — cron, intervalle, événement.</li>
+                    <li><strong>Retries automatiques</strong> avec backoff configurable.</li>
+                    <li><strong>Caching</strong> — réutilise le résultat d'une tâche si les
+                        entrées n'ont pas changé.</li>
+                    <li><strong>UI</strong> — DAG visuel, logs par tâche, durée, statut,
+                        historique des runs.</li>
+                    <li><strong>Deployments</strong> — tu déclares « ce flow tourne sur
+                        cette infra avec cette planif », et un <em>worker</em> Prefect le
+                        lance le moment venu.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Prefect = un Python normal, en mieux : tu décores tes fonctions et tu obtiens un pipeline planifié, robuste et observable, sans rien réinventer.</p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Prefect vs Airflow</div>
+                    <p>
+                        Airflow est l'ancêtre de l'orchestration ; il est puissant mais ses
+                        DAGs sont déclarés en YAML/objets et l'expérience dev est lourde.
+                        Prefect est plus jeune, plus pythonique : on écrit du code, point.
+                        Pour démarrer en 2026 sur un projet de fin de formation, Prefect
+                        est nettement plus accessible.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Pipeline d'entraînement minimal : charger l'iris, splitter, entraîner,
+                    évaluer, logger dans <a href="mlflow.html">MLflow</a>.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (pipeline.py)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> prefect <span class="tk-keyword">import</span> flow, task
+<span class="tk-keyword">from</span> sklearn.datasets <span class="tk-keyword">import</span> load_iris
+<span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> train_test_split
+<span class="tk-keyword">from</span> sklearn.tree <span class="tk-keyword">import</span> DecisionTreeClassifier
+<span class="tk-keyword">from</span> sklearn.metrics <span class="tk-keyword">import</span> accuracy_score
+<span class="tk-keyword">import</span> mlflow
+
+<span class="tk-decorator">@task(retries=<span class="tk-num">2</span>, retry_delay_seconds=<span class="tk-num">5</span>)</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">load_data</span>():
+    <span class="tk-keyword">return</span> <span class="tk-fn">load_iris</span>(return_X_y=<span class="tk-keyword">True</span>)
+
+<span class="tk-decorator">@task</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">split</span>(X, y):
+    <span class="tk-keyword">return</span> <span class="tk-fn">train_test_split</span>(X, y, random_state=<span class="tk-num">42</span>)
+
+<span class="tk-decorator">@task</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">train</span>(X_train, y_train, depth: <span class="tk-keyword">int</span>):
+    m = <span class="tk-fn">DecisionTreeClassifier</span>(max_depth=depth, random_state=<span class="tk-num">42</span>)
+    m.<span class="tk-fn">fit</span>(X_train, y_train)
+    <span class="tk-keyword">return</span> m
+
+<span class="tk-decorator">@task</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">evaluate</span>(model, X_test, y_test) -> <span class="tk-keyword">float</span>:
+    <span class="tk-keyword">return</span> <span class="tk-fn">accuracy_score</span>(y_test, model.<span class="tk-fn">predict</span>(X_test))
+
+<span class="tk-decorator">@flow(name=<span class="tk-string">"iris-training"</span>)</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">training_pipeline</span>(depth: <span class="tk-keyword">int</span> = <span class="tk-num">5</span>):
+    X, y = <span class="tk-fn">load_data</span>()
+    X_train, X_test, y_train, y_test = <span class="tk-fn">split</span>(X, y)
+    model = <span class="tk-fn">train</span>(X_train, y_train, depth)
+    acc = <span class="tk-fn">evaluate</span>(model, X_test, y_test)
+
+    <span class="tk-keyword">with</span> mlflow.<span class="tk-fn">start_run</span>():
+        mlflow.<span class="tk-fn">log_param</span>(<span class="tk-string">"max_depth"</span>, depth)
+        mlflow.<span class="tk-fn">log_metric</span>(<span class="tk-string">"accuracy"</span>, acc)
+        mlflow.sklearn.<span class="tk-fn">log_model</span>(model, name=<span class="tk-string">"model"</span>)
+
+    <span class="tk-keyword">return</span> acc
+
+<span class="tk-keyword">if</span> __name__ == <span class="tk-string">"__main__"</span>:
+    <span class="tk-fn">training_pipeline</span>(depth=<span class="tk-num">5</span>)</code></pre>
+                </div>
+                <p>
+                    Lance avec <code>uv run python pipeline.py</code> : ça tourne comme un
+                    script Python normal, avec en bonus des logs structurés, des retries
+                    sur <code>load_data</code>, et un <em>flow run</em> visible dans l'UI
+                    Prefect.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : démarrer avec Prefect</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer Prefect</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add prefect</code></pre>
+                        </div>
+                        <p>Vérifie l'installation :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run prefect version</code></pre>
+                        </div>
+                        <p>
+                            Cette fiche couvre Prefect 3.x. Si tu tombes sur des tutos qui
+                            parlent de <code>DaskTaskRunner</code> ou de
+                            <code>storage</code>, c'est probablement de la 1.x — vérifie la
+                            doc avant de copier.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Lancer le serveur Prefect en local</h4>
+                        <p>
+                            Sans serveur, tes flows tournent quand même mais sans UI ni
+                            historique. Pour avoir tout ça en local :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run prefect server start</code></pre>
+                        </div>
+                        <p>
+                            Ça démarre un serveur sur <code>http://127.0.0.1:4200</code>.
+                            Laisse-le tourner et ouvre l'URL : tu vois une UI avec
+                            <em>Dashboard</em>, <em>Flows</em>, <em>Deployments</em>.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Self-hosted vs Prefect Cloud</div>
+                            <p>
+                                Prefect Cloud (SaaS) propose un free tier généreux et
+                                évite d'héberger toi-même. Pour un projet de cours, le
+                                serveur local suffit. Tu bascules entre les deux avec
+                                <code>prefect cloud login</code> et
+                                <code>prefect profile use ...</code>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Connecter ton code au serveur</h4>
+                        <p>Dans un autre terminal, dis à Prefect où trouver l'API :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> run prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api</code></pre>
+                        </div>
+                        <p>
+                            Lance ton <code>pipeline.py</code> : un nouveau <em>flow run</em>
+                            apparaît dans l'UI, avec le DAG des tâches, leurs durées et
+                            leurs logs.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Comprendre tasks vs flows</h4>
+                        <ul>
+                            <li><strong>@task</strong> — une unité de travail. Bénéficie
+                                des retries, du caching, de la traçabilité individuelle.</li>
+                            <li><strong>@flow</strong> — une fonction qui orchestre des
+                                tasks (et éventuellement des sous-flows). C'est l'unité
+                                que tu planifies et que tu exécutes.</li>
+                        </ul>
+                        <p>
+                            Règle simple : appels longs ou faillibles (I/O, DB, API
+                            externe, calcul) → tâches. Le <em>flow</em> reste mince et lit
+                            l'orchestration.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Retries et caching</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> datetime <span class="tk-keyword">import</span> timedelta
+<span class="tk-keyword">from</span> prefect <span class="tk-keyword">import</span> task
+<span class="tk-keyword">from</span> prefect.cache_policies <span class="tk-keyword">import</span> INPUTS
+
+<span class="tk-decorator">@task(retries=<span class="tk-num">3</span>, retry_delay_seconds=[<span class="tk-num">1</span>, <span class="tk-num">5</span>, <span class="tk-num">15</span>])</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">fetch_api</span>(url: <span class="tk-keyword">str</span>):
+    <span class="tk-keyword">return</span> requests.<span class="tk-fn">get</span>(url).<span class="tk-fn">json</span>()
+
+<span class="tk-decorator">@task(cache_policy=INPUTS, cache_expiration=<span class="tk-fn">timedelta</span>(hours=<span class="tk-num">1</span>))</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">load_dataset</span>(name: <span class="tk-keyword">str</span>):
+    <span class="tk-keyword">return</span> <span class="tk-fn">expensive_load</span>(name)</code></pre>
+                        </div>
+                        <p>
+                            Backoff exponentiel + caching par valeur d'entrée : si tu
+                            relances le flow avec le même <code>name</code> dans l'heure,
+                            <code>load_dataset</code> ne re-télécharge pas, il rejoue son
+                            résultat caché.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Planifier un flow (Deployment)</h4>
+                        <p>
+                            Pour un flow qui doit tourner toutes les nuits sans que tu sois
+                            là, on crée un <strong>deployment</strong> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python (en bas de pipeline.py)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">if</span> __name__ == <span class="tk-string">"__main__"</span>:
+    training_pipeline.<span class="tk-fn">serve</span>(
+        name=<span class="tk-string">"nightly-training"</span>,
+        cron=<span class="tk-string">"0 3 * * *"</span>,         <span class="tk-comment"># 3h du matin</span>
+        parameters={<span class="tk-string">"depth"</span>: <span class="tk-num">5</span>},
+    )</code></pre>
+                        </div>
+                        <p>
+                            <code>serve()</code> garde le process ouvert et joue le rôle de
+                            <em>worker</em> : à 3h, il déclenche le flow. Tu vois le
+                            deployment dans l'UI, tu peux le déclencher à la main avec le
+                            bouton « Run » et passer d'autres paramètres.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Notifications en cas d'échec</h4>
+                        <p>
+                            Dans l'UI, <strong>Automations → New Automation</strong>. Tu
+                            choisis un trigger (ex. <em>Flow run enters Failed state</em>)
+                            et une action (e-mail, webhook Discord/Slack). Pas de code à
+                            écrire. C'est ce qui remplace les alertes maison à coup de
+                            <code>try/except</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>En production sur Docker / Kubernetes</h4>
+                        <p>
+                            Pour exécuter un flow dans un conteneur frais à chaque run
+                            (idéal en prod), on déclare un <em>work pool</em> de type
+                            <code>docker</code> ou <code>kubernetes</code>, on push une
+                            image avec ton code, et un <em>worker</em> Prefect tire les
+                            runs et lance les conteneurs. La logique reste la même côté
+                            code, seul le déploiement change.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (API la plus utilisée)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> prefect <span class="tk-keyword">import</span> flow, task, get_run_logger
+
+<span class="tk-decorator">@task(retries=<span class="tk-num">2</span>, retry_delay_seconds=<span class="tk-num">5</span>)</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">step</span>(x): <span class="tk-keyword">return</span> x * <span class="tk-num">2</span>
+
+<span class="tk-decorator">@flow(name=<span class="tk-string">"demo"</span>, log_prints=<span class="tk-keyword">True</span>)</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">demo</span>(n: <span class="tk-keyword">int</span> = <span class="tk-num">3</span>):
+    log = <span class="tk-fn">get_run_logger</span>()
+    log.<span class="tk-fn">info</span>(<span class="tk-fn">f</span><span class="tk-string">"start n={n}"</span>)
+    <span class="tk-keyword">return</span> [<span class="tk-fn">step</span>(i) <span class="tk-keyword">for</span> i <span class="tk-keyword">in</span> <span class="tk-fn">range</span>(n)]
+
+<span class="tk-comment"># Planifier</span>
+demo.<span class="tk-fn">serve</span>(name=<span class="tk-string">"demo-deploy"</span>, cron=<span class="tk-string">"*/5 * * * *"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">CLI</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">prefect</span> server start
+<span class="tk-cmd">prefect</span> config set PREFECT_API_URL=http://127.0.0.1:4200/api
+<span class="tk-cmd">prefect</span> deployment ls
+<span class="tk-cmd">prefect</span> deployment run <span class="tk-string">"iris-training/nightly-training"</span>
+<span class="tk-cmd">prefect</span> flow-run ls --limit 10
+<span class="tk-cmd">prefect</span> work-pool ls
+<span class="tk-cmd">prefect</span> worker start --pool default</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Prefect et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — combo naturel.
+                        Prefect orchestre <em>l'entraînement</em>, MLflow logge le run.
+                        Pattern type pour le projet de fin de formation : un flow Prefect
+                        planifié qui charge les données, entraîne, évalue, logge dans
+                        MLflow, et promeut le modèle si la métrique dépasse un seuil.
+                    </li>
+                    <li>
+                        <strong><a href="celery.html">Celery</a></strong> — voir l'encart
+                        en haut. Pas concurrents : Celery décharge des routes HTTP, Prefect
+                        orchestre des pipelines.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a> /
+                        <a href="kubernetes.html">Kubernetes</a></strong> — les
+                        <em>work pools</em> Docker/K8s exécutent chaque run dans un
+                        conteneur frais. Idéal pour des dépendances lourdes ou des modèles
+                        volumineux.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — depuis une
+                        route, tu peux déclencher un deployment Prefect via son API REST.
+                        Mais si la fonction est rapide, Celery est plus adapté.
+                    </li>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a> /
+                        <a href="sqlalchemy.html">SQLAlchemy</a></strong> — Prefect brille
+                        sur les pipelines ETL : extract via SQLAlchemy, transform en
+                        pandas, load en base, le tout planifié et observable.
+                    </li>
+                    <li>
+                        <strong><a href="prometheus.html">Prometheus</a> +
+                        <a href="grafana.html">Grafana</a></strong> — l'UI Prefect suffit
+                        pour suivre les flows. Si tu veux les chiffres dans Grafana, le
+                        serveur Prefect expose une API REST que tu peux scraper, ou tu
+                        loggues toi-même les métriques métier dans Prometheus depuis tes
+                        tasks.
+                    </li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://docs.prefect.io/" target="_blank" rel="noopener noreferrer">docs.prefect.io</a></li>
+                    <li>Quickstart : <a href="https://docs.prefect.io/v3/get-started/quickstart" target="_blank" rel="noopener noreferrer">docs.prefect.io/v3/get-started/quickstart</a></li>
+                    <li>Repo GitHub : <a href="https://github.com/PrefectHQ/prefect" target="_blank" rel="noopener noreferrer">github.com/PrefectHQ/prefect</a></li>
+                    <li>Recipes : <a href="https://github.com/PrefectHQ/prefect-recipes" target="_blank" rel="noopener noreferrer">github.com/PrefectHQ/prefect-recipes</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
