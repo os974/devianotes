@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Supabase — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Supabase</div>
+                <h1>Supabase</h1>
+                <p class="subtitle">
+                    Un <strong>backend complet prêt à l'emploi</strong> : base PostgreSQL,
+                    authentification, stockage de fichiers, API REST automatique, temps réel.
+                    Tu crées un projet, tu récupères deux clés, et tu écris ton appli — pas
+                    de serveur à monter, pas d'auth à coder.
+                </p>
+                <div class="badge-row">
+                    <span class="tag">Backend as a Service</span>
+                    <span class="tag">PostgreSQL</span>
+                    <span class="tag">Auth</span>
+                    <span class="tag">Open source</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Pour la plupart des applis (web ou mobile), tu as <em>toujours</em>
+                    besoin des mêmes briques :
+                </p>
+                <ol>
+                    <li>Une base de données pour stocker tes objets métier.</li>
+                    <li>Un système d'authentification (signup, login, mot de passe oublié,
+                        OAuth Google/GitHub).</li>
+                    <li>Une API qui expose la base à ton front.</li>
+                    <li>Un endroit pour stocker les fichiers (avatars, PDFs, images).</li>
+                    <li>Parfois, des notifications en temps réel quand des données changent.</li>
+                </ol>
+                <p>
+                    Sans Supabase, tu codes tout ça toi-même : Postgres dans Docker,
+                    bcrypt + JWT pour l'auth, FastAPI pour les endpoints CRUD, un bucket S3
+                    ou MinIO pour les fichiers, des websockets si tu veux du temps réel. Une
+                    semaine de plomberie avant d'écrire la première ligne de logique métier.
+                </p>
+                <p>
+                    Avec Supabase, ces 5 briques sont installées et configurées dès la
+                    création du projet. Tu commences directement par ton métier.
+                </p>
+                <ul>
+                    <li><strong>PostgreSQL géré</strong> — une vraie base relationnelle (pas
+                        un store NoSQL). Tu écris du SQL standard, tu peux y brancher
+                        n'importe quel client Postgres.</li>
+                    <li><strong>API REST &amp; GraphQL automatiques</strong> — chaque table
+                        crée immédiatement ses endpoints CRUD via PostgREST, sans coder.</li>
+                    <li><strong>Auth intégrée</strong> — signup/login email+mot de passe,
+                        magic link, OAuth (Google, GitHub, etc.) en quelques lignes.</li>
+                    <li><strong>Storage</strong> — buckets de fichiers avec permissions
+                        adossées à l'auth.</li>
+                    <li><strong>Realtime</strong> — abonnements aux changements d'une table
+                        via websocket, sans serveur dédié.</li>
+                    <li><strong>Edge Functions</strong> — fonctions serverless en Deno
+                        (TypeScript) pour la logique custom.</li>
+                    <li><strong>Open source</strong> — tu peux héberger toi-même la stack
+                        complète si tu veux sortir du cloud Supabase.</li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Supabase vs Firebase</div>
+                    <p>
+                        Supabase se présente comme « <em>l'alternative open-source à
+                        Firebase</em> ». Différence clé : Firebase utilise <strong>Firestore</strong>
+                        (NoSQL, propriétaire, lock-in Google), Supabase utilise
+                        <strong>PostgreSQL</strong> (relationnel, standard, portable
+                        n'importe où). Si tu connais déjà du SQL, l'apprentissage est
+                        quasi-gratuit. Si tu veux migrer un jour, tu pars avec un dump
+                        Postgres standard.
+                    </p>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>
+                        Supabase, c'est <strong>Postgres + tout ce qu'on met autour habituellement</strong>,
+                        installé en 2 minutes dans le cloud, et utilisable depuis n'importe
+                        quel langage via SDK ou directement via l'API REST.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu prépares ton projet de fin de formation : une appli de partage de
+                    recettes. Les fonctionnalités prévues :
+                </p>
+                <ul>
+                    <li>Inscription / connexion des utilisateurs.</li>
+                    <li>Chacun publie ses recettes (titre, ingrédients, photo).</li>
+                    <li>On peut liker les recettes des autres.</li>
+                    <li>Le compteur de likes se met à jour en direct (sans recharger).</li>
+                </ul>
+                <p>
+                    Sans Supabase, l'arborescence à monter ressemblerait à :
+                </p>
+                <ul>
+                    <li>Backend FastAPI avec endpoints <code>/auth</code>,
+                        <code>/recettes</code>, <code>/likes</code>.</li>
+                    <li>Postgres dans Docker pour la BD, Alembic pour les migrations.</li>
+                    <li>Hash bcrypt + JWT pour l'auth, gestion du <em>refresh token</em>.</li>
+                    <li>S3/MinIO pour les photos.</li>
+                    <li>WebSocket dédié pour le compteur en temps réel.</li>
+                    <li>Hébergement de tout ça quelque part.</li>
+                </ul>
+                <p>Avec Supabase :</p>
+                <ul>
+                    <li>Tu crées un projet sur supabase.com.</li>
+                    <li>Tu crées les tables <code>recettes</code> et <code>likes</code> à la
+                        souris (ou en SQL) dans l'interface.</li>
+                    <li>Tu actives <em>email + password</em> dans la section Auth.</li>
+                    <li>Tu crées un bucket <code>photos</code> dans la section Storage.</li>
+                    <li>Tu installes <code>supabase</code> dans ton projet front
+                        (ou Python), tu colles les deux clés, tu codes la logique.</li>
+                </ul>
+                <p>
+                    Le temps gagné, c'est tout ce qui n'est pas spécifique à <em>ton</em>
+                    appli. Pour un MVP, un prototype, un projet pédagogique, ou même un
+                    SaaS modeste qui démarre, c'est massif.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : démarrer avec Supabase</h2>
+
+                <h3>1. Créer un projet</h3>
+                <ul>
+                    <li>Va sur <code>supabase.com</code>, crée un compte (GitHub recommandé).</li>
+                    <li>Clique <em>New project</em>. Choisis un nom, un mot de passe pour la
+                        BD Postgres (à garder précieusement), et une région proche de toi
+                        (Paris pour l'UE).</li>
+                    <li>Le projet se provisionne en ~2 minutes.</li>
+                </ul>
+                <p>
+                    Une fois le projet prêt, va dans <em>Project Settings → API</em>. Note
+                    deux valeurs :
+                </p>
+                <ul>
+                    <li><strong>Project URL</strong> : <code>https://xxxx.supabase.co</code></li>
+                    <li><strong>anon public key</strong> : un long JWT — c'est la clé
+                        publique, elle peut vivre côté client (front).</li>
+                </ul>
+
+                <div class="info-box warn">
+                    <div class="info-title">⚠ Ne JAMAIS exposer la clé <code>service_role</code></div>
+                    <p>
+                        Sur la même page, tu verras une clé <code>service_role</code>. Elle
+                        bypasse toutes les règles de sécurité. Elle ne doit
+                        <strong>jamais</strong> apparaître dans du code client (front,
+                        mobile, repo public). Elle reste sur ton serveur, dans une variable
+                        d'environnement. Si elle fuite, considère qu'on a accès en
+                        écriture/lecture à toute ta base.
+                    </p>
+                </div>
+
+                <h3>2. Créer une table</h3>
+                <p>
+                    Deux chemins, équivalents :
+                </p>
+                <ul>
+                    <li><strong>Interface graphique</strong> — <em>Table Editor → New table</em>.
+                        Tu nommes la table, tu ajoutes les colonnes, tu valides.</li>
+                    <li><strong>SQL Editor</strong> — pour ceux qui préfèrent le SQL :</li>
+                </ul>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sql</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">CREATE TABLE</span> recettes (
+    id <span class="tk-keyword">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    user_id <span class="tk-keyword">UUID REFERENCES</span> auth.users(id),
+    titre <span class="tk-keyword">TEXT NOT NULL</span>,
+    ingredients <span class="tk-keyword">TEXT</span>,
+    created_at <span class="tk-keyword">TIMESTAMPTZ DEFAULT</span> now()
+);</code></pre>
+                </div>
+                <p>
+                    Note la référence à <code>auth.users(id)</code> : Supabase fournit déjà
+                    le schéma <code>auth</code> avec sa propre table d'utilisateurs.
+                    On l'utilise comme clé étrangère.
+                </p>
+
+                <h3>3. Installer le SDK</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (Python)</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">uv</span> add supabase</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (JavaScript)</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">npm</span> install @supabase/supabase-js</code></pre>
+                </div>
+
+                <h3>4. Initialiser le client</h3>
+                <p>
+                    Les deux SDK suivent la même logique : URL + clé anon → client.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> os
+<span class="tk-keyword">from</span> supabase <span class="tk-keyword">import</span> create_client, Client
+
+url: <span class="tk-keyword">str</span> = os.environ[<span class="tk-string">"SUPABASE_URL"</span>]
+key: <span class="tk-keyword">str</span> = os.environ[<span class="tk-string">"SUPABASE_ANON_KEY"</span>]
+supabase: Client = <span class="tk-fn">create_client</span>(url, key)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">javascript</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> { createClient } <span class="tk-keyword">from</span> <span class="tk-string">'@supabase/supabase-js'</span>
+
+<span class="tk-keyword">const</span> supabase = <span class="tk-fn">createClient</span>(
+    <span class="tk-fn">process</span>.env.SUPABASE_URL,
+    <span class="tk-fn">process</span>.env.SUPABASE_ANON_KEY
+)</code></pre>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Variables d'environnement</div>
+                    <p>
+                        Stocke <code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code>
+                        dans un fichier <code>.env</code> (jamais commité — ajoute-le à
+                        <code>.gitignore</code>). En Python, charge-le avec
+                        <code>python-dotenv</code>. Dans Next.js/Vite, le préfixe
+                        <code>NEXT_PUBLIC_</code> ou <code>VITE_</code> est requis pour
+                        que la clé soit accessible côté client.
+                    </p>
+                </div>
+
+                <h3>5. CRUD sur une table</h3>
+                <p>
+                    Le SDK propose une API fluide qui appelle l'API REST de Supabase
+                    (PostgREST) par-dessus.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># INSERT</span>
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"recettes"</span>).<span class="tk-fn">insert</span>({
+    <span class="tk-string">"titre"</span>: <span class="tk-string">"Tarte tatin"</span>,
+    <span class="tk-string">"ingredients"</span>: <span class="tk-string">"pommes, beurre, sucre, pâte"</span>,
+}).<span class="tk-fn">execute</span>()
+
+<span class="tk-comment"># SELECT avec filtre</span>
+res = (
+    supabase.<span class="tk-fn">table</span>(<span class="tk-string">"recettes"</span>)
+    .<span class="tk-fn">select</span>(<span class="tk-string">"id, titre, created_at"</span>)
+    .<span class="tk-fn">eq</span>(<span class="tk-string">"user_id"</span>, current_user_id)
+    .<span class="tk-fn">order</span>(<span class="tk-string">"created_at"</span>, desc=<span class="tk-keyword">True</span>)
+    .<span class="tk-fn">limit</span>(<span class="tk-num">10</span>)
+    .<span class="tk-fn">execute</span>()
+)
+<span class="tk-keyword">for</span> row <span class="tk-keyword">in</span> res.data:
+    <span class="tk-fn">print</span>(row[<span class="tk-string">"titre"</span>])
+
+<span class="tk-comment"># UPDATE / DELETE</span>
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"recettes"</span>).<span class="tk-fn">update</span>({<span class="tk-string">"titre"</span>: <span class="tk-string">"Tarte Tatin"</span>}).<span class="tk-fn">eq</span>(<span class="tk-string">"id"</span>, recette_id).<span class="tk-fn">execute</span>()
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"recettes"</span>).<span class="tk-fn">delete</span>().<span class="tk-fn">eq</span>(<span class="tk-string">"id"</span>, recette_id).<span class="tk-fn">execute</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">javascript</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment">// INSERT</span>
+<span class="tk-keyword">await</span> supabase.<span class="tk-fn">from</span>(<span class="tk-string">'recettes'</span>).<span class="tk-fn">insert</span>({
+    titre: <span class="tk-string">'Tarte tatin'</span>,
+    ingredients: <span class="tk-string">'pommes, beurre, sucre, pâte'</span>,
+})
+
+<span class="tk-comment">// SELECT avec filtre</span>
+<span class="tk-keyword">const</span> { data, error } = <span class="tk-keyword">await</span> supabase
+    .<span class="tk-fn">from</span>(<span class="tk-string">'recettes'</span>)
+    .<span class="tk-fn">select</span>(<span class="tk-string">'id, titre, created_at'</span>)
+    .<span class="tk-fn">eq</span>(<span class="tk-string">'user_id'</span>, currentUserId)
+    .<span class="tk-fn">order</span>(<span class="tk-string">'created_at'</span>, { ascending: <span class="tk-keyword">false</span> })
+    .<span class="tk-fn">limit</span>(<span class="tk-num">10</span>)
+
+<span class="tk-comment">// UPDATE / DELETE</span>
+<span class="tk-keyword">await</span> supabase.<span class="tk-fn">from</span>(<span class="tk-string">'recettes'</span>).<span class="tk-fn">update</span>({ titre: <span class="tk-string">'Tarte Tatin'</span> }).<span class="tk-fn">eq</span>(<span class="tk-string">'id'</span>, recetteId)
+<span class="tk-keyword">await</span> supabase.<span class="tk-fn">from</span>(<span class="tk-string">'recettes'</span>).<span class="tk-fn">delete</span>().<span class="tk-fn">eq</span>(<span class="tk-string">'id'</span>, recetteId)</code></pre>
+                </div>
+                <p>
+                    Sous le capot : chaque appel devient une requête HTTP
+                    <code>GET /rest/v1/recettes?...</code>,
+                    <code>POST /rest/v1/recettes</code>, etc. Tu peux aussi appeler l'API
+                    REST directement avec <code>fetch</code> ou <code>requests</code>, sans
+                    SDK. Le SDK est juste un wrapper ergonomique.
+                </p>
+
+                <h3>6. Authentification</h3>
+                <p>
+                    Active <em>Email</em> dans <em>Authentication → Providers</em> (déjà
+                    actif par défaut). Le code client :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Inscription</span>
+supabase.auth.<span class="tk-fn">sign_up</span>({<span class="tk-string">"email"</span>: <span class="tk-string">"alice@example.com"</span>, <span class="tk-string">"password"</span>: <span class="tk-string">"un_mdp_solide"</span>})
+
+<span class="tk-comment"># Connexion</span>
+res = supabase.auth.<span class="tk-fn">sign_in_with_password</span>({
+    <span class="tk-string">"email"</span>: <span class="tk-string">"alice@example.com"</span>,
+    <span class="tk-string">"password"</span>: <span class="tk-string">"un_mdp_solide"</span>,
+})
+<span class="tk-fn">print</span>(res.user.id)        <span class="tk-comment"># UUID de l'utilisateur</span>
+<span class="tk-fn">print</span>(res.session.access_token)  <span class="tk-comment"># JWT à utiliser pour les requêtes suivantes</span>
+
+<span class="tk-comment"># Déconnexion</span>
+supabase.auth.<span class="tk-fn">sign_out</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">javascript</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment">// Inscription</span>
+<span class="tk-keyword">await</span> supabase.auth.<span class="tk-fn">signUp</span>({ email: <span class="tk-string">'alice@example.com'</span>, password: <span class="tk-string">'un_mdp_solide'</span> })
+
+<span class="tk-comment">// Connexion</span>
+<span class="tk-keyword">const</span> { data, error } = <span class="tk-keyword">await</span> supabase.auth.<span class="tk-fn">signInWithPassword</span>({
+    email: <span class="tk-string">'alice@example.com'</span>,
+    password: <span class="tk-string">'un_mdp_solide'</span>,
+})
+
+<span class="tk-comment">// Récupérer l'utilisateur courant</span>
+<span class="tk-keyword">const</span> { data: { user } } = <span class="tk-keyword">await</span> supabase.auth.<span class="tk-fn">getUser</span>()
+
+<span class="tk-comment">// Déconnexion</span>
+<span class="tk-keyword">await</span> supabase.auth.<span class="tk-fn">signOut</span>()</code></pre>
+                </div>
+                <p>
+                    Une fois connecté, le SDK garde le JWT et l'envoie automatiquement
+                    dans l'en-tête <code>Authorization: Bearer ...</code> de chaque requête
+                    suivante. Côté Postgres, ce JWT est interprété et alimente les règles
+                    RLS (cf. plus bas).
+                </p>
+                <p>
+                    Pour activer la connexion via Google/GitHub : <em>Authentication →
+                    Providers</em>, tu actives le provider, tu colles le client ID/secret
+                    (récupérés sur la console du provider). Une seule ligne change côté
+                    client : <code>signInWithOAuth({ provider: 'google' })</code>.
+                </p>
+
+                <h3>7. Row Level Security (RLS) — incontournable</h3>
+                <p>
+                    Par défaut, dès que tu actives RLS sur une table, <strong>plus aucun
+                    accès n'est possible depuis la clé anon</strong>. Tu dois écrire des
+                    <em>policies</em> qui décrivent qui peut faire quoi. C'est le mécanisme
+                    de sécurité central de Supabase.
+                </p>
+
+                <div class="info-box warn">
+                    <div class="info-title">⚠ Activer RLS sur toutes les tables exposées au client</div>
+                    <p>
+                        Sans RLS, n'importe qui ayant la clé anon (= n'importe quel visiteur
+                        de ton appli web) peut lire et modifier toutes tes tables. RLS
+                        n'est pas optionnel pour une appli en production.
+                    </p>
+                </div>
+
+                <p>
+                    Exemple : « un utilisateur ne peut voir que ses propres recettes ». On
+                    active RLS et on écrit deux policies (lecture, écriture) :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sql</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment">-- Activer RLS sur la table</span>
+<span class="tk-keyword">ALTER TABLE</span> recettes <span class="tk-keyword">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="tk-comment">-- Policy 1 : un user peut SELECT ses propres recettes</span>
+<span class="tk-keyword">CREATE POLICY</span> <span class="tk-string">"recettes_select_own"</span>
+    <span class="tk-keyword">ON</span> recettes <span class="tk-keyword">FOR SELECT</span>
+    <span class="tk-keyword">USING</span> (auth.uid() = user_id);
+
+<span class="tk-comment">-- Policy 2 : un user peut INSERT en se mettant comme propriétaire</span>
+<span class="tk-keyword">CREATE POLICY</span> <span class="tk-string">"recettes_insert_self"</span>
+    <span class="tk-keyword">ON</span> recettes <span class="tk-keyword">FOR INSERT</span>
+    <span class="tk-keyword">WITH CHECK</span> (auth.uid() = user_id);</code></pre>
+                </div>
+                <p>
+                    <code>auth.uid()</code> est une fonction Postgres fournie par Supabase
+                    qui renvoie l'UUID de l'utilisateur connecté (extrait du JWT). Si la
+                    requête vient d'un visiteur non connecté, elle renvoie
+                    <code>NULL</code> et la policy bloque tout.
+                </p>
+                <p>
+                    Mentale model utile : <strong>RLS s'applique au niveau Postgres</strong>,
+                    pas au niveau du SDK. Même si quelqu'un appelle l'API REST en bypassant
+                    ton code, la policy s'applique. C'est ce qui rend l'architecture
+                    « clé anon côté client » sûre.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>Les autres services en bref</h2>
+
+                <h3>Storage</h3>
+                <p>
+                    Buckets de fichiers (images, PDFs, etc.). Chaque bucket peut être
+                    public ou privé, et les accès sont régis par des policies RLS, comme
+                    pour les tables.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">with</span> <span class="tk-fn">open</span>(<span class="tk-string">"avatar.png"</span>, <span class="tk-string">"rb"</span>) <span class="tk-keyword">as</span> f:
+    supabase.storage.<span class="tk-fn">from_</span>(<span class="tk-string">"avatars"</span>).<span class="tk-fn">upload</span>(<span class="tk-string">"alice/avatar.png"</span>, f)
+
+url = supabase.storage.<span class="tk-fn">from_</span>(<span class="tk-string">"avatars"</span>).<span class="tk-fn">get_public_url</span>(<span class="tk-string">"alice/avatar.png"</span>)</code></pre>
+                </div>
+
+                <h3>Realtime</h3>
+                <p>
+                    Abonnements aux changements d'une table via WebSocket. Utile pour les
+                    feeds, chats, dashboards live.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">javascript</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code>supabase
+    .<span class="tk-fn">channel</span>(<span class="tk-string">'recettes-changes'</span>)
+    .<span class="tk-fn">on</span>(<span class="tk-string">'postgres_changes'</span>,
+        { event: <span class="tk-string">'INSERT'</span>, schema: <span class="tk-string">'public'</span>, table: <span class="tk-string">'recettes'</span> },
+        (payload) =&gt; <span class="tk-fn">console</span>.<span class="tk-fn">log</span>(<span class="tk-string">'Nouvelle recette :'</span>, payload.new)
+    )
+    .<span class="tk-fn">subscribe</span>()</code></pre>
+                </div>
+
+                <h3>Edge Functions</h3>
+                <p>
+                    Pour la logique custom qui ne peut pas vivre côté client (envoyer un
+                    email avec une clé secrète, appeler une API tierce avec un token
+                    privé, etc.) : des fonctions serverless en Deno (TypeScript), déployées
+                    via la CLI Supabase. Tu les appelles depuis ton client comme une
+                    fonction RPC.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">javascript</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">const</span> { data, error } = <span class="tk-keyword">await</span> supabase.functions.<span class="tk-fn">invoke</span>(<span class="tk-string">'envoyer-email'</span>, {
+    body: { destinataire: <span class="tk-string">'alice@example.com'</span>, sujet: <span class="tk-string">'Bienvenue'</span> }
+})</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python — opérations courantes</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># SELECT avec plusieurs filtres</span>
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"t"</span>).<span class="tk-fn">select</span>(<span class="tk-string">"*"</span>).<span class="tk-fn">eq</span>(<span class="tk-string">"col"</span>, val).<span class="tk-fn">gt</span>(<span class="tk-string">"n"</span>, <span class="tk-num">5</span>).<span class="tk-fn">execute</span>()
+
+<span class="tk-comment"># Jointure (relation déclarée par foreign key)</span>
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"recettes"</span>).<span class="tk-fn">select</span>(<span class="tk-string">"*, profils(nom)"</span>).<span class="tk-fn">execute</span>()
+
+<span class="tk-comment"># Pagination</span>
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"t"</span>).<span class="tk-fn">select</span>(<span class="tk-string">"*"</span>).<span class="tk-fn">range</span>(<span class="tk-num">0</span>, <span class="tk-num">9</span>).<span class="tk-fn">execute</span>()    <span class="tk-comment"># 10 premiers</span>
+
+<span class="tk-comment"># Upsert (INSERT ou UPDATE selon clé primaire)</span>
+supabase.<span class="tk-fn">table</span>(<span class="tk-string">"t"</span>).<span class="tk-fn">upsert</span>({<span class="tk-string">"id"</span>: <span class="tk-num">1</span>, <span class="tk-string">"x"</span>: <span class="tk-string">"y"</span>}).<span class="tk-fn">execute</span>()
+
+<span class="tk-comment"># Récupérer l'utilisateur connecté</span>
+user = supabase.auth.<span class="tk-fn">get_user</span>().user</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">opérateurs PostgREST courants</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code>.eq(col, val)        <span class="tk-comment"># col = val</span>
+.neq(col, val)       <span class="tk-comment"># col != val</span>
+.gt(col, val)        <span class="tk-comment"># col > val</span>
+.gte(col, val)       <span class="tk-comment"># col >= val</span>
+.lt / .lte           <span class="tk-comment"># &lt; et &lt;=</span>
+.in_(col, [a, b, c]) <span class="tk-comment"># col IN (...)</span>
+.like(col, '%foo%')  <span class="tk-comment"># LIKE</span>
+.is_(col, None)      <span class="tk-comment"># col IS NULL</span>
+.order(col, desc=True)
+.limit(n)
+.range(start, end)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Supabase et le reste de l'écosystème</h2>
+                <ul>
+                    <li><a href="sqlite.html">SQLite</a> — pour le dev local hors-ligne ou un
+                        prototype mono-utilisateur, SQLite reste plus simple. Supabase
+                        prend le relais dès que tu as besoin d'auth, multi-utilisateurs ou
+                        d'un déploiement en ligne.</li>
+                    <li><a href="sqlalchemy.html">SQLAlchemy</a> — Supabase est du Postgres.
+                        Tu peux y connecter SQLAlchemy avec la chaîne de connexion fournie
+                        dans <em>Project Settings → Database</em>, et utiliser l'ORM en
+                        parallèle du SDK Supabase pour la logique côté serveur.</li>
+                    <li><a href="fastapi.html">FastAPI</a> — pattern hybride courant : tu
+                        utilises Supabase pour l'auth + la BD, et FastAPI pour la logique
+                        métier qui ne tient pas dans des Edge Functions (calculs lourds,
+                        ML, intégrations tierces complexes). Le client front parle aux
+                        deux.</li>
+                    <li><a href="docker.html">Docker</a> — Supabase peut être auto-hébergé via
+                        Docker Compose (image officielle <code>supabase/supabase</code>).
+                        Utile si tu refuses le cloud, ou pour un dev local fidèle à la
+                        prod.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li><strong>CLI Supabase</strong> — <code>npx supabase</code> ou
+                        <code>brew install supabase/tap/supabase</code>. Permet de gérer
+                        les migrations SQL versionnées dans Git, de générer les types
+                        TypeScript depuis ton schéma, et de lancer une instance Supabase
+                        complète en local pour le dev.</li>
+                    <li><strong>Quotas du plan gratuit</strong> — 500 Mo de BD, 1 Go de
+                        Storage, 50 000 utilisateurs actifs/mois, projet en pause après
+                        7 jours d'inactivité. Largement suffisant pour un projet
+                        pédagogique ou un MVP.</li>
+                    <li><strong>Vrai prod</strong> — pense à activer les backups quotidiens
+                        (plan payant), à configurer le rate limiting de l'auth, et à passer
+                        en revue toutes tes policies RLS (chaque table doit en avoir).</li>
+                    <li><strong>Documentation</strong> — <code>supabase.com/docs</code> est
+                        bien fait et progresse vite. La référence du SDK Python est moins
+                        complète que celle du SDK JS — quand un détail manque côté Python,
+                        regarde la doc JS, l'API est calquée.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
