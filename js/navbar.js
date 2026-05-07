@@ -38,6 +38,12 @@
                             <a href="mlflow.html">MLflow</a>
                         </div>
                         <div class="dropdown-section">
+                            <div class="dropdown-title">Monitoring</div>
+                            <a href="prometheus.html">Prometheus</a>
+                            <a href="grafana.html">Grafana</a>
+                            <a href="uptime-kuma.html">Uptime Kuma</a>
+                        </div>
+                        <div class="dropdown-section">
                             <div class="dropdown-title">Données</div>
                             <a href="sqlalchemy.html">SQLAlchemy</a>
                             <a href="pandas.html">pandas</a>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Uptime Kuma — DevIA Notes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="index.html">Accueil</a> / Uptime Kuma</div>
+                <h1>Uptime Kuma</h1>
+                <p class="subtitle">
+                    Le « est-ce que mon service répond ? » self-hosted : tu lui donnes une URL,
+                    il la teste toutes les minutes, t'envoie une notif quand ça tombe, et
+                    affiche une page de statut publique. Une seule image Docker, zéro config.
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Sa place à côté de Prometheus + Grafana</div>
+                <p>
+                    <a href="prometheus.html">Prometheus</a> mesure <em>comment</em> ton service
+                    se comporte (latence, débit, percentiles). Uptime Kuma répond à une question
+                    plus simple et complémentaire : <em>est-ce qu'il répond, oui ou non ?</em>,
+                    et te ping sur Discord/Telegram/e-mail quand la réponse devient « non ».
+                    Sur un petit projet, Uptime Kuma seul suffit souvent ; sur un projet plus
+                    sérieux, les trois cohabitent.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Tu déploies une API, un site, une base de données. Tout marche le jour où
+                    tu lances. Trois semaines plus tard, le serveur a redémarré, le certificat
+                    SSL a expiré, ou ton conteneur s'est crashé en silence. Tu t'en aperçois…
+                    quand un utilisateur te le signale.
+                </p>
+                <p>Uptime Kuma règle ça avec quatre briques :</p>
+                <ul>
+                    <li><strong>Monitors</strong> — chaque service à surveiller (URL HTTP, port
+                        TCP, ping, DNS, conteneur Docker, certificat SSL…). Un check
+                        configurable toutes les <em>n</em> secondes.</li>
+                    <li><strong>Notifications</strong> — plus de 90 canaux supportés : e-mail,
+                        Discord, Slack, Telegram, webhook, ntfy, SMS…</li>
+                    <li><strong>Status pages</strong> — une page publique (par ex.
+                        <code>status.tonprojet.fr</code>) qui montre l'état de chaque service,
+                        avec historique. Tu la partages aux utilisateurs.</li>
+                    <li><strong>Maintenance windows</strong> — pour ne pas être spammé pendant
+                        que tu déploies.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Uptime Kuma = un robot qui frappe à la porte de ton service toutes les minutes et te crie dessus dès qu'on ne lui répond plus.</p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Self-hosted vs SaaS</div>
+                    <p>
+                        Uptime Kuma est l'équivalent open source et gratuit de services payants
+                        comme UptimeRobot, Pingdom ou StatusCake. Un seul conteneur, une UI web
+                        soignée, pas de compte cloud à créer. Bémol : il tourne <em>chez
+                        toi</em>, donc si ton hébergeur entier tombe, Uptime Kuma tombe avec.
+                        Pour un projet de cours c'est parfait ; en prod sérieuse, on l'héberge
+                        ailleurs que là où tournent les services qu'il surveille.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as déployé ton API <a href="fastapi.html">FastAPI</a> sur
+                    <code>https://api.monprojet.fr</code> et un dashboard
+                    <a href="streamlit.html">Streamlit</a> sur
+                    <code>https://demo.monprojet.fr</code>. Tu veux :
+                </p>
+                <ul>
+                    <li>vérifier que les deux répondent en HTTP 200 toutes les minutes ;</li>
+                    <li>recevoir une notif Discord si une URL ne répond plus pendant 2 minutes
+                        d'affilée ;</li>
+                    <li>une page publique <code>status.monprojet.fr</code> partageable avec ta
+                        promo, qui montre l'état des deux en temps réel.</li>
+                </ul>
+                <p>
+                    Avec Uptime Kuma, ces trois choses se font en cliquant dans l'UI, sans
+                    écrire une ligne de code. Total : 10 minutes.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Uptime Kuma</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer Uptime Kuma avec Docker</h4>
+                        <p>Un seul conteneur, une seule commande :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name uptime-kuma \
+  -p 3001:3001 \
+  -v uptime-kuma-data:/app/data \
+  --restart unless-stopped \
+  louislam/uptime-kuma:1</code></pre>
+                        </div>
+                        <p>
+                            Le volume <code>uptime-kuma-data</code> garde tes monitors et ton
+                            historique : ne l'oublie pas, sinon tout disparaît au prochain
+                            <code>docker rm</code>. Ouvre
+                            <code>http://localhost:3001</code> et crée le compte admin (gardé
+                            <em>en local</em>, dans une SQLite, pas envoyé sur internet).
+                        </p>
+                        <div class="info-box warn">
+                            <div class="info-title">Épingle la version majeure</div>
+                            <p>
+                                Utilise <code>louislam/uptime-kuma:1</code> plutôt que
+                                <code>:latest</code>. La v2 introduit des changements de schéma
+                                ; mieux vaut décider toi-même quand tu migres.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Avec docker-compose (recommandé)</h4>
+                        <p>
+                            Si tu as déjà un <code>docker-compose.yml</code> pour ton projet,
+                            ajoute Uptime Kuma à côté :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    ports: [<span class="tk-string">"3001:3001"</span>]
+    volumes:
+      - uptime-kuma-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  uptime-kuma-data:</code></pre>
+                        </div>
+                        <p>
+                            <code>docker compose up -d uptime-kuma</code> et c'est prêt.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer ton premier monitor</h4>
+                        <p>
+                            Dans l'UI, clique <strong>Add New Monitor</strong>. Les champs qui
+                            comptent vraiment :
+                        </p>
+                        <ul>
+                            <li><strong>Monitor Type</strong> — <code>HTTP(s)</code> pour une
+                                URL, <code>TCP Port</code> pour une base de données ou un
+                                broker, <code>Ping</code> pour une machine, <code>Docker
+                                Container</code> pour un conteneur local.</li>
+                            <li><strong>Friendly Name</strong> — ce que tu veux voir dans
+                                l'UI.</li>
+                            <li><strong>URL</strong> — ex.
+                                <code>https://api.monprojet.fr/health</code>. Pointe vers un
+                                endpoint léger, pas la home complète.</li>
+                            <li><strong>Heartbeat Interval</strong> — 60 s par défaut, tu peux
+                                descendre à 20 s.</li>
+                            <li><strong>Retries</strong> — combien de checks ratés avant de
+                                déclarer l'incident. 2 ou 3 évite les fausses alertes.</li>
+                        </ul>
+                        <div class="info-box tip">
+                            <div class="info-title">Endpoint /health</div>
+                            <p>
+                                Sur ton API FastAPI, ajoute une route ultra-simple :
+                                <code>@app.get("/health") def health(): return {"ok": True}</code>.
+                                C'est elle que tu monitores : pas de logique métier, pas de
+                                base de données touchée, donc un check rapide et fiable.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Brancher une notification</h4>
+                        <p>
+                            Menu <strong>Settings → Notifications → Setup Notification</strong>.
+                            Choisis ton canal — Discord est le plus simple pour démarrer :
+                        </p>
+                        <ol>
+                            <li>Sur ton serveur Discord :
+                                <strong>Paramètres du salon → Intégrations → Webhooks → Nouveau
+                                webhook</strong>, copie l'URL.</li>
+                            <li>Dans Uptime Kuma, colle l'URL dans le champ <em>Discord Webhook
+                                URL</em>, donne un nom, <strong>Test</strong> pour vérifier,
+                                puis <strong>Save</strong>.</li>
+                            <li>Coche <strong>Default enabled</strong> pour qu'elle s'applique
+                                automatiquement à tous les nouveaux monitors.</li>
+                        </ol>
+                        <p>
+                            Maintenant, dès qu'un monitor passe en <code>DOWN</code> pendant le
+                            nombre de retries configuré, tu reçois un message. Idem au retour
+                            en <code>UP</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer une page de statut publique</h4>
+                        <p>
+                            Menu <strong>Status Pages → New Status Page</strong>. Donne-lui un
+                            slug (ex. <code>monprojet</code>) — l'URL publique sera
+                            <code>http://localhost:3001/status/monprojet</code>. Choisis les
+                            monitors à afficher, range-les en groupes (« API »,
+                            « Front », « Base de données »), et coche
+                            <strong>Published</strong>.
+                        </p>
+                        <p>
+                            La page montre pour chaque service : statut courant, uptime % sur
+                            24 h / 30 j, et un graphe de l'historique. Aucune authentification
+                            requise — pratique à partager.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Mettre une fenêtre de maintenance</h4>
+                        <p>
+                            Avant un déploiement prévu : menu <strong>Maintenance → New
+                            Maintenance</strong>. Tu choisis les monitors concernés, la durée
+                            (ponctuelle ou récurrente), et pendant ce créneau les checks sont
+                            ignorés et la page de statut affiche « Under Maintenance ». Pas de
+                            fausse alerte Discord à 22 h.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Surveiller des services internes (Docker)</h4>
+                        <p>
+                            Pour qu'Uptime Kuma puisse joindre tes autres conteneurs par leur
+                            nom (ex. <code>http://api:8000/health</code>), mets-les sur le même
+                            réseau Docker. Avec un <code>docker-compose.yml</code> commun,
+                            c'est automatique.
+                        </p>
+                        <p>
+                            Pour monitorer le statut d'un conteneur (« est-il en cours d'exécution ? »)
+                            sans HTTP, utilise le type <strong>Docker Container</strong> :
+                            Uptime Kuma se branche sur le socket Docker. Il faut alors monter
+                            <code>/var/run/docker.sock</code> dans le conteneur Uptime Kuma
+                            (attention, ça donne un accès large à Docker — à n'utiliser qu'en
+                            local ou sur ta machine perso).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder ses monitors</h4>
+                        <p>
+                            Menu <strong>Settings → Backup → Export</strong> télécharge un JSON
+                            avec tous tes monitors et leurs réglages. Commit-le (sans tokens
+                            sensibles !) ou garde-le ailleurs : si le volume Docker disparaît,
+                            <strong>Import</strong> tout remettra en place en quelques
+                            secondes.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (Docker)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Lancer</span>
+<span class="tk-cmd">docker</span> run -d --name uptime-kuma -p 3001:3001 \
+  -v uptime-kuma-data:/app/data --restart unless-stopped \
+  louislam/uptime-kuma:1
+
+<span class="tk-comment"># Logs</span>
+<span class="tk-cmd">docker</span> logs -f uptime-kuma
+
+<span class="tk-comment"># Mettre à jour (épinglé sur la v1)</span>
+<span class="tk-cmd">docker</span> pull louislam/uptime-kuma:1
+<span class="tk-cmd">docker</span> stop uptime-kuma <span class="tk-keyword">&amp;&amp;</span> <span class="tk-cmd">docker</span> rm uptime-kuma
+<span class="tk-comment"># puis relancer la commande run avec le même volume</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">types de monitors les plus utiles</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>HTTP(s)            <span class="tk-comment"># une URL, code de retour 2xx</span>
+HTTP Keyword       <span class="tk-comment"># vérifie qu'un mot précis est dans la réponse</span>
+HTTP JSON Query    <span class="tk-comment"># cible un champ JSON (ex. {"status":"ok"})</span>
+TCP Port           <span class="tk-comment"># une base, un broker</span>
+Ping               <span class="tk-comment"># ICMP vers une machine</span>
+DNS                <span class="tk-comment"># résolution d'un nom</span>
+Docker Container   <span class="tk-comment"># conteneur en cours d'exécution</span>
+Push (Heartbeat)   <span class="tk-comment"># c'est le job qui ping Uptime Kuma (cron, batch)</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Uptime Kuma et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="prometheus.html">Prometheus</a> +
+                        <a href="grafana.html">Grafana</a></strong> — voir l'encart en haut
+                        de page. Uptime Kuma répond à « ça marche ? », Prometheus/Grafana à
+                        « ça marche bien ? ». Bonus : Uptime Kuma expose une API
+                        <code>/metrics</code> compatible Prometheus depuis la v1.18, donc tu
+                        peux aussi tracer son uptime dans Grafana.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — un seul conteneur,
+                        un volume, c'est l'installation officielle. Idéal pour intégrer dans
+                        un <code>docker-compose.yml</code> de projet.
+                    </li>
+                    <li>
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> — un Helm
+                        chart communautaire existe, mais sur un cluster en prod on préfère
+                        souvent l'opérateur <em>kube-prometheus-stack</em> + <em>blackbox
+                        exporter</em> pour les checks HTTP, qui s'intègre mieux à
+                        l'écosystème.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — ajoute une route
+                        <code>/health</code> légère et pointe Uptime Kuma dessus. Pour aller
+                        plus loin, fais un check qui teste la base de données et renvoie 503
+                        si elle ne répond pas — Uptime Kuma le détectera comme un
+                        <code>DOWN</code>.
+                    </li>
+                    <li>
+                        <strong><a href="cicd.html">CI/CD</a></strong> — utilise un monitor de
+                        type <em>Push</em> pour vérifier qu'un job batch (ré-entraînement,
+                        export quotidien) tourne bien. Le job fait un
+                        <code>curl https://kuma/api/push/&lt;token&gt;</code> à la fin ;
+                        Uptime Kuma s'attend à recevoir ce ping toutes les <em>n</em> heures
+                        et alerte sinon.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — surveille
+                        simplement l'URL de ton MLflow server avec un monitor HTTP. Utile si
+                        toute ton équipe en dépend pour logger ses runs.
+                    </li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://uptime.kuma.pet/" target="_blank" rel="noopener noreferrer">uptime.kuma.pet</a></li>
+                    <li>Démo en ligne : <a href="https://demo.uptime.kuma.pet/" target="_blank" rel="noopener noreferrer">demo.uptime.kuma.pet</a></li>
+                    <li>Repo GitHub : <a href="https://github.com/louislam/uptime-kuma" target="_blank" rel="noopener noreferrer">github.com/louislam/uptime-kuma</a></li>
+                    <li>Documentation : <a href="https://github.com/louislam/uptime-kuma/wiki" target="_blank" rel="noopener noreferrer">le wiki du repo</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
