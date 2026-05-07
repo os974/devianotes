@@ -35,9 +35,9 @@ jobs:
         with:
           # --no-progress : pas de barre de progression dans les logs CI
           # --max-retries 2 : retente 2 fois en cas d'échec réseau passager
-          # --exclude-mail : ignore les liens mailto:
           # './**/*.html' : ne scanne que les fichiers HTML du repo
-          args: --no-progress --max-retries 2 --exclude-mail './**/*.html'
+          # (les liens mailto: sont ignorés par défaut depuis lychee 0.23)
+          args: --no-progress --max-retries 2 './**/*.html'
           fail: true
 
   deploy:
