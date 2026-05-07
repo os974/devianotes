@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest  # VM Ubuntu jetable, détruite à la fin du job
     steps:
       # Clone le repo dans la VM. Sans ça, la VM est vide.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Lance lychee, l'outil qui scanne les fichiers HTML.
       # `lycheeverse/lychee-action` est le wrapper officiel autour du
@@ -157,7 +157,7 @@ jobs:
     continue-on-error: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Lancer lychee sur les URLs externes
         uses: lycheeverse/lychee-action@v2
@@ -228,7 +228,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # -----------------------------------------------------------------------
       # Injecte la date du dernier commit (= "dernier push" qui a déclenché
@@ -268,14 +268,14 @@ jobs:
 
       # Prépare l'environnement Pages : récupère l'URL finale, vérifie
       # les permissions. N'a aucune sortie visible.
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       # Empaquette le contenu du dossier indiqué dans `path:` en archive
       # spéciale "Pages artifact". Ici `path: .` = tout le repo.
       # En cas de site avec build (Vite, Hugo, Jekyll), on uploaderait
       # plutôt le dossier `dist/` ou `_site/`.
       - name: Uploader le site comme artifact Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: .
 
@@ -284,4 +284,4 @@ jobs:
       # (utilisé plus haut dans `environment.url`).
       - name: Déployer
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
