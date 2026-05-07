@@ -9,7 +9,8 @@ Kubernetes, Pytest, Sphinx, SQLAlchemy, GitHub, CI/CD…
 
 ## Consultation
 
-Ouvrir `index.html` dans un navigateur ou via la version GitHub Pages.
+- En ligne : https://os974.github.io/devianotes/
+- En local : ouvrir `index.html` dans un navigateur
 
 ### Auteur
 
