@@ -230,6 +230,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # -----------------------------------------------------------------------
+      # Injecte la date du dernier commit (= "dernier push" qui a déclenché
+      # ce workflow) dans about.html, à la place du placeholder __LAST_UPDATE__.
+      #
+      # Pourquoi ici et pas en JS côté client ?
+      #   - Pas d'appel réseau au chargement de la page (perf + CSP plus stricte).
+      #   - Date figée au moment de la publication = cohérente avec ce qui est
+      #     réellement servi (la version JS pouvait montrer un commit plus
+      #     récent que le HTML déployé si on regardait pendant un nouveau run).
+      #
+      # Comment c'est calculé :
+      #   - `git log -1 --format=%cd ...` lit la date du HEAD (le commit qui a
+      #     déclenché ce workflow).
+      #   - On formate manuellement en français (« 7 mai 2026 ») via un tableau
+      #     bash de noms de mois, plutôt que d'installer la locale fr_FR sur le
+      #     runner (qui ne l'a pas par défaut). Plus simple, plus rapide.
+      #   - `sed -i` modifie about.html sur place, AVANT l'étape d'upload.
+      #     La modif n'est jamais commitée — elle vit le temps du job.
+      # -----------------------------------------------------------------------
+      - name: Injecter la date de dernier push dans about.html
+        run: |
+          months=(janvier février mars avril mai juin juillet août septembre octobre novembre décembre)
+          day=$(git log -1 --format=%cd --date=format:%-d)
+          month_idx=$(git log -1 --format=%cd --date=format:%-m)
+          year=$(git log -1 --format=%cd --date=format:%Y)
+          date_fr="${day} ${months[$((month_idx-1))]} ${year}"
+          echo "Date injectée : ${date_fr}"
+          sed -i "s|__LAST_UPDATE__|${date_fr}|g" about.html
+          # Garde-fou : si le placeholder n'a pas été remplacé, on échoue fort
+          # (typiquement si quelqu'un a renommé le marker dans about.html sans
+          # mettre à jour ce step).
+          if grep -q "__LAST_UPDATE__" about.html; then
+            echo "::error::Placeholder __LAST_UPDATE__ encore présent dans about.html"
+            exit 1
+          fi
+
       # Prépare l'environnement Pages : récupère l'URL finale, vérifie
       # les permissions. N'a aucune sortie visible.
       - uses: actions/configure-pages@v5

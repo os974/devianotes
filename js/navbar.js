@@ -108,6 +108,7 @@
                     <div class="nav-dropdown" role="menu">
                         <div class="dropdown-section">
                             <a href="${R}experience-cicd.html">CI/CD du site</a>
+                            <a href="${R}build-injection.html">Injection au build</a>
                             <a href="${R}git-setup.html">Mettre un projet sur GitHub</a>
                         </div>
                     </div>

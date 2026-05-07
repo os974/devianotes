@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Retex — Injection au build — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Retours d'expérience / Injection au build</div>
+                <h1>Retex — Afficher la date de dernier push sur le site</h1>
+                <p class="subtitle">
+                    Comment afficher « Dernière mise à jour le 7 mai 2026 » dans le footer
+                    de la page <em>À propos</em>. Première version en JS côté client, deuxième
+                    version injectée au build par la CI. Le récit explique pourquoi la
+                    deuxième est meilleure que la première — et ce qu'on perd au passage.
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Cette fiche complète la théorie</div>
+                <p>
+                    La <a href="../sujets/cicd.html">fiche CI/CD</a> et le
+                    <a href="experience-cicd.html">retex CI/CD du site</a> couvrent comment
+                    on a un workflow GitHub Actions qui déploie ce site. Cette fiche-ci
+                    raconte une <em>extension</em> de ce workflow : faire faire au CI autre
+                    chose que vérifier les liens, en l'occurrence <em>modifier</em> le HTML
+                    avant la publication.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>1. Le besoin</h2>
+                <p>
+                    Sur la page <a href="../about.html">À propos</a>, je voulais afficher
+                    « Dernière mise à jour le … » avec la date du dernier push, pour
+                    qu'un visiteur sache si le site est actif ou abandonné depuis 6 mois.
+                </p>
+                <p>Deux contraintes :</p>
+                <ul>
+                    <li>Le site est <strong>statique</strong> (HTML/CSS/JS pur). Pas de
+                        backend qui pourrait calculer la date à la volée.</li>
+                    <li>La date doit être <strong>automatique</strong>. Hors de question
+                        d'éditer la valeur à la main à chaque commit.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>2. Première version — fetch côté client</h2>
+                <p>
+                    Réflexe naturel : appeler l'API GitHub depuis le navigateur du visiteur.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">html (v1)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>Dernière mise à jour le &lt;span id=<span class="tk-string">"last-update"</span>&gt;—&lt;/span&gt;
+
+&lt;script&gt;
+  fetch(<span class="tk-string">"https://api.github.com/repos/os974/devianotes/commits?per_page=1"</span>)
+    .then(r =&gt; r.json())
+    .then(data =&gt; {
+      <span class="tk-keyword">const</span> d = <span class="tk-keyword">new</span> Date(data[0].commit.committer.date);
+      document.getElementById(<span class="tk-string">"last-update"</span>).textContent =
+        d.toLocaleDateString(<span class="tk-string">"fr-FR"</span>, { day: <span class="tk-string">"2-digit"</span>, month: <span class="tk-string">"long"</span>, year: <span class="tk-string">"numeric"</span> });
+    });
+&lt;/script&gt;</code></pre>
+                </div>
+                <p>
+                    Ça marche du premier coup. Mais en y regardant de plus près, trois
+                    petites gênes accumulées :
+                </p>
+                <ul>
+                    <li><strong>Un appel réseau à chaque visite</strong> vers
+                        <code>api.github.com</code>. Anonyme, donc soumis à un quota
+                        (60 req/h par IP). Pour un site à 10 visites/jour aucun souci, mais
+                        c'est de la dette latente.</li>
+                    <li><strong>CSP à élargir</strong> : il faut ajouter
+                        <code>connect-src 'self' https://api.github.com</code> au
+                        <code>Content-Security-Policy</code>. On ouvre une porte juste pour
+                        afficher une date.</li>
+                    <li><strong>Désynchronisation possible</strong> : si l'API renvoie un
+                        commit plus récent que le HTML déployé (ex. tu pushes deux fois et
+                        regardes pendant le second build), la page affiche une date qui ne
+                        correspond pas à ce qui est servi. Subtil, mais incohérent.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>3. Deuxième version — injection au build</h2>
+                <p>
+                    Le déclic : <em>la date est connue au moment du déploiement</em>. Pas
+                    besoin de la calculer chez le visiteur, autant la figer dans le HTML
+                    avant publication.
+                </p>
+                <p>
+                    La page contient un placeholder, le workflow le remplace au moment du
+                    déploiement.
+                </p>
+
+                <h3>Côté HTML — un placeholder</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">html (about.html, v2)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>Dernière mise à jour le &lt;span id=<span class="tk-string">"last-update"</span>&gt;__LAST_UPDATE__&lt;/span&gt;</code></pre>
+                </div>
+                <p>
+                    <code>__LAST_UPDATE__</code> est une chaîne improbable choisie pour ne
+                    risquer aucun faux positif lors du remplacement. Le double underscore
+                    signale visuellement que c'est un marker, pas du contenu.
+                </p>
+
+                <h3>Côté CI — un step qui remplace</h3>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">yaml (.github/workflows/ci.yml)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>- <span class="tk-keyword">name</span>: Injecter la date de dernier push dans about.html
+  <span class="tk-keyword">run</span>: |
+    months=(janvier février mars avril mai juin juillet août septembre octobre novembre décembre)
+    day=$(git log -1 --format=%cd --date=format:%-d)
+    month_idx=$(git log -1 --format=%cd --date=format:%-m)
+    year=$(git log -1 --format=%cd --date=format:%Y)
+    date_fr=<span class="tk-string">"${day} ${months[$((month_idx-1))]} ${year}"</span>
+    sed -i <span class="tk-string">"s|__LAST_UPDATE__|${date_fr}|g"</span> about.html
+    <span class="tk-comment"># garde-fou : si le placeholder n'a pas été remplacé, on échoue</span>
+    <span class="tk-keyword">if</span> grep -q <span class="tk-string">"__LAST_UPDATE__"</span> about.html; <span class="tk-keyword">then</span>
+      <span class="tk-keyword">echo</span> <span class="tk-string">"::error::Placeholder __LAST_UPDATE__ encore présent"</span>
+      <span class="tk-keyword">exit</span> 1
+    <span class="tk-keyword">fi</span></code></pre>
+                </div>
+                <p>
+                    Ce step est inséré entre <code>actions/checkout@v4</code> et
+                    <code>actions/upload-pages-artifact@v3</code>. Il modifie la copie de
+                    <code>about.html</code> dans la VM du runner — la modif n'est jamais
+                    commitée, elle vit le temps du job, exactement comme un build classique
+                    produit un <code>dist/</code> jetable.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>4. Les leçons</h2>
+
+                <div class="info-box tip">
+                    <div class="info-title">Leçon 1 — « Au build » bat « au runtime » dès qu'une donnée est figée à la publication</div>
+                    <p>
+                        La date d'un déploiement ne change pas après coup. La calculer chez
+                        le visiteur, c'est faire payer à 100 % des visites un calcul qui
+                        aurait pu être fait <strong>une seule fois</strong> par le CI.
+                    </p>
+                    <p>
+                        Règle générale : si une donnée est connue au moment où tu construis
+                        le site, fige-la dans le HTML servi. Tu n'utilises du JS côté client
+                        que pour ce qui dépend du visiteur (interactions, état local, données
+                        vraiment temps réel).
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Leçon 2 — Une CSP plus stricte est gratuite</div>
+                    <p>
+                        En passant de v1 à v2, j'ai pu retirer
+                        <code>connect-src https://api.github.com</code> du
+                        <code>Content-Security-Policy</code>. Le navigateur ne fait plus
+                        aucune requête sortante depuis cette page. Plus la CSP est étroite,
+                        plus une éventuelle XSS injectée a de mal à exfiltrer des données.
+                    </p>
+                    <p>
+                        Penser <em>réseau</em> chaque fois qu'on écrit du JS : « cette
+                        feature a-t-elle vraiment besoin de causer à un serveur ? ». Souvent
+                        non, et on s'épargne une autorisation CSP.
+                    </p>
+                </div>
+
+                <div class="info-box warn">
+                    <div class="info-title">Leçon 3 — Sur un runner Ubuntu, ne suppose pas que la locale française est installée</div>
+                    <p>
+                        Pour formater « 7 mai 2026 », j'ai d'abord pensé à
+                        <code>LC_TIME=fr_FR.UTF-8 date "+%-d %B %Y"</code>. Mais
+                        <code>ubuntu-latest</code> n'a que <code>en_US</code> et
+                        <code>C.UTF-8</code> installées par défaut. Soit on lance
+                        <code>locale-gen fr_FR.UTF-8</code> (~5 secondes ajoutées au job),
+                        soit on tape la liste des mois dans un tableau bash.
+                    </p>
+                    <p>
+                        Pour 12 strings figées qui ne changeront jamais, le tableau gagne :
+                        zéro dépendance, zéro temps installation, lisible en deux lignes.
+                        L'approche « install locale » a sa place dès qu'on en a besoin
+                        ailleurs — pas pour un seul format de date.
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Leçon 4 — Un sed silencieux est un piège ; mets toujours un garde-fou</div>
+                    <p>
+                        <code>sed -i "s|...|...|g"</code> ne renvoie <em>pas</em> d'erreur
+                        si le motif est absent : il ne remplace simplement rien. Si demain
+                        je renomme <code>__LAST_UPDATE__</code> dans le HTML sans toucher au
+                        workflow, le CI passera vert et la page sera publiée avec le motif
+                        d'origine encore visible. Bug silencieux.
+                    </p>
+                    <p>
+                        D'où le <code>grep -q "__LAST_UPDATE__" &amp;&amp; exit 1</code>
+                        après le sed : si le placeholder est encore là après remplacement,
+                        c'est que le contrat HTML/CI est cassé, on échoue fort avec un
+                        message clair.
+                    </p>
+                    <p>
+                        Pattern réutilisable : <strong>après chaque transformation
+                        automatique, vérifier que le résultat correspond à ce qu'on
+                        attendait</strong>. C'est l'équivalent CI d'un test unitaire — sauf
+                        qu'on teste la sortie de l'outil, pas du code applicatif.
+                    </p>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-title">Leçon 5 — Le trade-off accepté : la version locale est moche</div>
+                    <p>
+                        Si tu ouvres <code>about.html</code> en local par double-clic (sans
+                        passer par GitHub Pages), tu vois littéralement
+                        « Dernière mise à jour le __LAST_UPDATE__ ». Pas joli.
+                    </p>
+                    <p>
+                        On <em>pourrait</em> ajouter un fallback JS qui détecte le
+                        placeholder et affiche « (version locale) » à la place. Mais ça
+                        rajoute du code pour cacher un problème qui ne se produit que dans
+                        un cas marginal (dev local, page <em>À propos</em>). À ce stade,
+                        accepter le placeholder visible est le bon choix : le coût (un mot
+                        moche pendant qu'on développe) est inférieur au bénéfice du code
+                        plus simple.
+                    </p>
+                    <p>
+                        Règle générale : ne complexifie pas le code pour des cas que
+                        personne ne voit en condition réelle. Documente le trade-off
+                        (commentaire HTML à côté du placeholder) et passe à la suite.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>5. Quand utiliser ce pattern</h2>
+                <p>
+                    L'injection au build est utile dès que tu as besoin d'afficher dans
+                    une page statique une donnée qui :
+                </p>
+                <ul>
+                    <li>est <strong>connue au moment du déploiement</strong> (date,
+                        numéro de version, hash du commit, environnement, nom du build) ;</li>
+                    <li>ne <strong>change pas</strong> entre deux déploiements ;</li>
+                    <li>n'a pas besoin d'être différente d'un visiteur à l'autre.</li>
+                </ul>
+                <p>
+                    Cas typiques : badge de version (<code>v1.4.2</code> dans un footer),
+                    SHA du commit pour debug (<code>build: a1b2c3d</code>), date de
+                    génération, banner d'environnement (« staging »). Dès que la donnée
+                    dépend du visiteur ou du temps présent (heure courante, données live),
+                    on revient à du JS côté client ou un appel API.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>Liens vers les fiches concernées</h2>
+                <ul>
+                    <li><a href="../sujets/cicd.html">CI/CD</a> — la théorie générale.</li>
+                    <li><a href="../sujets/github.html">GitHub</a> — Actions et Pages.</li>
+                    <li><a href="experience-cicd.html">Retex — CI/CD du site</a> — le
+                        workflow de base sur lequel ce step s'est greffé.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
