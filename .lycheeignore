@@ -58,3 +58,8 @@
 
 # Streamlit gallery — bloqué côté CDN depuis les runners GitHub.
 ^https://streamlit\.io
+
+# Profil LinkedIn — LinkedIn répond HTTP 999 (anti-bot) à toute requête
+# non-navigateur, y compris depuis les runners GitHub. Le lien est valide
+# pour un humain. C'est le comportement officiel et stable de LinkedIn.
+^https://www\.linkedin\.com/
