@@ -34,10 +34,12 @@ jobs:
         uses: lycheeverse/lychee-action@v2
         with:
           # --no-progress : pas de barre de progression dans les logs CI
-          # --max-retries 2 : retente 2 fois en cas d'échec réseau passager
+          # --max-retries 3 : retente 3 fois en cas d'échec réseau passager
+          # --timeout 30 : 30s par requête (défaut 20s, certains sites sont lents)
+          # --exclude-loopback : ignore localhost / 127.0.0.1 / ::1 (URLs d'exemple)
           # './**/*.html' : ne scanne que les fichiers HTML du repo
-          # (les liens mailto: sont ignorés par défaut depuis lychee 0.23)
-          args: --no-progress --max-retries 2 './**/*.html'
+          # (les URLs spécifiques à ignorer sont dans .lycheeignore à la racine)
+          args: --no-progress --max-retries 3 --timeout 30 --exclude-loopback './**/*.html'
           fail: true
 
   deploy:

@@ -1,0 +1,11 @@
+# Liste de regex d'URLs que lychee doit ignorer.
+# Utilisée par le workflow .github/workflows/ci.yml.
+#
+# Une URL par ligne, format regex (lychee match avec `.contains` par défaut,
+# ancrer avec ^ pour éviter les faux positifs).
+
+# Démo Redis interactive — souvent injoignable depuis les runners GitHub.
+^https://try\.redis\.io
+
+# Démo publique d'Uptime Kuma — fréquemment en timeout (instance partagée).
+^https://demo\.uptime\.kuma\.pet
