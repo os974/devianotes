@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>SQLite — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / SQLite</div>
+                <h1>SQLite</h1>
+                <p class="subtitle">
+                    Une <strong>base de données SQL</strong> contenue dans un seul fichier
+                    <code>.db</code>. Pas de serveur à lancer, pas de port à ouvrir,
+                    pas de mot de passe — tu ouvres le fichier, tu écris du SQL, c'est tout.
+                </p>
+                <div class="badge-row">
+                    <span class="tag">Base de données</span>
+                    <span class="tag">SQL</span>
+                    <span class="tag">Embarqué</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand on dit « base de données », on imagine en général un gros serveur
+                    PostgreSQL ou MySQL : un processus qui tourne en permanence sur un port,
+                    auquel ton application se connecte par le réseau. SQLite, c'est l'inverse
+                    de ça.
+                </p>
+                <ul>
+                    <li><strong>Pas de serveur</strong> — SQLite est une <em>bibliothèque</em>
+                        (du C), pas un processus. Ton application l'embarque et lit/écrit
+                        directement dans le fichier de la base.</li>
+                    <li><strong>Une base = un fichier</strong> —
+                        <code>maBase.db</code>. Tu veux faire un backup ? Tu copies le fichier.
+                        Tu veux donner la base à quelqu'un ? Tu lui envoies le fichier.</li>
+                    <li><strong>Zéro configuration</strong> — pas d'utilisateurs, pas de
+                        permissions, pas de port. La sécurité, c'est celle des permissions
+                        du fichier sur le disque.</li>
+                    <li><strong>Standard SQL</strong> — la quasi-totalité de la syntaxe SQL
+                        que tu apprendrais sur PostgreSQL marche ici (avec quelques
+                        différences sur les types et les fonctions de date).</li>
+                </ul>
+                <p>
+                    C'est tellement pratique que SQLite est l'une des bibliothèques les plus
+                    déployées au monde : Android et iOS l'utilisent pour stocker tes
+                    contacts, tes SMS, tes photos. Firefox stocke tes favoris dedans. Python
+                    l'inclut dans la stdlib. Tu en as déjà des centaines sur ta machine sans
+                    le savoir.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>
+                        SQLite, c'est <strong>SQL sans serveur</strong> : la simplicité d'un
+                        fichier, la puissance des requêtes SQL.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu écris une petite appli Python qui suit tes lectures : titre, auteur,
+                    date où tu l'as fini, note sur 10. Trois choix s'offrent à toi :
+                </p>
+                <ul>
+                    <li><strong>Un fichier JSON</strong> — facile au début, mais dès que tu
+                        veux « les livres notés ≥ 8 lus en 2026, triés par date », tu
+                        réinventes du SQL en Python lent et bugué.</li>
+                    <li><strong>PostgreSQL</strong> — costaud, mais il faut installer un
+                        serveur, créer un user, ouvrir un port, mémoriser un mot de passe…
+                        pour 200 lignes de données.</li>
+                    <li><strong>SQLite</strong> — un fichier <code>livres.db</code> à côté
+                        de ton script. Tu écris <code>SELECT * FROM livres WHERE note &gt;= 8</code>
+                        et c'est terminé.</li>
+                </ul>
+                <p>
+                    SQLite est le bon choix dès que :
+                </p>
+                <ul>
+                    <li>Une seule machine accède à la base (ton PC, le serveur d'une appli web modeste).</li>
+                    <li>Le volume reste raisonnable (jusqu'à ~100 Go en pratique, la limite théorique est 281 To).</li>
+                    <li>Les lectures dominent largement, ou les écritures sont peu fréquentes.</li>
+                </ul>
+                <p>
+                    Cas typiques : prototype d'application, cache local d'un script,
+                    configuration évoluée, base d'un outil CLI, dev local d'une API qui ira
+                    en prod sur PostgreSQL, fichiers de format propriétaire (Anki, Obsidian,
+                    et bien d'autres logiciels stockent leurs données en SQLite sans le dire
+                    à l'utilisateur).
+                </p>
+                <p>
+                    À l'inverse, dès que plusieurs serveurs doivent écrire en parallèle dans
+                    la même base, ou que tu fais beaucoup d'écritures concurrentes, tu passes
+                    à PostgreSQL ou MySQL.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : démarrer avec SQLite</h2>
+                <p>
+                    Trois chemins, dans l'ordre où je les recommande pour apprendre :
+                </p>
+                <ol>
+                    <li><strong>CLI <code>sqlite3</code></strong> — pour comprendre ce qui
+                        se passe dans une base sans aucune couche Python par-dessus.</li>
+                    <li><strong>Module Python <code>sqlite3</code></strong> (stdlib, zéro install)
+                        — pour utiliser la base depuis ton code.</li>
+                    <li><strong>DB Browser for SQLite</strong> — une interface graphique
+                        pour explorer une base existante visuellement.</li>
+                </ol>
+
+                <h3>1. La CLI <code>sqlite3</code></h3>
+                <p>
+                    Le binaire est souvent déjà installé sur Linux et macOS. On vérifie :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">sqlite3</span> --version</code></pre>
+                </div>
+                <p>
+                    Si la commande n'est pas trouvée :
+                </p>
+                <ul>
+                    <li>Linux (Debian/Ubuntu) : <code>sudo apt install sqlite3</code></li>
+                    <li>macOS : déjà présent, sinon <code>brew install sqlite</code></li>
+                    <li>Windows : télécharger le binaire sur <code>sqlite.org/download.html</code> (section <em>Precompiled Binaries for Windows</em>)</li>
+                </ul>
+                <p>
+                    On crée une base et une table. Si le fichier n'existe pas, il est créé
+                    au premier écrit :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">sqlite3</span> livres.db</code></pre>
+                </div>
+                <p>
+                    Tu es maintenant dans le shell SQLite (prompt <code>sqlite&gt;</code>).
+                    On crée la table et on insère deux lignes :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sql</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">CREATE TABLE</span> livres (
+    id <span class="tk-keyword">INTEGER PRIMARY KEY AUTOINCREMENT</span>,
+    titre <span class="tk-keyword">TEXT NOT NULL</span>,
+    auteur <span class="tk-keyword">TEXT</span>,
+    note <span class="tk-keyword">INTEGER</span>
+);
+
+<span class="tk-keyword">INSERT INTO</span> livres (titre, auteur, note) <span class="tk-keyword">VALUES</span>
+    (<span class="tk-string">'Le Nom de la Rose'</span>, <span class="tk-string">'Umberto Eco'</span>, <span class="tk-num">9</span>),
+    (<span class="tk-string">'Dune'</span>, <span class="tk-string">'Frank Herbert'</span>, <span class="tk-num">10</span>);
+
+<span class="tk-keyword">SELECT</span> * <span class="tk-keyword">FROM</span> livres <span class="tk-keyword">WHERE</span> note &gt;= <span class="tk-num">9</span>;</code></pre>
+                </div>
+                <p>
+                    Quelques commandes spéciales du shell (préfixées par un point, pas du
+                    SQL) — utiles pour explorer une base :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sqlite shell</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code>.tables           <span class="tk-comment">-- liste les tables</span>
+.schema livres    <span class="tk-comment">-- montre le CREATE TABLE</span>
+.headers on       <span class="tk-comment">-- afficher les noms de colonnes</span>
+.mode column      <span class="tk-comment">-- formatage en colonnes alignées</span>
+.quit             <span class="tk-comment">-- sortir du shell</span></code></pre>
+                </div>
+
+                <h3>2. Le module Python <code>sqlite3</code></h3>
+                <p>
+                    Inclus dans la stdlib — rien à installer, juste <code>import sqlite3</code>.
+                    Le code minimal pour ouvrir une base, écrire, lire :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> sqlite3
+
+<span class="tk-comment"># ouvre (ou crée) le fichier</span>
+con = sqlite3.<span class="tk-fn">connect</span>(<span class="tk-string">"livres.db"</span>)
+cur = con.<span class="tk-fn">cursor</span>()
+
+<span class="tk-comment"># création de la table si elle n'existe pas déjà</span>
+cur.<span class="tk-fn">execute</span>(<span class="tk-string">"""
+    CREATE TABLE IF NOT EXISTS livres (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titre TEXT NOT NULL,
+        auteur TEXT,
+        note INTEGER
+    )
+"""</span>)
+
+<span class="tk-comment"># insertion avec paramètres — JAMAIS d'interpolation Python (cf. encadré)</span>
+cur.<span class="tk-fn">execute</span>(
+    <span class="tk-string">"INSERT INTO livres (titre, auteur, note) VALUES (?, ?, ?)"</span>,
+    (<span class="tk-string">"Dune"</span>, <span class="tk-string">"Frank Herbert"</span>, <span class="tk-num">10</span>),
+)
+con.<span class="tk-fn">commit</span>()   <span class="tk-comment"># sans commit, l'écriture n'est pas persistée</span>
+
+<span class="tk-comment"># lecture</span>
+<span class="tk-keyword">for</span> row <span class="tk-keyword">in</span> cur.<span class="tk-fn">execute</span>(<span class="tk-string">"SELECT titre, note FROM livres WHERE note &gt;= ?"</span>, (<span class="tk-num">9</span>,)):
+    <span class="tk-fn">print</span>(row)
+
+con.<span class="tk-fn">close</span>()</code></pre>
+                </div>
+
+                <div class="info-box warn">
+                    <div class="info-title">⚠ Toujours utiliser <code>?</code>, jamais <code>f-string</code></div>
+                    <p>
+                        La tentation du débutant :
+                    </p>
+                    <pre><code>cur.<span class="tk-fn">execute</span>(<span class="tk-string">f"SELECT * FROM users WHERE nom = '{nom}'"</span>)   <span class="tk-comment"># ❌ DANGER</span></code></pre>
+                    <p>
+                        Si <code>nom</code> vient d'un utilisateur, il peut contenir
+                        <code>'; DROP TABLE users;--</code>. C'est l'<strong>injection SQL</strong>,
+                        une des failles les plus anciennes et les plus exploitées du web.
+                    </p>
+                    <p>
+                        La bonne version utilise un placeholder <code>?</code> :
+                    </p>
+                    <pre><code>cur.<span class="tk-fn">execute</span>(<span class="tk-string">"SELECT * FROM users WHERE nom = ?"</span>, (nom,))   <span class="tk-comment"># ✅ sûr</span></code></pre>
+                    <p>
+                        SQLite gère lui-même l'échappement et traite le contenu de
+                        <code>nom</code> comme une <em>donnée</em>, jamais comme du SQL.
+                    </p>
+                </div>
+
+                <h3>3. DB Browser for SQLite (interface graphique)</h3>
+                <p>
+                    Pour ouvrir une base à la souris : tableaux, requêtes ad-hoc, édition
+                    de cellules. Pratique pour explorer une base récupérée d'ailleurs.
+                </p>
+                <ul>
+                    <li>Site officiel : <code>sqlitebrowser.org</code></li>
+                    <li>Linux (Debian/Ubuntu) : <code>sudo apt install sqlitebrowser</code></li>
+                    <li>macOS : <code>brew install --cask db-browser-for-sqlite</code></li>
+                    <li>Windows : installeur depuis le site officiel.</li>
+                </ul>
+                <p>
+                    Dans VS Code, l'extension <strong>SQLite Viewer</strong>
+                    (<code>qwtel.sqlite-viewer</code>) permet de cliquer sur un
+                    <code>.db</code> dans l'explorateur et de voir les tables sans quitter
+                    l'éditeur.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">CLI sqlite3</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">sqlite3</span> ma_base.db        <span class="tk-comment"># ouvrir/créer une base</span>
+.tables                          <span class="tk-comment"># lister les tables</span>
+.schema [nom_table]              <span class="tk-comment"># voir le CREATE TABLE</span>
+.headers on                      <span class="tk-comment"># afficher les noms de colonnes</span>
+.mode column                     <span class="tk-comment"># colonnes alignées</span>
+.read script.sql                 <span class="tk-comment"># exécuter un fichier .sql</span>
+.backup ma_base.bak              <span class="tk-comment"># backup à chaud (consistant)</span>
+.quit                            <span class="tk-comment"># sortir</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (sqlite3 stdlib)</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> sqlite3
+
+<span class="tk-keyword">with</span> sqlite3.<span class="tk-fn">connect</span>(<span class="tk-string">"app.db"</span>) <span class="tk-keyword">as</span> con:
+    cur = con.<span class="tk-fn">cursor</span>()
+    cur.<span class="tk-fn">execute</span>(<span class="tk-string">"INSERT INTO t VALUES (?, ?)"</span>, (a, b))
+    rows = cur.<span class="tk-fn">execute</span>(<span class="tk-string">"SELECT * FROM t WHERE x = ?"</span>, (val,)).<span class="tk-fn">fetchall</span>()
+    <span class="tk-comment"># commit automatique en sortie de bloc with</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>SQLite et le reste de l'écosystème</h2>
+                <ul>
+                    <li><a href="sqlalchemy.html">SQLAlchemy</a> — l'<strong>ORM Python</strong>
+                        de référence. SQLite est son moteur de prédilection pour démarrer
+                        (chaîne de connexion <code>sqlite:///app.db</code>). Tu écris ton
+                        code une fois, tu peux ensuite passer à PostgreSQL en changeant la
+                        seule chaîne de connexion.</li>
+                    <li><a href="fastapi.html">FastAPI</a> — pour le dev local d'une API,
+                        SQLite + SQLAlchemy permet de coder sans serveur de BD à
+                        installer. On bascule en PostgreSQL au déploiement.</li>
+                    <li><a href="pandas.html">pandas</a> — <code>pd.read_sql("SELECT ...", con)</code>
+                        avec une connexion <code>sqlite3</code> charge directement le
+                        résultat d'une requête en DataFrame. Très pratique pour analyser
+                        une base existante.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <code>sqlite.org</code> — documentation complète,
+                        FAQ, et le célèbre essai
+                        <em>Appropriate Uses For SQLite</em> qui détaille avec honnêteté
+                        quand l'utiliser et quand ne pas l'utiliser.</li>
+                    <li>Mode <strong>WAL</strong> (<em>Write-Ahead Logging</em>) :
+                        <code>PRAGMA journal_mode=WAL;</code> — améliore nettement la
+                        concurrence lecture/écriture. Recommandé dès qu'une appli web
+                        utilise SQLite.</li>
+                    <li>Limites en concurrence : <strong>une seule écriture à la fois</strong>
+                        (verrou global sur la base). Les lectures parallèles fonctionnent
+                        très bien. Si tu fais beaucoup d'<code>INSERT</code>/<code>UPDATE</code>
+                        concurrents depuis plusieurs processus, c'est le signal qu'il faut
+                        passer à PostgreSQL.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

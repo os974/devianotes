@@ -90,6 +90,7 @@
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Données</div>
+                            <a href="${S}sqlite.html">SQLite</a>
                             <a href="${S}sqlalchemy.html">SQLAlchemy</a>
                             <a href="${S}pandas.html">pandas</a>
                         </div>
