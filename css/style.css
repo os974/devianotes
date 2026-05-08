@@ -193,13 +193,16 @@ body::before {
     top: calc(100% + 0.5rem);
     left: 50%;
     transform: translate(-50%, -8px);
-    min-width: 540px;
+    min-width: 760px;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 1.25rem;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem 1.5rem;
     box-shadow: var(--shadow-card);
     opacity: 0;
@@ -212,6 +215,11 @@ body::before {
     opacity: 1;
     visibility: visible;
     transform: translate(-50%, 0);
+}
+
+.nav-dropdown:has(> .dropdown-section:only-child) {
+    grid-template-columns: 1fr;
+    min-width: 240px;
 }
 
 .dropdown-section {
@@ -435,6 +443,30 @@ body::before {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
     margin-top: 3rem;
+}
+
+.topic-category {
+    margin-top: 2.75rem;
+}
+
+.topic-category:first-of-type {
+    margin-top: 2rem;
+}
+
+.category-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin: 0;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.topic-category .cards-grid,
+.cards-grid--trailing {
+    margin-top: 1.25rem;
 }
 
 .card {
@@ -852,7 +884,8 @@ kbd {
         justify-content: space-between;
     }
 
-    .nav-dropdown {
+    .nav-dropdown,
+    .nav-dropdown:has(> .dropdown-section:only-child) {
         position: static;
         opacity: 1;
         visibility: visible;
@@ -864,6 +897,9 @@ kbd {
         box-shadow: none;
         padding: 0.25rem 0 0.5rem 0.5rem;
         min-width: 0;
+        max-width: none;
+        max-height: none;
+        overflow: visible;
         gap: 0.75rem;
     }
 
