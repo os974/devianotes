@@ -52,6 +52,11 @@
                     </button>
                     <div class="nav-dropdown" role="menu">
                         <div class="dropdown-section">
+                            <div class="dropdown-title">IDE</div>
+                            <a href="${S}vscode.html">VS Code</a>
+                            <a href="${S}intellij.html">IntelliJ IDEA</a>
+                        </div>
+                        <div class="dropdown-section">
                             <div class="dropdown-title">Environnement</div>
                             <a href="${S}uv.html">UV</a>
                             <a href="${S}docker.html">Docker</a>
