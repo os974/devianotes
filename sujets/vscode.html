@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>VS Code — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / VS Code</div>
+                <h1>VS Code</h1>
+                <p class="subtitle">
+                    L'éditeur de code gratuit de Microsoft, devenu le standard de fait du développement
+                    moderne. Léger, extensible, et capable de tout faire&nbsp;: éditer du Python, lancer
+                    Docker, manipuler Git, ouvrir des notebooks Jupyter ou se connecter à une machine
+                    distante en SSH.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    En DevIA, on jongle entre une dizaine d'outils&nbsp;: Python, Docker, Git, FastAPI,
+                    Jupyter, des bases de données, du YAML pour la CI… <strong>VS Code</strong> est l'endroit
+                    où on les pilote tous depuis un seul endroit.
+                </p>
+                <ul>
+                    <li><strong>Édition</strong> avec coloration, complétion intelligente et refactoring</li>
+                    <li><strong>Terminal intégré</strong> pour lancer <code>uv</code>, <code>git</code>, <code>docker</code>… sans changer de fenêtre</li>
+                    <li><strong>Débogueur</strong> pas à pas pour Python (et bien d'autres langages)</li>
+                    <li><strong>Source control</strong> Git visuel (diff, stage, commit, branches)</li>
+                    <li><strong>Extensions</strong> pour à peu près tout ce qui existe&nbsp;: Docker, Jupyter, SQL, Markdown, YAML…</li>
+                    <li><strong>Remote</strong>&nbsp;: éditer du code sur une machine SSH ou dans un conteneur comme s'il était local</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>VS Code = un éditeur léger qui devient un IDE complet via ses extensions, et qui sert de cockpit à tous les outils de DevIA.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu clones un projet FastAPI géré avec <a href="uv.html">UV</a>. Sans quitter VS Code, tu
+                    peux&nbsp;:
+                </p>
+                <ol>
+                    <li>Ouvrir le dossier (<code>Ctrl+K Ctrl+O</code>)</li>
+                    <li>Lancer un terminal intégré (<code>Ctrl+ù</code> sur clavier FR, <code>Ctrl+`</code> sur clavier US) et faire <code>uv sync</code></li>
+                    <li>Sélectionner l'interpréteur Python dans <code>.venv</code> (palette → <em>Python: Select Interpreter</em>)</li>
+                    <li>Poser un breakpoint sur une route, appuyer sur <code>F5</code> et déboguer pas à pas</li>
+                    <li>Voir tes modifications dans l'onglet <strong>Source Control</strong>, écrire le message de commit, et pousser — sans aucune commande Git tapée</li>
+                </ol>
+                <p>
+                    Tout ça depuis la même fenêtre, avec la même interface. C'est ce qui en fait l'outil
+                    central&nbsp;: il sert de chef d'orchestre aux autres.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to&nbsp;: installer et configurer VS Code</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer VS Code</h4>
+                        <p>
+                            Télécharge l'installeur depuis le site officiel&nbsp;:
+                            <a href="https://code.visualstudio.com/" target="_blank" rel="noopener noreferrer">code.visualstudio.com</a>.
+                        </p>
+                        <p>Sur <strong>Linux (Debian/Ubuntu)</strong>, tu peux aussi passer par le paquet officiel&nbsp;:</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">sudo</span> apt install code</code></pre>
+                        </div>
+                        <p>Sur <strong>macOS</strong> avec Homebrew&nbsp;:</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">brew</span> install --cask visual-studio-code</code></pre>
+                        </div>
+                        <p>Vérifie depuis un terminal que la commande <code>code</code> est dispo&nbsp;:</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">code</span> --version</code></pre>
+                        </div>
+                        <p>
+                            Cette commande te permettra plus tard d'ouvrir un projet en tapant
+                            <code>code .</code> dans n'importe quel dossier.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Activer la synchronisation des paramètres</h4>
+                        <p>
+                            Connecte VS Code à ton compte <strong>GitHub</strong> (ou Microsoft) pour activer
+                            <em>Settings Sync</em>&nbsp;: extensions, raccourcis, thème et réglages te suivent
+                            sur toutes tes machines. Très pratique entre PC perso et PC de la formation.
+                        </p>
+                        <ol>
+                            <li>Clique sur l'icône <strong>compte</strong> en bas à gauche</li>
+                            <li>Choisis <em>Turn on Settings Sync…</em></li>
+                            <li>Connecte-toi avec GitHub</li>
+                        </ol>
+                    </li>
+
+                    <li>
+                        <h4>Installer les extensions essentielles pour DevIA</h4>
+                        <p>
+                            Ouvre la palette (<code>Ctrl+Shift+P</code>) → <em>Extensions: Install Extensions</em>,
+                            ou clique sur l'icône en briques dans la barre latérale, et installe&nbsp;:
+                        </p>
+                        <ul>
+                            <li><strong>Python</strong> (Microsoft) — support Python complet (avec Pylance inclus)</li>
+                            <li><strong>Jupyter</strong> (Microsoft) — ouvrir et exécuter des notebooks <code>.ipynb</code></li>
+                            <li><strong>Docker</strong> (Microsoft) — gérer images, conteneurs et <code>docker-compose</code></li>
+                            <li><strong>GitLens</strong> — voir l'auteur de chaque ligne, l'historique, les blame</li>
+                            <li><strong>Even Better TOML</strong> — coloration et validation pour <code>pyproject.toml</code></li>
+                            <li><strong>Ruff</strong> — linter et formateur Python ultra-rapide</li>
+                            <li><strong>YAML</strong> (Red Hat) — utile pour les workflows GitHub Actions</li>
+                        </ul>
+                        <p>
+                            Tu peux aussi tout installer en une commande&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">code</span> --install-extension ms-python.python
+<span class="tk-cmd">code</span> --install-extension ms-toolsai.jupyter
+<span class="tk-cmd">code</span> --install-extension ms-azuretools.vscode-docker
+<span class="tk-cmd">code</span> --install-extension eamodio.gitlens
+<span class="tk-cmd">code</span> --install-extension tamasfe.even-better-toml
+<span class="tk-cmd">code</span> --install-extension charliermarsh.ruff
+<span class="tk-cmd">code</span> --install-extension redhat.vscode-yaml</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Apprivoiser la palette de commandes</h4>
+                        <p>
+                            La palette (<code>Ctrl+Shift+P</code> / <code>Cmd+Shift+P</code>) est le raccourci
+                            le plus important de VS Code. <strong>Tout</strong> ce que l'éditeur sait faire est
+                            accessible depuis là, juste en tapant ce que tu cherches.
+                        </p>
+                        <p>Quelques commandes à connaître par cœur&nbsp;:</p>
+                        <ul>
+                            <li><em>Python: Select Interpreter</em> — choisir le venv du projet</li>
+                            <li><em>Format Document</em> — reformater le fichier courant</li>
+                            <li><em>Git: Clone</em> — cloner un repo via l'UI</li>
+                            <li><em>Preferences: Open Settings (UI / JSON)</em> — accéder aux réglages</li>
+                            <li><em>Toggle Terminal</em> — ouvrir le terminal intégré</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Régler les paramètres utiles</h4>
+                        <p>
+                            Ouvre les réglages avec <code>Ctrl+,</code> et active ces options
+                            (l'interface te laisse les rechercher par nom)&nbsp;:
+                        </p>
+                        <ul>
+                            <li><strong>Format On Save</strong> — formate à chaque sauvegarde</li>
+                            <li><strong>Files: Auto Save</strong> → <em>onFocusChange</em> — sauvegarde dès que tu changes d'onglet</li>
+                            <li><strong>Editor: Bracket Pair Colorization</strong> — parenthèses colorées par paire</li>
+                            <li><strong>Editor: Sticky Scroll</strong> — affiche le contexte (fonction, classe) en haut quand tu scrolles</li>
+                            <li><strong>Editor: Tab Size</strong> = 4 (Python) — utile par défaut</li>
+                        </ul>
+                        <p>
+                            Tu peux aussi exclure les dossiers bruyants de la recherche et de l'explorateur
+                            via <strong>Files: Exclude</strong>&nbsp;: <code>**/__pycache__</code>,
+                            <code>**/.venv</code>, <code>**/.pytest_cache</code>, <code>**/node_modules</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Partager les réglages dans le projet</h4>
+                        <p>
+                            Pour qu'un projet utilise toujours le même interpréteur et les mêmes règles, crée
+                            un fichier <code>.vscode/settings.json</code> à la racine du repo&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">json</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>{
+  <span class="tk-string">"python.defaultInterpreterPath"</span>: <span class="tk-string">".venv/bin/python"</span>,
+  <span class="tk-string">"editor.formatOnSave"</span>: <span class="tk-keyword">true</span>,
+  <span class="tk-string">"[python]"</span>: {
+    <span class="tk-string">"editor.defaultFormatter"</span>: <span class="tk-string">"charliermarsh.ruff"</span>,
+    <span class="tk-string">"editor.codeActionsOnSave"</span>: {
+      <span class="tk-string">"source.organizeImports"</span>: <span class="tk-string">"explicit"</span>
+    }
+  },
+  <span class="tk-string">"files.exclude"</span>: {
+    <span class="tk-string">"**/__pycache__"</span>: <span class="tk-keyword">true</span>,
+    <span class="tk-string">"**/.pytest_cache"</span>: <span class="tk-keyword">true</span>
+  }
+}</code></pre>
+                        </div>
+                        <p>
+                            Ce fichier est commité avec le projet&nbsp;: tous ceux qui l'ouvrent (toi sur
+                            une autre machine, ou un camarade de promo) auront la même config sans rien régler.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser le terminal intégré</h4>
+                        <p>
+                            Ouvre-le avec <code>Ctrl+ù</code> (FR) ou <code>Ctrl+`</code> (US). Il s'ouvre
+                            directement dans le dossier du projet. Tu peux en avoir plusieurs en parallèle
+                            (un pour <code>uv run</code>, un pour <code>git</code>, un pour
+                            <code>docker logs</code>…) via le bouton <strong>+</strong> ou <em>Split</em>.
+                        </p>
+                        <p>
+                            Astuce&nbsp;: si tu utilises <a href="uv.html">UV</a>, lance ton serveur dans un
+                            terminal intégré. VS Code détectera automatiquement les liens
+                            <code>http://localhost:8000</code> dans la sortie&nbsp;: <code>Ctrl+clic</code> pour
+                            ouvrir dans le navigateur.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Déboguer un script Python</h4>
+                        <p>
+                            Pose un breakpoint en cliquant à gauche d'un numéro de ligne (un point rouge
+                            apparaît), puis appuie sur <code>F5</code>. VS Code te demande quel type de
+                            configuration utiliser — choisis <em>Python File</em> pour un script simple, ou
+                            <em>FastAPI / Flask</em> pour un serveur.
+                        </p>
+                        <p>Une fois en pause sur un breakpoint&nbsp;:</p>
+                        <ul>
+                            <li><code>F10</code> — passer à la ligne suivante</li>
+                            <li><code>F11</code> — entrer dans la fonction</li>
+                            <li><code>Shift+F11</code> — sortir de la fonction</li>
+                            <li><code>F5</code> — continuer jusqu'au prochain breakpoint</li>
+                        </ul>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Trucs et astuces du quotidien</h2>
+                <ul>
+                    <li>
+                        <strong>Ouvrir un fichier rapidement</strong> avec <code>Ctrl+P</code>&nbsp;: tape
+                        quelques lettres du nom et <em>Entrée</em>. Plus rapide que naviguer dans l'arbre.
+                    </li>
+                    <li>
+                        <strong>Recherche globale</strong> avec <code>Ctrl+Shift+F</code>&nbsp;: cherche
+                        une chaîne dans tout le projet, regex possible, remplacement en bloc.
+                    </li>
+                    <li>
+                        <strong>Multi-cursor</strong>&nbsp;: <code>Alt+clic</code> ajoute un curseur,
+                        <code>Ctrl+D</code> sélectionne l'occurrence suivante du mot,
+                        <code>Ctrl+Shift+L</code> sélectionne <em>toutes</em> les occurrences. Indispensable
+                        pour renommer plein de fois la même chose.
+                    </li>
+                    <li>
+                        <strong>Déplacer une ligne</strong> avec <code>Alt+↑/↓</code>, la
+                        <strong>dupliquer</strong> avec <code>Shift+Alt+↑/↓</code>.
+                    </li>
+                    <li>
+                        <strong>Renommer un symbole</strong> partout dans le projet avec <code>F2</code>
+                        sur une variable / fonction. Plus sûr qu'un rechercher-remplacer.
+                    </li>
+                    <li>
+                        <strong>Aller à la définition</strong> avec <code>F12</code>, revenir avec
+                        <code>Alt+←</code>. <code>Shift+F12</code> liste tous les usages.
+                    </li>
+                    <li>
+                        <strong>Source Control</strong> (icône Git) pour stager, écrire un message, commit et
+                        push sans terminal. <em>GitLens</em> ajoute le blame ligne par ligne.
+                    </li>
+                    <li>
+                        <strong>Zen mode</strong> (<code>Ctrl+K Z</code>) pour cacher tous les panneaux et
+                        coder en plein écran. <code>Échap Échap</code> pour sortir.
+                    </li>
+                    <li>
+                        <strong>Markdown preview</strong> (<code>Ctrl+Shift+V</code>) pour prévisualiser un
+                        <code>README.md</code> côte à côte.
+                    </li>
+                    <li>
+                        <strong>Remote-SSH</strong> (extension Microsoft) pour ouvrir un dossier sur une
+                        machine distante. Tu codes en local mais tout s'exécute là-bas. Magique pour les
+                        VMs cloud.
+                    </li>
+                    <li>
+                        <strong>Dev Containers</strong>&nbsp;: ouvrir le projet dans un conteneur Docker avec
+                        sa stack toute prête. Idéal quand l'équipe partage un environnement complexe.
+                    </li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire des raccourcis</h2>
+                <p>Linux / Windows (sur macOS, remplace <code>Ctrl</code> par <code>Cmd</code>)&nbsp;:</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">raccourcis</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Navigation</span>
+Ctrl+P              <span class="tk-comment"># ouvrir un fichier par son nom</span>
+Ctrl+Shift+P        <span class="tk-comment"># palette de commandes</span>
+Ctrl+,              <span class="tk-comment"># réglages</span>
+Ctrl+B              <span class="tk-comment"># afficher/masquer la barre latérale</span>
+Ctrl+ù  /  Ctrl+`   <span class="tk-comment"># ouvrir le terminal intégré</span>
+
+<span class="tk-comment"># Édition</span>
+Ctrl+D              <span class="tk-comment"># sélectionner l'occurrence suivante</span>
+Ctrl+Shift+L        <span class="tk-comment"># sélectionner toutes les occurrences</span>
+Alt+clic            <span class="tk-comment"># ajouter un curseur</span>
+Alt+↑ / Alt+↓       <span class="tk-comment"># déplacer la ligne</span>
+Shift+Alt+↑/↓       <span class="tk-comment"># dupliquer la ligne</span>
+Ctrl+/              <span class="tk-comment"># commenter / décommenter</span>
+F2                  <span class="tk-comment"># renommer un symbole partout</span>
+
+<span class="tk-comment"># Recherche</span>
+Ctrl+F              <span class="tk-comment"># recherche dans le fichier</span>
+Ctrl+Shift+F        <span class="tk-comment"># recherche dans tout le projet</span>
+Ctrl+H              <span class="tk-comment"># rechercher / remplacer</span>
+
+<span class="tk-comment"># Navigation code</span>
+F12                 <span class="tk-comment"># aller à la définition</span>
+Shift+F12           <span class="tk-comment"># trouver les usages</span>
+Alt+← / Alt+→       <span class="tk-comment"># reculer / avancer dans l'historique</span>
+
+<span class="tk-comment"># Debug</span>
+F5                  <span class="tk-comment"># lancer / continuer</span>
+F9                  <span class="tk-comment"># breakpoint sur la ligne courante</span>
+F10 / F11           <span class="tk-comment"># step over / step into</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle&nbsp;: <a href="https://code.visualstudio.com/docs" target="_blank" rel="noopener noreferrer">code.visualstudio.com/docs</a></li>
+                    <li>Tips &amp; tricks&nbsp;: <a href="https://github.com/microsoft/vscode-tips-and-tricks" target="_blank" rel="noopener noreferrer">github.com/microsoft/vscode-tips-and-tricks</a></li>
+                    <li>Marketplace des extensions&nbsp;: <a href="https://marketplace.visualstudio.com/" target="_blank" rel="noopener noreferrer">marketplace.visualstudio.com</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
