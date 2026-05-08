@@ -59,6 +59,7 @@
                         <div class="dropdown-section">
                             <div class="dropdown-title">Environnement</div>
                             <a href="${S}uv.html">UV</a>
+                            <a href="${S}pip.html">pip</a>
                             <a href="${S}docker.html">Docker</a>
                             <a href="${S}kubernetes.html">Kubernetes</a>
                             <a href="${S}jupyter.html">Jupyter</a>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>pip — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / pip</div>
+                <h1>pip</h1>
+                <p class="subtitle">
+                    L'installateur officiel de paquets Python. Livré avec Python, présent dans tous les
+                    tutos et tous les projets — y compris ceux qu'on récupère sur GitHub. À connaître,
+                    même quand on utilise <a href="uv.html">UV</a> au quotidien.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    <strong>pip</strong> est l'outil qui installe des paquets Python depuis
+                    <a href="https://pypi.org" target="_blank" rel="noopener noreferrer">PyPI</a>, le dépôt
+                    officiel de la communauté Python (FastAPI, NumPy, requests… tout est là). C'est lui qui
+                    télécharge, résout les dépendances et copie les fichiers dans ton environnement.
+                </p>
+                <p>
+                    Il est livré <strong>avec Python</strong> depuis la version 3.4 — donc dès que tu as Python,
+                    tu as pip. C'est pour ça qu'on le croise partout : tutos en ligne, vieux projets, scripts CI,
+                    images Docker… Même si <a href="uv.html">UV</a> est plus rapide et plus moderne, savoir lire
+                    et écrire des commandes pip reste indispensable.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>pip = la commande historique pour installer des paquets Python depuis PyPI ; tu la verras dans 99 % des projets, même si tu utilises UV pour les tiens.</p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">pip vs UV</div>
+                    <p>UV fait tout ce que pip fait, en 10 à 100× plus rapide, et gère en plus Python lui-même et les venvs. Pour un nouveau projet, préfère <a href="uv.html">UV</a>. Pour comprendre un projet existant ou suivre un tuto, c'est pip que tu liras.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu récupères un projet sur GitHub avec un <code>requirements.txt</code>. Le workflow
+                    classique pip + venv tient en 4 commandes :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">git</span> clone &lt;url-du-repo&gt;
+<span class="tk-cmd">cd</span> &lt;dossier&gt;
+<span class="tk-cmd">python3</span> -m venv .venv
+<span class="tk-cmd">source</span> .venv/bin/activate
+<span class="tk-cmd">pip</span> install -r requirements.txt</code></pre>
+                </div>
+                <p>
+                    Tu obtiens un environnement isolé (<code>.venv/</code>) dans lequel sont installés
+                    pile les paquets listés dans <code>requirements.txt</code>. Tu peux ensuite lancer le projet
+                    sans risquer de polluer ton Python système.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser pip</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Vérifier que pip est là</h4>
+                        <p>
+                            Si tu as Python ≥ 3.4, pip est déjà installé. Pour le confirmer :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">python3</span> -m pip --version</code></pre>
+                        </div>
+                        <p>
+                            Tu devrais voir un truc comme <code>pip 24.0 from … (python 3.12)</code>. Si la
+                            commande échoue, installe Python depuis
+                            <a href="https://www.python.org/downloads/" target="_blank" rel="noopener noreferrer">python.org</a>
+                            (l'installeur Windows propose une case "Add Python to PATH" — coche-la).
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce</div>
+                            <p>Préfère <code>python3 -m pip</code> à <code>pip</code> tout court : ça garantit que tu utilises pip de la <em>bonne</em> version de Python, pas celui d'un autre Python installé ailleurs.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer un environnement virtuel</h4>
+                        <p>
+                            Un <strong>venv</strong> isole les paquets d'un projet pour ne pas mélanger les
+                            dépendances entre projets (ni polluer le Python système). Crée-en un dans le
+                            dossier de ton projet :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">python3</span> -m venv .venv</code></pre>
+                        </div>
+                        <p>
+                            Ça crée un dossier <code>.venv/</code> avec une copie autonome de Python.
+                            Ajoute-le à ton <code>.gitignore</code> — il ne doit pas être versionné.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Activer le venv</h4>
+                        <p>Sur <strong>Linux / macOS</strong> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">source</span> .venv/bin/activate</code></pre>
+                        </div>
+                        <p>Sur <strong>Windows</strong> (PowerShell) :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">powershell</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>.venv\Scripts\Activate.ps1</code></pre>
+                        </div>
+                        <p>
+                            Ton prompt affiche maintenant <code>(.venv)</code> au début. À partir d'ici, toute
+                            commande <code>python</code> ou <code>pip</code> tape dans ce venv. Pour sortir :
+                            <code>deactivate</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Installer un paquet</h4>
+                        <p>Avec le venv activé, installe ce dont tu as besoin :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pip</span> install requests</code></pre>
+                        </div>
+                        <p>
+                            Tu peux aussi épingler une version exacte (<code>pip install requests==2.31.0</code>)
+                            ou installer plusieurs paquets d'un coup
+                            (<code>pip install requests fastapi uvicorn</code>).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Écrire un petit script d'exemple</h4>
+                        <p>Crée <code>main.py</code> :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> requests
+
+<span class="tk-keyword">def</span> <span class="tk-fn">main</span>():
+    r = requests.<span class="tk-fn">get</span>(<span class="tk-string">"https://api.github.com"</span>)
+    <span class="tk-fn">print</span>(<span class="tk-string">"Status:"</span>, r.status_code)
+
+<span class="tk-keyword">if</span> __name__ == <span class="tk-string">"__main__"</span>:
+    <span class="tk-fn">main</span>()</code></pre>
+                        </div>
+                        <p>Lance-le :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">python</span> main.py</code></pre>
+                        </div>
+                        <p>Tu devrais voir <code>Status: 200</code>.</p>
+                    </li>
+
+                    <li>
+                        <h4>Figer les dépendances dans un requirements.txt</h4>
+                        <p>
+                            Pour qu'une autre personne (ou toi-même plus tard) puisse réinstaller exactement
+                            les mêmes versions, fige tout dans un fichier :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pip</span> freeze > requirements.txt</code></pre>
+                        </div>
+                        <p>
+                            Le fichier liste tous les paquets installés (et leurs sous-dépendances), un par
+                            ligne, avec leur version exacte. Versionne-le avec ton code.
+                        </p>
+                        <div class="info-box warning">
+                            <div class="info-title">Limite à connaître</div>
+                            <p><code>pip freeze</code> mélange tes dépendances directes (<code>requests</code>) et celles installées en cascade (<code>charset-normalizer</code>, <code>idna</code>…). C'est fonctionnel mais moins propre qu'un vrai fichier de lock comme <code>uv.lock</code> ou <code>poetry.lock</code>, qui sépare les deux.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Réinstaller depuis un requirements.txt</h4>
+                        <p>
+                            C'est <strong>la</strong> commande qu'on tape sur tous les projets Python existants.
+                            Une fois le venv activé :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pip</span> install -r requirements.txt</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer VS Code sur ce venv</h4>
+                        <p>Pour que VS Code utilise le bon Python :</p>
+                        <ol>
+                            <li>Installe l'extension <strong>Python</strong> de Microsoft.</li>
+                            <li>Ouvre la palette (<code>Ctrl+Shift+P</code> / <code>Cmd+Shift+P</code>).</li>
+                            <li>Tape <code>Python: Select Interpreter</code>.</li>
+                            <li>Choisis <code>./.venv/bin/python</code> (ou <code>.venv\Scripts\python.exe</code> sur Windows).</li>
+                        </ol>
+                        <p>
+                            VS Code activera automatiquement le venv dans ses terminaux et utilisera la bonne
+                            version de Python pour l'autocomplétion et le débogage.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire des commandes</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Environnement virtuel</span>
+<span class="tk-cmd">python3</span> -m venv .venv          <span class="tk-comment"># créer le venv</span>
+<span class="tk-cmd">source</span> .venv/bin/activate      <span class="tk-comment"># activer (Linux/macOS)</span>
+.venv\Scripts\Activate.ps1       <span class="tk-comment"># activer (Windows)</span>
+<span class="tk-cmd">deactivate</span>                       <span class="tk-comment"># quitter le venv</span>
+
+<span class="tk-comment"># Installer / désinstaller</span>
+<span class="tk-cmd">pip</span> install &lt;paquet&gt;            <span class="tk-comment"># dernière version</span>
+<span class="tk-cmd">pip</span> install &lt;paquet&gt;==1.2.3     <span class="tk-comment"># version exacte</span>
+<span class="tk-cmd">pip</span> install --upgrade &lt;paquet&gt;  <span class="tk-comment"># mettre à jour</span>
+<span class="tk-cmd">pip</span> uninstall &lt;paquet&gt;          <span class="tk-comment"># retirer</span>
+
+<span class="tk-comment"># Inspecter</span>
+<span class="tk-cmd">pip</span> list                        <span class="tk-comment"># paquets installés</span>
+<span class="tk-cmd">pip</span> show &lt;paquet&gt;               <span class="tk-comment"># détails d'un paquet</span>
+<span class="tk-cmd">pip</span> list --outdated             <span class="tk-comment"># versions périmées</span>
+
+<span class="tk-comment"># Requirements</span>
+<span class="tk-cmd">pip</span> freeze > requirements.txt   <span class="tk-comment"># figer</span>
+<span class="tk-cmd">pip</span> install -r requirements.txt <span class="tk-comment"># réinstaller</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://pip.pypa.io/" target="_blank" rel="noopener noreferrer">pip.pypa.io</a></li>
+                    <li>Index des paquets : <a href="https://pypi.org" target="_blank" rel="noopener noreferrer">pypi.org</a></li>
+                    <li>Module <code>venv</code> : <a href="https://docs.python.org/3/library/venv.html" target="_blank" rel="noopener noreferrer">docs.python.org/3/library/venv.html</a></li>
+                    <li>Alternative moderne : la fiche <a href="uv.html">UV</a> sur ce site.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

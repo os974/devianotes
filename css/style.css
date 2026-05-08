@@ -454,14 +454,15 @@ body::before {
 }
 
 .category-title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     margin: 0;
-    padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--border);
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: inline-block;
 }
 
 .topic-category .cards-grid,
