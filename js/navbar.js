@@ -95,6 +95,12 @@
                             <a href="${S}uptime-kuma.html">Uptime Kuma</a>
                         </div>
                         <div class="dropdown-section">
+                            <div class="dropdown-title">Scraping</div>
+                            <a href="${S}beautifulsoup.html">BeautifulSoup</a>
+                            <a href="${S}selenium.html">Selenium</a>
+                            <a href="${S}playwright.html">Playwright</a>
+                        </div>
+                        <div class="dropdown-section">
                             <div class="dropdown-title">Données</div>
                             <a href="${S}sqlite.html">SQLite</a>
                             <a href="${S}sqlalchemy.html">SQLAlchemy</a>

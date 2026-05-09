@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Playwright — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Playwright</div>
+                <h1>Playwright</h1>
+                <p class="subtitle">
+                    L'alternative moderne à <a href="selenium.html">Selenium</a>, créée par Microsoft.
+                    Pilote Chromium, Firefox et WebKit avec une seule API, gère l'attente des éléments
+                    automatiquement, et installe ses navigateurs tout seul.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    <strong>Playwright</strong> fait exactement la même chose que Selenium&nbsp;: piloter un
+                    navigateur depuis Python pour scraper des pages dynamiques (qui dépendent du JavaScript)
+                    ou tester une application web de bout en bout. Mais sa conception, plus récente (2020),
+                    règle plusieurs irritants historiques de Selenium.
+                </p>
+                <p>Les trois grosses différences que tu vas sentir tout de suite&nbsp;:</p>
+                <ul>
+                    <li><strong>Auto-wait intégré</strong> — Playwright attend automatiquement qu'un élément soit visible et cliquable avant de cliquer dessus. Plus besoin de <code>WebDriverWait</code> manuel partout.</li>
+                    <li><strong>Une seule API pour 3 navigateurs</strong> — Chromium, Firefox et WebKit (le moteur de Safari). Tu changes une ligne pour passer de l'un à l'autre.</li>
+                    <li><strong>Installation des navigateurs gérée</strong> — une commande <code>playwright install</code> télécharge les bons binaires en cache local. Pas besoin que Chrome soit installé sur la machine.</li>
+                </ul>
+                <p>
+                    L'API se décline en deux versions&nbsp;: <strong>synchrone</strong> (la plus simple, qu'on
+                    utilise dans les exemples ici) et <strong>asynchrone</strong> (basée sur
+                    <code>asyncio</code>, utile pour scraper plusieurs pages en parallèle).
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Playwright = Selenium en plus simple, plus rapide et plus stable, avec auto-wait et installation des navigateurs intégrée.</p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand préférer Selenium</div>
+                    <p>Si tu rejoins un projet existant qui utilise Selenium, ou si tu suis un cours / tuto basé sur Selenium, reste sur Selenium. Pour démarrer un nouveau projet de scraping en 2026, Playwright est généralement le meilleur choix.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Même cas que la fiche Selenium&nbsp;: récupérer les citations de
+                    <a href="https://quotes.toscrape.com/js/" target="_blank" rel="noopener noreferrer">quotes.toscrape.com/js/</a>
+                    (contenu chargé en JavaScript). Compare le code avec celui de
+                    <a href="selenium.html">Selenium</a> — c'est plus court, sans <code>WebDriverWait</code>,
+                    et le navigateur est géré tout seul&nbsp;:
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> playwright.sync_api <span class="tk-keyword">import</span> sync_playwright
+<span class="tk-keyword">from</span> bs4 <span class="tk-keyword">import</span> BeautifulSoup
+
+<span class="tk-keyword">with</span> <span class="tk-fn">sync_playwright</span>() <span class="tk-keyword">as</span> p:
+    browser = p.chromium.<span class="tk-fn">launch</span>()
+    page = browser.<span class="tk-fn">new_page</span>()
+    page.<span class="tk-fn">goto</span>(<span class="tk-string">"https://quotes.toscrape.com/js/"</span>)
+
+    <span class="tk-comment"># Auto-wait : on attend que le 1er .quote soit visible</span>
+    page.<span class="tk-fn">locator</span>(<span class="tk-string">".quote"</span>).first.<span class="tk-fn">wait_for</span>()
+
+    soup = <span class="tk-fn">BeautifulSoup</span>(page.<span class="tk-fn">content</span>(), <span class="tk-string">"html.parser"</span>)
+    <span class="tk-keyword">for</span> bloc <span class="tk-keyword">in</span> soup.<span class="tk-fn">select</span>(<span class="tk-string">".quote"</span>):
+        texte = bloc.<span class="tk-fn">select_one</span>(<span class="tk-string">".text"</span>).<span class="tk-fn">get_text</span>(strip=<span class="tk-keyword">True</span>)
+        auteur = bloc.<span class="tk-fn">select_one</span>(<span class="tk-string">".author"</span>).<span class="tk-fn">get_text</span>(strip=<span class="tk-keyword">True</span>)
+        <span class="tk-fn">print</span>(<span class="tk-fn">f</span><span class="tk-string">"{auteur} — {texte}"</span>)
+
+    browser.<span class="tk-fn">close</span>()</code></pre>
+                </div>
+                <p>
+                    Le <code>with sync_playwright()</code> gère le démarrage et la fermeture proprement —
+                    pas besoin de <code>try / finally</code> comme en Selenium. Et <code>browser.close()</code>
+                    suffit pour tout nettoyer.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Playwright</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer Playwright dans un venv</h4>
+                        <p>Avec <a href="pip.html">pip</a> (ou <a href="uv.html">UV</a>) :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">python3</span> -m venv .venv
+<span class="tk-cmd">source</span> .venv/bin/activate
+<span class="tk-cmd">pip</span> install playwright beautifulsoup4</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Télécharger les navigateurs</h4>
+                        <p>
+                            Étape spécifique à Playwright&nbsp;: la lib est installée, mais il faut une commande
+                            de plus pour récupérer les binaires des navigateurs (Chromium, Firefox, WebKit) en
+                            cache local.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Télécharger les 3 navigateurs (~500 Mo)</span>
+<span class="tk-cmd">playwright</span> install
+
+<span class="tk-comment"># Ou seulement Chromium si ça suffit (~150 Mo)</span>
+<span class="tk-cmd">playwright</span> install chromium</code></pre>
+                        </div>
+                        <p>
+                            Une fois fait, <strong>tout est en cache</strong> et tu n'as plus besoin de Chrome
+                            ni Firefox installés sur ta machine — Playwright utilise ses propres binaires. Tu
+                            peux supprimer cette dépendance plus tard avec <code>playwright uninstall</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Premier script : ouvrir une page</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> playwright.sync_api <span class="tk-keyword">import</span> sync_playwright
+
+<span class="tk-keyword">with</span> <span class="tk-fn">sync_playwright</span>() <span class="tk-keyword">as</span> p:
+    browser = p.chromium.<span class="tk-fn">launch</span>(headless=<span class="tk-keyword">True</span>)
+    page = browser.<span class="tk-fn">new_page</span>()
+    page.<span class="tk-fn">goto</span>(<span class="tk-string">"https://quotes.toscrape.com/js/"</span>)
+    <span class="tk-fn">print</span>(page.title())
+    browser.<span class="tk-fn">close</span>()</code></pre>
+                        </div>
+                        <p>
+                            Par défaut, Playwright tourne en <strong>headless</strong> (pas de fenêtre). Pour
+                            voir ce qui se passe pendant le développement, passe <code>headless=False</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Sélectionner avec <code>locator</code></h4>
+                        <p>
+                            Le <strong>locator</strong> est le concept central de Playwright. Contrairement à
+                            <code>find_element</code> de Selenium qui te renvoie immédiatement un élément (ou
+                            lève une exception), un locator est une <em>description</em> de l'élément&nbsp;:
+                            il ne touche le DOM qu'au moment où tu l'utilises, et il ré-évalue la sélection à
+                            chaque fois.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Sélecteurs CSS</span>
+quotes = page.<span class="tk-fn">locator</span>(<span class="tk-string">".quote"</span>)
+<span class="tk-fn">print</span>(quotes.<span class="tk-fn">count</span>())                  <span class="tk-comment"># nombre d'éléments</span>
+
+<span class="tk-comment"># Le 1er match</span>
+premier = quotes.first
+
+<span class="tk-comment"># Sélection par texte (très lisible, recommandé par la doc)</span>
+bouton = page.<span class="tk-fn">get_by_text</span>(<span class="tk-string">"Suivant"</span>)
+champ = page.<span class="tk-fn">get_by_role</span>(<span class="tk-string">"textbox"</span>, name=<span class="tk-string">"Email"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Auto-wait : la grosse différence avec Selenium</h4>
+                        <p>
+                            Quand tu fais <code>locator.click()</code>, Playwright attend automatiquement
+                            que l'élément soit&nbsp;: présent dans le DOM, visible, stable (pas en cours
+                            d'animation), et activé. <strong>Pas de <code>WebDriverWait</code> à écrire</strong>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Cliquer sur un bouton — l'attente est automatique</span>
+page.<span class="tk-fn">get_by_text</span>(<span class="tk-string">"Suivant"</span>).<span class="tk-fn">click</span>()
+
+<span class="tk-comment"># Attendre explicitement qu'un élément apparaisse</span>
+page.<span class="tk-fn">locator</span>(<span class="tk-string">".quote"</span>).first.<span class="tk-fn">wait_for</span>()
+
+<span class="tk-comment"># Attendre une URL précise</span>
+page.<span class="tk-fn">wait_for_url</span>(<span class="tk-string">"**/page/2/"</span>)</code></pre>
+                        </div>
+                        <p>
+                            Tu peux quand même attendre explicitement avec <code>locator.wait_for()</code>
+                            quand tu veux te synchroniser sur l'apparition d'un élément avant de lire le HTML.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Interagir avec la page</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Remplir un champ</span>
+page.<span class="tk-fn">get_by_role</span>(<span class="tk-string">"textbox"</span>, name=<span class="tk-string">"Email"</span>).<span class="tk-fn">fill</span>(<span class="tk-string">"a@b.fr"</span>)
+
+<span class="tk-comment"># Cliquer</span>
+page.<span class="tk-fn">get_by_role</span>(<span class="tk-string">"button"</span>, name=<span class="tk-string">"Connexion"</span>).<span class="tk-fn">click</span>()
+
+<span class="tk-comment"># Lire le texte d'un élément</span>
+texte = page.<span class="tk-fn">locator</span>(<span class="tk-string">"h1"</span>).<span class="tk-fn">text_content</span>()
+
+<span class="tk-comment"># Lire un attribut</span>
+href = page.<span class="tk-fn">locator</span>(<span class="tk-string">"a.next"</span>).<span class="tk-fn">get_attribute</span>(<span class="tk-string">"href"</span>)
+
+<span class="tk-comment"># Capture d'écran</span>
+page.<span class="tk-fn">screenshot</span>(path=<span class="tk-string">"page.png"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Combiner avec BeautifulSoup</h4>
+                        <p>
+                            Comme avec Selenium, on peut laisser Playwright charger la page puis donner le
+                            HTML rendu à <a href="beautifulsoup.html">BeautifulSoup</a> pour le parsing
+                            massif&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> bs4 <span class="tk-keyword">import</span> BeautifulSoup
+
+page.<span class="tk-fn">goto</span>(url)
+page.<span class="tk-fn">locator</span>(<span class="tk-string">".quote"</span>).first.<span class="tk-fn">wait_for</span>()
+
+soup = <span class="tk-fn">BeautifulSoup</span>(page.<span class="tk-fn">content</span>(), <span class="tk-string">"html.parser"</span>)
+<span class="tk-keyword">for</span> bloc <span class="tk-keyword">in</span> soup.<span class="tk-fn">select</span>(<span class="tk-string">".quote"</span>):
+    ...</code></pre>
+                        </div>
+                        <p>
+                            <code>page.content()</code> renvoie le HTML rendu (équivalent de
+                            <code>driver.page_source</code> en Selenium).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Bonus : enregistrer un script via <code>codegen</code></h4>
+                        <p>
+                            Playwright propose une commande qui ouvre un navigateur, enregistre tes clics et
+                            tes saisies, et te génère le code Python correspondant. Très pratique pour
+                            démarrer ou pour comprendre comment cibler un élément.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">playwright</span> codegen https://quotes.toscrape.com/js/</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> playwright.sync_api <span class="tk-keyword">import</span> sync_playwright
+
+<span class="tk-keyword">with</span> <span class="tk-fn">sync_playwright</span>() <span class="tk-keyword">as</span> p:
+    <span class="tk-comment"># Lancer un navigateur</span>
+    browser = p.chromium.<span class="tk-fn">launch</span>(headless=<span class="tk-keyword">True</span>)
+    <span class="tk-comment"># p.firefox.launch() / p.webkit.launch() au choix</span>
+
+    <span class="tk-comment"># Page</span>
+    page = browser.<span class="tk-fn">new_page</span>()
+    page.<span class="tk-fn">goto</span>(url)
+    page.<span class="tk-fn">title</span>()
+    page.<span class="tk-fn">content</span>()                 <span class="tk-comment"># HTML rendu (à passer à BS4)</span>
+
+    <span class="tk-comment"># Locators (description, pas un élément immédiat)</span>
+    page.<span class="tk-fn">locator</span>(<span class="tk-string">".quote"</span>)
+    page.<span class="tk-fn">get_by_text</span>(<span class="tk-string">"Suivant"</span>)
+    page.<span class="tk-fn">get_by_role</span>(<span class="tk-string">"button"</span>, name=<span class="tk-string">"OK"</span>)
+
+    <span class="tk-comment"># Actions (auto-wait inclus)</span>
+    locator.<span class="tk-fn">click</span>()
+    locator.<span class="tk-fn">fill</span>(<span class="tk-string">"texte"</span>)
+    locator.<span class="tk-fn">text_content</span>()
+    locator.<span class="tk-fn">get_attribute</span>(<span class="tk-string">"href"</span>)
+    locator.<span class="tk-fn">count</span>()
+    locator.first, locator.last
+    locator.<span class="tk-fn">wait_for</span>()             <span class="tk-comment"># attente explicite</span>
+
+    <span class="tk-comment"># Divers</span>
+    page.<span class="tk-fn">screenshot</span>(path=<span class="tk-string">"x.png"</span>)
+    page.<span class="tk-fn">wait_for_url</span>(<span class="tk-string">"**/page/2/"</span>)
+
+    browser.<span class="tk-fn">close</span>()
+
+<span class="tk-comment"># En CLI</span>
+<span class="tk-comment"># playwright install            (télécharger les navigateurs)</span>
+<span class="tk-comment"># playwright codegen &lt;url&gt;     (enregistrer un script à la souris)</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://playwright.dev/python/" target="_blank" rel="noopener noreferrer">playwright.dev/python</a></li>
+                    <li>Site d'entraînement (version JS) : <a href="https://quotes.toscrape.com/js/" target="_blank" rel="noopener noreferrer">quotes.toscrape.com/js/</a></li>
+                    <li>Pour parser le HTML récupéré : fiche <a href="beautifulsoup.html">BeautifulSoup</a>.</li>
+                    <li>Comparer avec l'historique : fiche <a href="selenium.html">Selenium</a>.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
