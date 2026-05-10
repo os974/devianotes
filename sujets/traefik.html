@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Traefik — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Traefik</div>
+                <h1>Traefik</h1>
+                <p class="subtitle">
+                    Reverse proxy moderne pensé pour les conteneurs : il découvre tes services
+                    <a href="docker.html">Docker</a> ou <a href="kubernetes.html">Kubernetes</a> tout
+                    seul, route les requêtes vers le bon, et gère le HTTPS Let's Encrypt sans config
+                    à recopier à la main.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Un <strong>reverse proxy</strong> est un serveur placé <em>devant</em> tes applications.
+                    Il reçoit les requêtes des utilisateurs et les redirige vers le bon service interne
+                    selon des règles : nom de domaine, chemin d'URL, en-tête… Il sert aussi à terminer
+                    le HTTPS, à équilibrer la charge entre plusieurs instances, à appliquer de
+                    l'authentification, à logger…
+                </p>
+                <p>
+                    <strong>Traefik</strong> (prononcé «&nbsp;<em>traffic</em>&nbsp;») est un reverse proxy
+                    open source écrit en Go, dont la particularité est d'être <strong>dynamique</strong>&nbsp;:
+                    il se reconfigure tout seul quand tes services apparaissent ou disparaissent. Tu lui
+                    donnes accès à Docker (ou Kubernetes), tu colles quelques <em>labels</em> sur tes
+                    conteneurs, et il s'occupe du reste.
+                </p>
+                <p>Ses points forts pour un projet MLOps&nbsp;:</p>
+                <ul>
+                    <li><strong>Autodiscovery</strong> — pas besoin de toucher à la config Traefik quand tu ajoutes un service, ce sont les labels du service qui parlent.</li>
+                    <li><strong>HTTPS automatique</strong> — Traefik demande, renouvelle et installe les certificats Let's Encrypt tout seul.</li>
+                    <li><strong>Dashboard intégré</strong> — une UI web qui montre en temps réel les routes et services connus.</li>
+                    <li><strong>Multi-providers</strong> — Docker, Kubernetes, fichier YAML, Consul… On peut mélanger.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">En une phrase</div>
+                    <p>Traefik = un reverse proxy qui se reconfigure tout seul à mesure que tes conteneurs apparaissent et disparaissent, avec HTTPS Let's Encrypt automatique.</p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Traefik vs nginx</div>
+                    <p>Avec <strong>nginx</strong>, chaque ajout de service implique d'éditer un fichier de config et de relancer nginx. C'est très bien pour des architectures stables. Avec <strong>Traefik</strong>, tu ne touches plus à la config du proxy après l'install&nbsp;: les services se déclarent eux-mêmes via leurs labels Docker. C'est ce qui le rend particulièrement adapté aux environnements où les conteneurs vont et viennent (CI, dev, microservices, déploiements progressifs).</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as trois applis dans Docker — une API <a href="fastapi.html">FastAPI</a>, un dashboard
+                    <a href="streamlit.html">Streamlit</a>, une UI <a href="mlflow.html">MLflow</a> — chacune
+                    sur un port différent, et tu veux les exposer sous trois sous-domaines en HTTPS sans
+                    écrire 50 lignes de config.
+                </p>
+                <p>
+                    Avec Traefik, c'est un <code>docker-compose.yml</code> qui démarre Traefik plus tes
+                    services, et chaque service ajoute deux labels pour annoncer «&nbsp;voici mon
+                    hostname et mon port interne&nbsp;»&nbsp;:
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">yaml (extrait)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>services:
+  api:
+    image: monorg/api:latest
+    labels:
+      - <span class="tk-string">"traefik.enable=true"</span>
+      - <span class="tk-string">"traefik.http.routers.api.rule=Host(`api.maboite.fr`)"</span>
+      - <span class="tk-string">"traefik.http.services.api.loadbalancer.server.port=8000"</span></code></pre>
+                </div>
+                <p>
+                    Pas besoin de redémarrer Traefik ni de toucher au moindre fichier de config&nbsp;:
+                    quand le service démarre, Traefik le voit et la route devient active. Quand tu coupes
+                    le conteneur, la route disparaît.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Traefik</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer Traefik dans <a href="docker.html">Docker</a></h4>
+                        <p>
+                            Le scénario le plus courant en formation. Crée un <code>docker-compose.yml</code> minimal&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - <span class="tk-string">"--api.insecure=true"</span>             <span class="tk-comment"># dashboard sans auth (dev only)</span>
+      - <span class="tk-string">"--providers.docker=true"</span>
+      - <span class="tk-string">"--providers.docker.exposedbydefault=false"</span>
+      - <span class="tk-string">"--entrypoints.web.address=:80"</span>
+    ports:
+      - <span class="tk-string">"80:80"</span>      <span class="tk-comment"># trafic HTTP</span>
+      - <span class="tk-string">"8080:8080"</span>  <span class="tk-comment"># dashboard</span>
+    volumes:
+      - <span class="tk-string">"/var/run/docker.sock:/var/run/docker.sock:ro"</span></code></pre>
+                        </div>
+                        <p>
+                            Lance avec <code>docker compose up -d</code>. Le dashboard est accessible sur
+                            <code>http://localhost:8080</code>.
+                        </p>
+                        <div class="info-box warning">
+                            <div class="info-title">Le socket Docker</div>
+                            <p>Le volume <code>/var/run/docker.sock</code> est ce qui permet à Traefik de voir tes conteneurs en temps réel. C'est puissant mais sensible : un conteneur qui a accès au socket peut piloter le démon Docker. En prod, il y a des patterns plus sûrs (proxy de socket en lecture seule). En dev, on accepte le risque.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Comprendre les 4 concepts clés</h4>
+                        <p>
+                            Toute la doc Traefik tourne autour de ces quatre mots — apprends-les une fois,
+                            tu comprendras tous les exemples&nbsp;:
+                        </p>
+                        <ul>
+                            <li><strong>EntryPoint</strong> — le port d'entrée (<code>web</code> = 80, <code>websecure</code> = 443).</li>
+                            <li><strong>Router</strong> — la règle de matching qui décide quelle requête va vers quel service (par hostname, chemin, header…).</li>
+                            <li><strong>Service</strong> — la cible : le conteneur (ou plusieurs, en load balancing) qui va traiter la requête.</li>
+                            <li><strong>Middleware</strong> (optionnel) — une transformation appliquée entre le router et le service : auth, redirection, modif d'header, rate limit…</li>
+                        </ul>
+                        <p>Le flux d'une requête&nbsp;: <em>EntryPoint</em> → <em>Router</em> (qui matche) → <em>Middlewares</em> éventuels → <em>Service</em>.</p>
+                    </li>
+
+                    <li>
+                        <h4>Exposer un service via labels Docker</h4>
+                        <p>
+                            On a configuré Traefik avec <code>exposedbydefault=false</code>&nbsp;: par défaut
+                            aucun conteneur n'est exposé. C'est volontaire (tu choisis ce que tu publies). Pour
+                            exposer un service, tu ajoutes 3 labels minimum&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>  monservice:
+    image: monorg/monservice
+    labels:
+      - <span class="tk-string">"traefik.enable=true"</span>
+      - <span class="tk-string">"traefik.http.routers.mon.rule=Host(`mon.localhost`)"</span>
+      - <span class="tk-string">"traefik.http.services.mon.loadbalancer.server.port=3000"</span></code></pre>
+                        </div>
+                        <p>
+                            Décrypté&nbsp;: le router nommé <code>mon</code> matche les requêtes dont l'hôte
+                            est <code>mon.localhost</code>, et les envoie vers le service <code>mon</code> sur
+                            le port interne 3000 du conteneur.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>HTTPS Let's Encrypt automatique (en prod)</h4>
+                        <p>
+                            Pour la prod, Traefik peut obtenir et renouveler des certificats TLS tout seul. Il
+                            suffit d'ajouter un <em>certResolver</em> dans la config et un label sur le router.
+                            On en montre le concept ici, l'exercice en bas reste en HTTP local pour ne pas dépendre
+                            d'un domaine public&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (concept prod)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>command:
+  - <span class="tk-string">"--certificatesresolvers.le.acme.email=toi@maboite.fr"</span>
+  - <span class="tk-string">"--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"</span>
+  - <span class="tk-string">"--certificatesresolvers.le.acme.tlschallenge=true"</span>
+  - <span class="tk-string">"--entrypoints.websecure.address=:443"</span>
+
+<span class="tk-comment"># sur le service :</span>
+labels:
+  - <span class="tk-string">"traefik.http.routers.mon.entrypoints=websecure"</span>
+  - <span class="tk-string">"traefik.http.routers.mon.tls.certresolver=le"</span></code></pre>
+                        </div>
+                        <p>Au premier démarrage, Traefik négocie le certificat avec Let's Encrypt et l'utilise. Le renouvellement (tous les 90 jours) se fait sans rien faire.</p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Exercice détaillé : démo de présentation</h2>
+                <p>
+                    Cet exercice est conçu pour <strong>une présentation de 15-20 minutes</strong>. Tu déroules
+                    les 7 étapes, chacune ajoute une fonctionnalité visible à l'écran. Le projet final tient
+                    dans un seul <code>docker-compose.yml</code>.
+                </p>
+                <p>
+                    <strong>Pré-requis pour le live</strong> : <a href="docker.html">Docker</a> + Docker
+                    Compose installés, ports 80 et 8080 libres, navigateur ouvert. Sur Linux/macOS,
+                    <code>*.localhost</code> résout automatiquement vers <code>127.0.0.1</code> (sur Windows
+                    récent aussi). Aucun ajout dans <code>/etc/hosts</code> nécessaire.
+                </p>
+
+                <div class="info-box tip">
+                    <div class="info-title">Conseil de présentation</div>
+                    <p>Avant la démo, lance une fois le projet final pour télécharger les images Docker. Le jour J, tu n'attendras pas pendant le téléchargement devant l'auditoire. Ensuite, fais <code>docker compose down</code> et reprends à l'étape 1.</p>
+                </div>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Étape 1 — Démarrer Traefik seul</h4>
+                        <p>Crée un dossier <code>traefik-demo</code> avec ce <code>docker-compose.yml</code>&nbsp;:</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - <span class="tk-string">"--api.insecure=true"</span>
+      - <span class="tk-string">"--providers.docker=true"</span>
+      - <span class="tk-string">"--providers.docker.exposedbydefault=false"</span>
+      - <span class="tk-string">"--entrypoints.web.address=:80"</span>
+      - <span class="tk-string">"--log.level=INFO"</span>
+    ports:
+      - <span class="tk-string">"80:80"</span>
+      - <span class="tk-string">"8080:8080"</span>
+    volumes:
+      - <span class="tk-string">"/var/run/docker.sock:/var/run/docker.sock:ro"</span></code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d
+<span class="tk-cmd">docker</span> compose logs -f traefik</code></pre>
+                        </div>
+                        <p>
+                            <strong>Ce que tu montres</strong> : ouvrir <code>http://localhost:8080</code>.
+                            Le dashboard est vide&nbsp;: Traefik tourne, mais aucun service n'est encore
+                            exposé. Mets bien en avant <code>exposedbydefault=false</code> dans le
+                            commentaire — c'est le détail qui surprend les débutants en suivant des tutos
+                            où tout est exposé par défaut.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Étape 2 — Ajouter un premier service</h4>
+                        <p>
+                            On utilise <code>traefik/whoami</code>, une image officielle minuscule qui répond
+                            sur HTTP en affichant les en-têtes reçues. Idéale pour démontrer le routage&nbsp;:
+                            tu vois directement quel hôte la requête a traversé.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (à ajouter sous "services:")</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>  app1:
+    image: traefik/whoami
+    labels:
+      - <span class="tk-string">"traefik.enable=true"</span>
+      - <span class="tk-string">"traefik.http.routers.app1.rule=Host(`app1.localhost`)"</span>
+      - <span class="tk-string">"traefik.http.routers.app1.entrypoints=web"</span></code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d
+<span class="tk-cmd">curl</span> http://app1.localhost</code></pre>
+                        </div>
+                        <p>
+                            <strong>Ce que tu montres</strong> : (1) dans le dashboard, le router <code>app1</code>
+                            apparaît tout seul — Traefik a détecté le nouveau conteneur sans qu'on touche à sa
+                            config&nbsp;; (2) <code>curl</code> renvoie la liste des en-têtes vues par
+                            whoami, dont <code>X-Forwarded-Host: app1.localhost</code>. Le routage par hôte
+                            fonctionne.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Pourquoi pas de label "port"</div>
+                            <p>L'image <code>whoami</code> n'expose qu'un seul port (80). Quand le conteneur n'a qu'un port exposé, Traefik le devine. Si plusieurs ports sont exposés, il faut préciser avec <code>traefik.http.services.app1.loadbalancer.server.port=…</code>.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Étape 3 — Routage par hostname avec deux services</h4>
+                        <p>
+                            Pour montrer la valeur d'un reverse proxy, on ajoute un deuxième service identique
+                            mais sous un autre hôte&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (à ajouter)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>  app2:
+    image: traefik/whoami
+    labels:
+      - <span class="tk-string">"traefik.enable=true"</span>
+      - <span class="tk-string">"traefik.http.routers.app2.rule=Host(`app2.localhost`)"</span>
+      - <span class="tk-string">"traefik.http.routers.app2.entrypoints=web"</span></code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d
+<span class="tk-cmd">curl</span> http://app1.localhost
+<span class="tk-cmd">curl</span> http://app2.localhost</code></pre>
+                        </div>
+                        <p>
+                            <strong>Ce que tu montres</strong> : deux services, un seul port d'entrée (80),
+                            zéro modif de la config Traefik. Mets en avant que ça marcherait avec n'importe
+                            quel nombre de services. Le dashboard montre les deux routers en parallèle.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Étape 4 — Routage par chemin (PathPrefix)</h4>
+                        <p>
+                            Le routage par hôte est le plus courant, mais Traefik sait aussi router par
+                            <strong>chemin d'URL</strong>. Pratique quand tout doit vivre derrière le même
+                            domaine. Modifie le router de <code>app2</code>&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>  app2:
+    image: traefik/whoami
+    labels:
+      - <span class="tk-string">"traefik.enable=true"</span>
+      - <span class="tk-string">"traefik.http.routers.app2.rule=Host(`app1.localhost`) &amp;&amp; PathPrefix(`/v2`)"</span>
+      - <span class="tk-string">"traefik.http.routers.app2.entrypoints=web"</span></code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d
+<span class="tk-cmd">curl</span> http://app1.localhost           <span class="tk-comment"># va vers app1</span>
+<span class="tk-cmd">curl</span> http://app1.localhost/v2/abc    <span class="tk-comment"># va vers app2</span></code></pre>
+                        </div>
+                        <p>
+                            <strong>Ce que tu montres</strong> : la règle combine deux conditions avec
+                            <code>&amp;&amp;</code>. C'est ce qui permet à Traefik de servir une API et son
+                            front au même endroit (par exemple <code>/api/*</code> vers le backend, le reste
+                            vers le front).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Étape 5 — Ajouter un middleware (BasicAuth)</h4>
+                        <p>
+                            Les <strong>middlewares</strong> s'intercalent entre le router et le service.
+                            Démontrons-en un : protéger <code>app2</code> par un mot de passe. D'abord,
+                            génère le hash&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run --rm httpd:alpine htpasswd -nb admin secret
+<span class="tk-comment"># renvoie quelque chose comme : admin:$apr1$XXX$YYYYYYY</span></code></pre>
+                        </div>
+                        <p>Puis ajoute deux labels au service&nbsp;:</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>      - <span class="tk-string">"traefik.http.middlewares.auth-app2.basicauth.users=admin:$$apr1$$XXX$$YYYYYYY"</span>
+      - <span class="tk-string">"traefik.http.routers.app2.middlewares=auth-app2"</span></code></pre>
+                        </div>
+                        <div class="info-box warning">
+                            <div class="info-title">Attention au double dollar</div>
+                            <p>Dans un fichier <code>docker-compose.yml</code>, les <code>$</code> sont interprétés comme variables d'environnement. Il faut les <strong>doubler</strong> (<code>$$</code>) pour qu'ils arrivent intacts à Traefik. C'est <em>le</em> piège classique.</p>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d
+<span class="tk-cmd">curl</span> http://app1.localhost/v2/abc                    <span class="tk-comment"># 401</span>
+<span class="tk-cmd">curl</span> -u admin:secret http://app1.localhost/v2/abc   <span class="tk-comment"># 200</span></code></pre>
+                        </div>
+                        <p>
+                            <strong>Ce que tu montres</strong> : la composition. Le middleware est défini puis
+                            attaché à un router. Le même middleware peut être attaché à plusieurs routers — c'est
+                            le pattern «&nbsp;auth centralisée&nbsp;» en une ligne.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Étape 6 — Scaler un service (load balancing)</h4>
+                        <p>
+                            Le mot «&nbsp;loadbalancer&nbsp;» qu'on a vu dans les labels n'est pas décoratif&nbsp;:
+                            si plusieurs conteneurs partagent le même router, Traefik répartit les requêtes
+                            entre eux en round-robin. Démontre-le en démarrant 3 instances de
+                            <code>app1</code>&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d --scale app1=3
+<span class="tk-keyword">for</span> i in 1 2 3 4 5 6; <span class="tk-keyword">do</span> <span class="tk-cmd">curl</span> -s http://app1.localhost | grep Hostname; <span class="tk-keyword">done</span></code></pre>
+                        </div>
+                        <p>
+                            <strong>Ce que tu montres</strong> : les requêtes alternent entre 3 hostnames de
+                            conteneurs différents. Pas de config supplémentaire — Traefik a découvert les 3
+                            instances via Docker, et a constaté qu'elles partagent les mêmes labels donc le
+                            même service côté Traefik.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Étape 7 — Synthèse à l'oral</h4>
+                        <p>
+                            Conclus en 3 messages clés (à dérouler à l'oral, dashboard à l'écran)&nbsp;:
+                        </p>
+                        <ol>
+                            <li><strong>On n'a jamais redémarré Traefik</strong>. Toute la config est venue des labels des services.</li>
+                            <li><strong>Ça marche pour 1 ou 100 services</strong>. Le pattern est identique : un service = quelques labels.</li>
+                            <li><strong>En prod</strong>, on ajoute le <em>certResolver</em> Let's Encrypt et un <code>entrypoints.websecure</code> sur 443. Tout le reste reste pareil.</li>
+                        </ol>
+                        <p>
+                            Pour ranger : <code>docker compose down</code> dans le dossier <code>traefik-demo</code>.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">yaml — labels Docker</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Activer Traefik sur ce conteneur</span>
+- <span class="tk-string">"traefik.enable=true"</span>
+
+<span class="tk-comment"># Router (matching) — quelques règles courantes</span>
+- <span class="tk-string">"traefik.http.routers.X.rule=Host(`a.localhost`)"</span>
+- <span class="tk-string">"traefik.http.routers.X.rule=Host(`a.fr`) &amp;&amp; PathPrefix(`/api`)"</span>
+- <span class="tk-string">"traefik.http.routers.X.rule=Headers(`X-Tenant`, `acme`)"</span>
+
+<span class="tk-comment"># EntryPoint (web=80, websecure=443)</span>
+- <span class="tk-string">"traefik.http.routers.X.entrypoints=web"</span>
+
+<span class="tk-comment"># Service (port interne, si plusieurs ports exposés)</span>
+- <span class="tk-string">"traefik.http.services.X.loadbalancer.server.port=8000"</span>
+
+<span class="tk-comment"># Middlewares</span>
+- <span class="tk-string">"traefik.http.middlewares.auth.basicauth.users=admin:$$..."</span>
+- <span class="tk-string">"traefik.http.middlewares.strip.stripprefix.prefixes=/api"</span>
+- <span class="tk-string">"traefik.http.routers.X.middlewares=auth,strip"</span>
+
+<span class="tk-comment"># HTTPS (en prod)</span>
+- <span class="tk-string">"traefik.http.routers.X.entrypoints=websecure"</span>
+- <span class="tk-string">"traefik.http.routers.X.tls.certresolver=le"</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash — commandes utiles</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> compose up -d                        <span class="tk-comment"># démarrer</span>
+<span class="tk-cmd">docker</span> compose logs -f traefik              <span class="tk-comment"># suivre les logs</span>
+<span class="tk-cmd">docker</span> compose up -d --scale app1=3        <span class="tk-comment"># 3 instances</span>
+<span class="tk-cmd">docker</span> compose down                          <span class="tk-comment"># tout arrêter</span>
+
+<span class="tk-comment"># Générer un hash BasicAuth</span>
+<span class="tk-cmd">docker</span> run --rm httpd:alpine htpasswd -nb admin secret</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation officielle : <a href="https://doc.traefik.io/traefik/" target="_blank" rel="noopener noreferrer">doc.traefik.io/traefik</a></li>
+                    <li>Image whoami utilisée dans la démo : <a href="https://hub.docker.com/r/traefik/whoami" target="_blank" rel="noopener noreferrer">hub.docker.com/r/traefik/whoami</a></li>
+                    <li>À mettre en perspective avec : fiches <a href="docker.html">Docker</a> et <a href="kubernetes.html">Kubernetes</a> (Traefik est aussi un Ingress Controller K8s).</li>
+                    <li>Cas d'usage typique en MLOps : Traefik devant <a href="fastapi.html">FastAPI</a> + <a href="streamlit.html">Streamlit</a> + <a href="mlflow.html">MLflow</a> sur un même VPS.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
