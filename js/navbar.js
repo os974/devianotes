@@ -77,6 +77,7 @@
                             <a href="${S}forgejo.html">Forgejo</a>
                             <a href="${S}cicd.html">CI/CD</a>
                             <a href="${S}pytest.html">pytest</a>
+                            <a href="${S}ruff.html">Ruff</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">MLOps</div>
@@ -90,6 +91,12 @@
                             <a href="${S}redis.html">Redis</a>
                             <a href="${S}celery.html">Celery</a>
                             <a href="${S}flower.html">Flower</a>
+                        </div>
+                        <div class="dropdown-section">
+                            <div class="dropdown-title">Logs</div>
+                            <a href="${S}logging.html">logging (stdlib)</a>
+                            <a href="${S}loguru.html">Loguru</a>
+                            <a href="${S}loki.html">Loki</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Monitoring</div>
@@ -109,6 +116,14 @@
                             <a href="${S}sqlalchemy.html">SQLAlchemy</a>
                             <a href="${S}supabase.html">Supabase</a>
                             <a href="${S}pandas.html">pandas</a>
+                        </div>
+                        <div class="dropdown-section">
+                            <div class="dropdown-title">Stockage</div>
+                            <a href="${S}minio.html">MinIO</a>
+                        </div>
+                        <div class="dropdown-section">
+                            <div class="dropdown-title">Modèles IA</div>
+                            <a href="${S}yolo.html">YOLO</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>

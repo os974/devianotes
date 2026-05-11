@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>logging — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / logging</div>
+                <h1>logging (stdlib)</h1>
+                <p class="subtitle">
+                    Le module de journalisation <strong>livré avec Python</strong>. Pas le plus
+                    sexy, mais c'est le standard : toutes les bibliothèques l'utilisent, et c'est
+                    ce qu'on attend de toi en formation et en entretien.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand ton script grossit, <code>print()</code> ne suffit plus : tu veux
+                    distinguer ce qui est une <em>info</em>, un <em>avertissement</em> ou une
+                    <em>erreur</em>, écrire dans un fichier en plus de la console, ou désactiver
+                    les messages de debug en production sans toucher au code. C'est exactement
+                    le rôle de <code>logging</code>.
+                </p>
+                <ul>
+                    <li><strong>Niveaux</strong> de gravité : tu écris du DEBUG partout, et en
+                        prod tu n'affiches que les WARNING et au-dessus.</li>
+                    <li><strong>Plusieurs destinations</strong> : console, fichier rotatif,
+                        syslog, email d'alerte… simultanément.</li>
+                    <li><strong>Format configurable</strong> : timestamp, nom du module, numéro
+                        de ligne, exception, le tout dans une chaîne au choix.</li>
+                    <li><strong>Hiérarchique</strong> : chaque module a son propre logger, et
+                        une config centrale les pilote tous.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Pourquoi pas juste <code>print()</code> ?</div>
+                    <p>
+                        <code>print()</code> écrit toujours sur stdout, sans timestamp, sans
+                        niveau, sans contexte. Si ton script tombe à 3h du matin, tu retrouves
+                        <em>« erreur »</em> dans les logs et tu ne sais ni quand, ni où, ni
+                        pourquoi. <code>logging</code> ajoute toutes ces métadonnées
+                        automatiquement, et permet de couper le bruit en changeant un seul
+                        paramètre.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Les 3 concepts à connaître</h2>
+                <ul>
+                    <li>
+                        <strong>Logger</strong> — l'objet sur lequel tu appelles
+                        <code>.info()</code>, <code>.error()</code>, etc. Chaque module a le
+                        sien, identifié par un nom (souvent <code>__name__</code>). Les loggers
+                        sont organisés en arbre : <code>app.api.routes</code> est enfant de
+                        <code>app.api</code>, lui-même enfant de <code>app</code>, lui-même
+                        enfant du <strong>root logger</strong>.
+                    </li>
+                    <li>
+                        <strong>Handler</strong> — la destination. <code>StreamHandler</code>
+                        écrit sur la console, <code>FileHandler</code> dans un fichier,
+                        <code>RotatingFileHandler</code> dans un fichier qui se renouvelle
+                        quand il devient trop gros. Un logger peut avoir plusieurs handlers.
+                    </li>
+                    <li>
+                        <strong>Formatter</strong> — le gabarit qui transforme un message en
+                        ligne lisible. Ex. <code>%(asctime)s [%(levelname)s] %(name)s:
+                        %(message)s</code> donne <code>2026-05-11 14:32:01 [INFO]
+                        app.api: serveur démarré</code>.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Les 5 niveaux standards</div>
+                    <p>
+                        Du plus bas au plus haut : <code>DEBUG</code> (verbeux, dev seulement),
+                        <code>INFO</code> (étapes normales), <code>WARNING</code> (anomalie qui
+                        n'arrête pas), <code>ERROR</code> (échec d'une opération),
+                        <code>CRITICAL</code> (l'appli ne peut plus fonctionner). Le logger
+                        affiche tout ce qui est ≥ son niveau configuré — mettre
+                        <code>INFO</code> coupe le DEBUG sans toucher au code.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> logging
+
+logging.<span class="tk-fn">basicConfig</span>(
+    level=logging.INFO,
+    format=<span class="tk-string">"%(asctime)s [%(levelname)s] %(name)s: %(message)s"</span>,
+)
+
+logger = logging.<span class="tk-fn">getLogger</span>(__name__)
+
+logger.<span class="tk-fn">info</span>(<span class="tk-string">"démarrage de l'application"</span>)
+logger.<span class="tk-fn">warning</span>(<span class="tk-string">"clé manquante, valeur par défaut utilisée"</span>)
+
+<span class="tk-keyword">try</span>:
+    x = <span class="tk-num">1</span> / <span class="tk-num">0</span>
+<span class="tk-keyword">except</span> ZeroDivisionError:
+    logger.<span class="tk-fn">exception</span>(<span class="tk-string">"division impossible"</span>)   <span class="tk-comment"># inclut la stack trace</span></code></pre>
+                </div>
+                <p>
+                    Sortie typique :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">text</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>2026-05-11 14:32:01 [INFO] __main__: démarrage de l'application
+2026-05-11 14:32:01 [WARNING] __main__: clé manquante, valeur par défaut utilisée
+2026-05-11 14:32:01 [ERROR] __main__: division impossible
+Traceback (most recent call last):
+  File "app.py", line 12, in &lt;module&gt;
+    x = 1 / 0
+ZeroDivisionError: division by zero</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>How-to : utiliser logging proprement</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Toujours nommer ton logger</h4>
+                        <p>
+                            La règle d'or : dans chaque fichier, fais
+                            <code>logger = logging.getLogger(__name__)</code>. Le nom
+                            correspond automatiquement au chemin du module
+                            (<code>app.api.routes</code>), ce qui permet de filtrer par module
+                            dans la config.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># app/api/routes.py</span>
+<span class="tk-keyword">import</span> logging
+
+logger = logging.<span class="tk-fn">getLogger</span>(__name__)
+
+<span class="tk-keyword">def</span> <span class="tk-fn">handler</span>():
+    logger.<span class="tk-fn">info</span>(<span class="tk-string">"requête reçue"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer une seule fois, au point d'entrée</h4>
+                        <p>
+                            La configuration se fait <strong>une seule fois</strong>, en haut
+                            de ton <code>main.py</code> ou dans un module dédié. Les autres
+                            fichiers se contentent de récupérer leur logger avec
+                            <code>getLogger(__name__)</code>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># main.py</span>
+<span class="tk-keyword">import</span> logging
+
+logging.<span class="tk-fn">basicConfig</span>(
+    level=logging.INFO,
+    format=<span class="tk-string">"%(asctime)s [%(levelname)s] %(name)s: %(message)s"</span>,
+    datefmt=<span class="tk-string">"%Y-%m-%d %H:%M:%S"</span>,
+)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Logger dans un fichier qui tourne</h4>
+                        <p>
+                            <code>RotatingFileHandler</code> est l'outil standard : un fichier
+                            qui se renouvelle quand il atteint une taille donnée, avec un
+                            historique limité.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> logging
+<span class="tk-keyword">from</span> logging.handlers <span class="tk-keyword">import</span> RotatingFileHandler
+
+handler = <span class="tk-fn">RotatingFileHandler</span>(
+    <span class="tk-string">"app.log"</span>,
+    maxBytes=<span class="tk-num">5</span> * <span class="tk-num">1024</span> * <span class="tk-num">1024</span>,   <span class="tk-comment"># 5 Mo max</span>
+    backupCount=<span class="tk-num">3</span>,             <span class="tk-comment"># garde 3 anciens fichiers</span>
+)
+handler.<span class="tk-fn">setFormatter</span>(logging.<span class="tk-fn">Formatter</span>(
+    <span class="tk-string">"%(asctime)s [%(levelname)s] %(name)s: %(message)s"</span>
+))
+
+logging.<span class="tk-fn">getLogger</span>().<span class="tk-fn">addHandler</span>(handler)
+logging.<span class="tk-fn">getLogger</span>().<span class="tk-fn">setLevel</span>(logging.INFO)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer via un dictionnaire (dictConfig)</h4>
+                        <p>
+                            Pour les applis sérieuses, on évite la config impérative au profit
+                            d'un dictionnaire (souvent chargé depuis un fichier YAML). C'est
+                            plus lisible et plus maintenable.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> logging.config
+
+logging.config.<span class="tk-fn">dictConfig</span>({
+    <span class="tk-string">"version"</span>: <span class="tk-num">1</span>,
+    <span class="tk-string">"formatters"</span>: {
+        <span class="tk-string">"default"</span>: {<span class="tk-string">"format"</span>: <span class="tk-string">"%(asctime)s [%(levelname)s] %(name)s: %(message)s"</span>},
+    },
+    <span class="tk-string">"handlers"</span>: {
+        <span class="tk-string">"console"</span>: {<span class="tk-string">"class"</span>: <span class="tk-string">"logging.StreamHandler"</span>, <span class="tk-string">"formatter"</span>: <span class="tk-string">"default"</span>},
+        <span class="tk-string">"file"</span>: {
+            <span class="tk-string">"class"</span>: <span class="tk-string">"logging.handlers.RotatingFileHandler"</span>,
+            <span class="tk-string">"filename"</span>: <span class="tk-string">"app.log"</span>,
+            <span class="tk-string">"maxBytes"</span>: <span class="tk-num">5_000_000</span>,
+            <span class="tk-string">"backupCount"</span>: <span class="tk-num">3</span>,
+            <span class="tk-string">"formatter"</span>: <span class="tk-string">"default"</span>,
+        },
+    },
+    <span class="tk-string">"root"</span>: {<span class="tk-string">"level"</span>: <span class="tk-string">"INFO"</span>, <span class="tk-string">"handlers"</span>: [<span class="tk-string">"console"</span>, <span class="tk-string">"file"</span>]},
+})</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Logger une exception avec sa trace</h4>
+                        <p>
+                            <code>logger.exception()</code> n'est utile que <strong>dans un
+                            bloc <code>except</code></strong> : il ajoute automatiquement la
+                            stack trace au message. Ne pas le confondre avec
+                            <code>logger.error()</code> qui ne l'inclut pas.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">try</span>:
+    risky_call()
+<span class="tk-keyword">except</span> Exception:
+    logger.<span class="tk-fn">exception</span>(<span class="tk-string">"appel risqué a échoué"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Désactiver les logs d'une lib trop bavarde</h4>
+                        <p>
+                            Beaucoup de libs externes (urllib3, asyncio, sqlalchemy…) loguent en
+                            DEBUG, ce qui pollue tes logs. On les remonte à WARNING module par
+                            module :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>logging.<span class="tk-fn">getLogger</span>(<span class="tk-string">"urllib3"</span>).<span class="tk-fn">setLevel</span>(logging.WARNING)
+logging.<span class="tk-fn">getLogger</span>(<span class="tk-string">"sqlalchemy.engine"</span>).<span class="tk-fn">setLevel</span>(logging.WARNING)</code></pre>
+                        </div>
+                    </li>
+                </ol>
+
+                <div class="info-box tip">
+                    <div class="info-title">Le piège classique du root logger</div>
+                    <p>
+                        Si tu appelles directement <code>logging.info("...")</code> au lieu
+                        de passer par <code>logger.info("...")</code> sur ton propre logger,
+                        tu utilises le <strong>root logger</strong>. Ça marche, mais tu perds
+                        l'info du module dans <code>%(name)s</code>, et tu rends impossible
+                        de filtrer la verbosité par module. Toujours passer par
+                        <code>getLogger(__name__)</code>.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (basique)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> logging
+logging.<span class="tk-fn">basicConfig</span>(level=logging.INFO,
+    format=<span class="tk-string">"%(asctime)s [%(levelname)s] %(name)s: %(message)s"</span>)
+logger = logging.<span class="tk-fn">getLogger</span>(__name__)
+
+logger.<span class="tk-fn">debug</span>(<span class="tk-string">"détails techniques"</span>)
+logger.<span class="tk-fn">info</span>(<span class="tk-string">"étape normale"</span>)
+logger.<span class="tk-fn">warning</span>(<span class="tk-string">"anomalie sans gravité"</span>)
+logger.<span class="tk-fn">error</span>(<span class="tk-string">"opération échouée"</span>)
+logger.<span class="tk-fn">critical</span>(<span class="tk-string">"appli HS"</span>)
+logger.<span class="tk-fn">exception</span>(<span class="tk-string">"dans un except"</span>)   <span class="tk-comment"># + traceback</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (formatters utiles)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Variables disponibles dans le format :</span>
+<span class="tk-string">"%(asctime)s"</span>      <span class="tk-comment"># horodatage</span>
+<span class="tk-string">"%(levelname)s"</span>   <span class="tk-comment"># INFO, WARNING, ...</span>
+<span class="tk-string">"%(name)s"</span>        <span class="tk-comment"># nom du logger (module)</span>
+<span class="tk-string">"%(message)s"</span>     <span class="tk-comment"># le texte du log</span>
+<span class="tk-string">"%(filename)s"</span>    <span class="tk-comment"># fichier source</span>
+<span class="tk-string">"%(lineno)d"</span>      <span class="tk-comment"># numéro de ligne</span>
+<span class="tk-string">"%(funcName)s"</span>    <span class="tk-comment"># nom de la fonction</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (handlers courants)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>logging.<span class="tk-fn">StreamHandler</span>()                    <span class="tk-comment"># console</span>
+logging.<span class="tk-fn">FileHandler</span>(<span class="tk-string">"app.log"</span>)             <span class="tk-comment"># fichier simple</span>
+logging.handlers.<span class="tk-fn">RotatingFileHandler</span>(...)    <span class="tk-comment"># rotation par taille</span>
+logging.handlers.<span class="tk-fn">TimedRotatingFileHandler</span>(...) <span class="tk-comment"># rotation par date</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>logging et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="loguru.html">Loguru</a></strong> — la lib externe
+                        moderne, plus simple à configurer. Elle peut <em>remplacer</em> ou
+                        <em>intercepter</em> les appels stdlib pour qu'ils passent par Loguru.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — utilise stdlib
+                        sous le capot (via uvicorn). On configure les loggers
+                        <code>uvicorn</code>, <code>uvicorn.access</code>, <code>fastapi</code>
+                        pour piloter les logs HTTP.
+                    </li>
+                    <li>
+                        <strong><a href="celery.html">Celery</a></strong> — chaque worker
+                        Celery a son propre logger configurable, basé sur stdlib. Le format
+                        par défaut inclut l'ID de la tâche.
+                    </li>
+                    <li>
+                        <strong><a href="loki.html">Loki</a></strong> — pour centraliser les
+                        logs en prod, on les écrit en JSON puis on les expédie vers Loki via
+                        un agent (Promtail, Fluent Bit). Pour ça, le format
+                        <code>%(message)s</code> ne suffit plus — on switch vers du JSON
+                        structuré (souvent avec une lib annexe).
+                    </li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Doc officielle : <a href="https://docs.python.org/3/library/logging.html" target="_blank" rel="noopener noreferrer">docs.python.org/logging</a></li>
+                    <li>Tutoriel pas à pas : <a href="https://docs.python.org/3/howto/logging.html" target="_blank" rel="noopener noreferrer">Logging HOWTO</a></li>
+                    <li>Cookbook officiel (cas avancés) : <a href="https://docs.python.org/3/howto/logging-cookbook.html" target="_blank" rel="noopener noreferrer">Logging Cookbook</a></li>
+                    <li><strong>structlog</strong> — alternative pour logs structurés JSON : <a href="https://www.structlog.org/" target="_blank" rel="noopener noreferrer">structlog.org</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

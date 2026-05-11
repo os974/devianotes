@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Loguru — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Loguru</div>
+                <h1>Loguru</h1>
+                <p class="subtitle">
+                    La lib Python qui rend les logs <strong>plaisants</strong> : couleurs,
+                    rotation, JSON, capture d'exceptions, le tout en une ligne d'import. Tout
+                    ce que la stdlib <code>logging</code> demande 20 lignes pour configurer.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Loguru est une lib externe (<code>pip install loguru</code>) avec une
+                    philosophie : il existe <strong>un seul logger global</strong> déjà
+                    configuré et coloré, prêt à l'emploi. Tu importes, tu loggues, c'est tout.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> loguru <span class="tk-keyword">import</span> logger
+
+logger.<span class="tk-fn">info</span>(<span class="tk-string">"démarrage"</span>)
+logger.<span class="tk-fn">warning</span>(<span class="tk-string">"attention"</span>)
+logger.<span class="tk-fn">error</span>(<span class="tk-string">"raté"</span>)</code></pre>
+                </div>
+                <p>
+                    Aucune config, sortie déjà colorée, timestamp inclus. Le contrat est :
+                    <strong>1 ligne pour démarrer, 1 ligne par option supplémentaire</strong>.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">Loguru vs <a href="logging.html">stdlib logging</a></div>
+                    <p>
+                        <code>logging</code> est plus <em>flexible</em> et <em>universel</em>
+                        (toutes les libs Python l'utilisent), mais sa config initiale est
+                        verbeuse. <strong>Loguru</strong> est plus simple, mais c'est une
+                        dépendance externe et ses paramètres ne sont pas reconnus par les
+                        libs tierces. En pratique : Loguru pour <em>ton</em> code, et on
+                        intercepte les libs externes pour qu'elles passent par Loguru aussi
+                        (voir how-to).
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Le concept : sinks</h2>
+                <p>
+                    Loguru appelle <strong>« sink »</strong> (puits) chaque destination où
+                    écrire un log : la console, un fichier, un service distant, une fonction
+                    Python… Tu en ajoutes autant que tu veux, et chaque sink peut filtrer par
+                    niveau et formater à sa manière.
+                </p>
+                <ul>
+                    <li><strong>1 sink console</strong> est créé par défaut au démarrage.</li>
+                    <li>Tu en ajoutes avec <code>logger.add(...)</code>.</li>
+                    <li>Tu retires le sink par défaut avec <code>logger.remove()</code> si tu
+                        veux tout reconfigurer.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Logger en console <strong>et</strong> dans un fichier qui tourne tous les
+                    jours, garde 7 jours, et compressé en zip :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> loguru <span class="tk-keyword">import</span> logger
+
+logger.<span class="tk-fn">add</span>(
+    <span class="tk-string">"app_{time:YYYY-MM-DD}.log"</span>,
+    rotation=<span class="tk-string">"00:00"</span>,        <span class="tk-comment"># nouveau fichier à minuit</span>
+    retention=<span class="tk-string">"7 days"</span>,      <span class="tk-comment"># supprime les + vieux que 7 jours</span>
+    compression=<span class="tk-string">"zip"</span>,       <span class="tk-comment"># compresse les anciens</span>
+    level=<span class="tk-string">"INFO"</span>,
+)
+
+logger.<span class="tk-fn">info</span>(<span class="tk-string">"prêt"</span>)
+logger.<span class="tk-fn">debug</span>(<span class="tk-string">"pas affiché car niveau INFO sur ce sink"</span>)</code></pre>
+                </div>
+                <p>
+                    Voilà. En 3 lignes utiles tu as la rotation par date, la rétention, et
+                    l'archivage compressé — soit ~50 lignes à écrire en stdlib.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : utiliser Loguru</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add loguru</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer en un point d'entrée</h4>
+                        <p>
+                            Au début de ton <code>main.py</code> : on remove le sink par défaut
+                            puis on en ajoute deux (console + fichier) avec des niveaux et
+                            formats spécifiques.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> sys
+<span class="tk-keyword">from</span> loguru <span class="tk-keyword">import</span> logger
+
+logger.<span class="tk-fn">remove</span>()                         <span class="tk-comment"># enlève la config par défaut</span>
+
+logger.<span class="tk-fn">add</span>(sys.stderr, level=<span class="tk-string">"INFO"</span>,
+    format=<span class="tk-string">"&lt;green&gt;{time:HH:mm:ss}&lt;/green&gt; &lt;level&gt;{level}&lt;/level&gt; {message}"</span>)
+
+logger.<span class="tk-fn">add</span>(<span class="tk-string">"logs/app.log"</span>,
+    level=<span class="tk-string">"DEBUG"</span>,
+    rotation=<span class="tk-string">"10 MB"</span>,
+    retention=<span class="tk-num">10</span>,                 <span class="tk-comment"># garder 10 fichiers</span>
+    encoding=<span class="tk-string">"utf-8"</span>)</code></pre>
+                        </div>
+                        <p>
+                            Le format Loguru utilise des balises <code>&lt;color&gt;</code>
+                            pour la console, et <code>{name}</code> au lieu du
+                            <code>%(name)s</code> de stdlib.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Logger en JSON pour Loki / Elasticsearch</h4>
+                        <p>
+                            En prod, on veut souvent du JSON pour pouvoir parser/rechercher.
+                            Loguru le fait avec <code>serialize=True</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>logger.<span class="tk-fn">add</span>(<span class="tk-string">"logs/app.jsonl"</span>, serialize=<span class="tk-keyword">True</span>)</code></pre>
+                        </div>
+                        <p>
+                            Chaque ligne devient un objet JSON avec
+                            <code>{ "text": ..., "record": { "time": ..., "level": ...,
+                            "message": ..., "extra": {...} } }</code>, prêt à être ingéré par
+                            <a href="loki.html">Loki</a> ou un agent Fluent Bit.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Capturer automatiquement les exceptions</h4>
+                        <p>
+                            Le décorateur <code>@logger.catch</code> logge automatiquement
+                            toute exception qui sort de la fonction, avec stack trace,
+                            <em>sans</em> avoir à écrire un <code>try/except</code>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> loguru <span class="tk-keyword">import</span> logger
+
+<span class="tk-decorator">@logger.catch</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">traitement</span>(x):
+    <span class="tk-keyword">return</span> <span class="tk-num">1</span> / x
+
+<span class="tk-fn">traitement</span>(<span class="tk-num">0</span>)   <span class="tk-comment"># loggue l'exception en ERROR avec stack trace, n'arrête pas le programme</span></code></pre>
+                        </div>
+                        <p>
+                            Pratique pour les tâches d'arrière-plan où tu veux logger le
+                            crash mais continuer à tourner.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter du contexte avec <code>bind</code></h4>
+                        <p>
+                            On veut souvent enrichir les logs avec une info récurrente :
+                            l'ID utilisateur, l'ID de requête, le nom du job…
+                            <code>logger.bind()</code> crée un logger « pré-rempli » :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>req_logger = logger.<span class="tk-fn">bind</span>(request_id=<span class="tk-string">"abc-123"</span>, user=<span class="tk-string">"olivier"</span>)
+req_logger.<span class="tk-fn">info</span>(<span class="tk-string">"requête traitée"</span>)
+<span class="tk-comment"># Avec un format qui inclut {extra}, le contexte apparaîtra dans chaque ligne</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Intercepter les logs de la stdlib</h4>
+                        <p>
+                            Les libs externes (FastAPI, SQLAlchemy, requests…) utilisent
+                            <code>logging</code> de la stdlib. Pour qu'elles passent <em>aussi</em>
+                            par Loguru, on installe un <em>handler intercepteur</em> au
+                            démarrage. Snippet officiel à copier-coller :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> logging
+<span class="tk-keyword">from</span> loguru <span class="tk-keyword">import</span> logger
+
+<span class="tk-keyword">class</span> <span class="tk-fn">InterceptHandler</span>(logging.Handler):
+    <span class="tk-keyword">def</span> <span class="tk-fn">emit</span>(self, record):
+        <span class="tk-keyword">try</span>:
+            level = logger.<span class="tk-fn">level</span>(record.levelname).name
+        <span class="tk-keyword">except</span> ValueError:
+            level = record.levelno
+        logger.<span class="tk-fn">opt</span>(depth=<span class="tk-num">6</span>, exception=record.exc_info).<span class="tk-fn">log</span>(
+            level, record.<span class="tk-fn">getMessage</span>()
+        )
+
+logging.<span class="tk-fn">basicConfig</span>(handlers=[<span class="tk-fn">InterceptHandler</span>()], level=<span class="tk-num">0</span>, force=<span class="tk-keyword">True</span>)</code></pre>
+                        </div>
+                        <p>
+                            À partir de là, <code>logging.getLogger("uvicorn").info(...)</code>
+                            passe par Loguru et hérite de tes formatages.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Formats temporels et rotations possibles</h4>
+                        <p>
+                            <code>rotation</code> et <code>retention</code> acceptent
+                            plusieurs syntaxes — un des points forts de Loguru :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># rotation</span>
+rotation=<span class="tk-string">"10 MB"</span>          <span class="tk-comment"># par taille</span>
+rotation=<span class="tk-string">"1 day"</span>           <span class="tk-comment"># par durée</span>
+rotation=<span class="tk-string">"00:00"</span>           <span class="tk-comment"># à une heure précise</span>
+rotation=<span class="tk-string">"monday at 12:00"</span> <span class="tk-comment"># par jour de semaine</span>
+
+<span class="tk-comment"># retention</span>
+retention=<span class="tk-string">"7 days"</span>        <span class="tk-comment"># supprimer après 7 jours</span>
+retention=<span class="tk-num">10</span>                <span class="tk-comment"># garder 10 fichiers max</span>
+
+<span class="tk-comment"># compression</span>
+compression=<span class="tk-string">"zip"</span>         <span class="tk-comment"># ou "gz", "tar.gz", "bz2"...</span></code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (essentiel)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> loguru <span class="tk-keyword">import</span> logger
+
+logger.<span class="tk-fn">debug</span>(<span class="tk-string">"..."</span>)
+logger.<span class="tk-fn">info</span>(<span class="tk-string">"..."</span>)
+logger.<span class="tk-fn">warning</span>(<span class="tk-string">"..."</span>)
+logger.<span class="tk-fn">error</span>(<span class="tk-string">"..."</span>)
+logger.<span class="tk-fn">critical</span>(<span class="tk-string">"..."</span>)
+logger.<span class="tk-fn">success</span>(<span class="tk-string">"opé OK"</span>)              <span class="tk-comment"># niveau spécifique Loguru</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (sinks)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>logger.<span class="tk-fn">remove</span>()                            <span class="tk-comment"># reset</span>
+logger.<span class="tk-fn">add</span>(sys.stderr, level=<span class="tk-string">"INFO"</span>)
+logger.<span class="tk-fn">add</span>(<span class="tk-string">"app.log"</span>, rotation=<span class="tk-string">"10 MB"</span>,
+           retention=<span class="tk-string">"7 days"</span>, compression=<span class="tk-string">"zip"</span>)
+logger.<span class="tk-fn">add</span>(<span class="tk-string">"app.jsonl"</span>, serialize=<span class="tk-keyword">True</span>)        <span class="tk-comment"># JSON pour Loki</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (extras)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-decorator">@logger.catch</span>                          <span class="tk-comment"># auto-log les exceptions</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">f</span>(): ...
+
+logger.<span class="tk-fn">bind</span>(user=<span class="tk-string">"X"</span>).<span class="tk-fn">info</span>(<span class="tk-string">"action"</span>) <span class="tk-comment"># contexte</span>
+logger.<span class="tk-fn">opt</span>(colors=<span class="tk-keyword">True</span>).<span class="tk-fn">info</span>(<span class="tk-string">"&lt;green&gt;ok&lt;/green&gt;"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (placeholders dans le format)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-string">"{time:YYYY-MM-DD HH:mm:ss}"</span>
+<span class="tk-string">"{level}"</span> <span class="tk-string">"{message}"</span>
+<span class="tk-string">"{name}:{function}:{line}"</span>
+<span class="tk-string">"{extra}"</span>                          <span class="tk-comment"># dict des données bind()</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Loguru et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="logging.html">logging (stdlib)</a></strong> — la lib
+                        de base de Python. Loguru peut <em>intercepter</em> ses appels (voir
+                        how-to) pour que toutes les libs externes passent par lui.
+                    </li>
+                    <li>
+                        <strong><a href="loki.html">Loki</a></strong> — combo classique :
+                        Loguru écrit en JSON (<code>serialize=True</code>), un agent
+                        (Promtail, Fluent Bit) lit le fichier, l'envoie à Loki, et Grafana
+                        affiche.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — on intercepte
+                        les logs uvicorn et fastapi pour les unifier avec Loguru. Combiné
+                        avec un middleware qui appelle <code>logger.bind(request_id=...)</code>,
+                        on a des logs corrélés par requête.
+                    </li>
+                    <li>
+                        <strong><a href="celery.html">Celery</a></strong> — même chose : on
+                        intercepte le logger Celery pour que les logs de tâches sortent au
+                        même format que le reste.
+                    </li>
+                    <li>
+                        <strong><a href="prefect.html">Prefect</a></strong> — Prefect a son
+                        propre système de logs intégré à son UI ; on garde Loguru pour le code
+                        métier <em>à l'intérieur</em> des tâches.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand préférer stdlib à Loguru</div>
+                    <p>
+                        Trois cas où la stdlib reste plus adaptée : 1) une lib ou un framework
+                        que tu publies (ne pas imposer Loguru à tes utilisateurs), 2) des envs
+                        contraints qui interdisent les dépendances (CI minimal, lambdas
+                        custom), 3) un projet d'équipe où la convention est déjà stdlib.
+                        Partout ailleurs, Loguru gagne le ratio confort/coût.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Dépôt officiel : <a href="https://github.com/Delgan/loguru" target="_blank" rel="noopener noreferrer">github.com/Delgan/loguru</a></li>
+                    <li>Documentation : <a href="https://loguru.readthedocs.io/" target="_blank" rel="noopener noreferrer">loguru.readthedocs.io</a></li>
+                    <li>Guide d'interception stdlib : <a href="https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging" target="_blank" rel="noopener noreferrer">section « compatible with standard logging »</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
