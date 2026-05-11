@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>GitLab — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / GitLab</div>
+                <h1>GitLab</h1>
+                <p class="subtitle">
+                    Plateforme DevOps tout-en-un construite autour de Git&nbsp;: hébergement de code,
+                    revue de Merge Requests, CI/CD intégré, registre de paquets et de conteneurs, monitoring
+                    et sécurité — le tout sous le même toit. Cousin direct (et concurrent) de
+                    <a href="github.html">GitHub</a>.
+                </p>
+                <div class="badge-row">
+                    <span class="tag cloud">Service en ligne</span>
+                    <span class="tag">Auto-hébergeable (édition CE gratuite)</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Comme <a href="github.html">GitHub</a>, GitLab héberge tes dépôts Git à distance et ajoute
+                    par-dessus tout ce qui sert au travail en équipe. La différence d'identité tient en un
+                    slogan&nbsp;: GitLab se présente comme une <strong>plateforme DevOps unifiée</strong> qui
+                    couvre tout le cycle, de l'idée au déploiement et à la supervision&nbsp;:
+                </p>
+                <ul>
+                    <li><strong>Hébergement</strong> de tes projets (privés ou publics).</li>
+                    <li><strong>Merge Requests</strong> (MR)&nbsp;: l'équivalent des Pull Requests, avec le même esprit (proposer, discuter, fusionner).</li>
+                    <li><strong>Issues</strong> et planning intégré (Kanban, tableaux, milestones).</li>
+                    <li><strong>GitLab CI/CD</strong>&nbsp;: pipelines déclarés dans un fichier <code>.gitlab-ci.yml</code> à la racine, lancés à chaque push.</li>
+                    <li><strong>Container Registry</strong> et <strong>Package Registry</strong> pour stocker tes images Docker et tes paquets, inclus de base.</li>
+                    <li><strong>Pages</strong>&nbsp;: même principe que GitHub Pages pour publier un site statique.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Différence Git / GitLab</div>
+                    <p>
+                        Git = l'outil de versioning installé sur ton PC. GitLab = un service en ligne (et
+                        une plateforme auto-hébergeable) qui héberge des dépôts Git et ajoute autour tout
+                        un outillage DevOps. Tu peux utiliser Git sans GitLab, et l'inverse n'a pas vraiment
+                        de sens.
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Trois éditions de GitLab</div>
+                    <p>
+                        <strong>GitLab.com</strong> (SaaS, hébergé par GitLab Inc.) — équivalent direct de
+                        github.com. <strong>GitLab CE</strong> (Community Edition, open source) — à
+                        auto-héberger sur ton propre serveur, gratuit, parfait pour une école ou une asso.
+                        <strong>GitLab EE</strong> (Enterprise Edition) — version payante avec
+                        fonctionnalités avancées (sécurité, conformité, support).
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu travailles sur un projet d'IA en équipe. Chacun bosse sur sa branche, propose ses
+                    changements via une Merge Request, les autres relisent et commentent, et une fois validée,
+                    la MR est fusionnée dans <code>main</code>. À chaque MR, GitLab CI lance automatiquement
+                    les tests pour vérifier que rien ne casse.
+                </p>
+                <p>Le workflow type, identique à Git d'un service à l'autre&nbsp;:</p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Récupérer la dernière version</span>
+<span class="tk-cmd">git</span> pull origin main
+
+<span class="tk-comment"># Créer une branche pour ta feature</span>
+<span class="tk-cmd">git</span> checkout -b feat/ma-fonctionnalite
+
+<span class="tk-comment"># Coder, puis committer</span>
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"Ajoute la fonctionnalité X"</span>
+
+<span class="tk-comment"># Pousser et ouvrir une MR</span>
+<span class="tk-cmd">git</span> push origin feat/ma-fonctionnalite</code></pre>
+                </div>
+                <p>
+                    Au push, GitLab affiche dans la console l'URL directe pour créer la MR (pratique&nbsp;:
+                    pas besoin de retourner sur le site). Tu décris ton changement, tu attends la review,
+                    et la MR est fusionnée.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : configurer GitLab</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    GitLab.com est un service en ligne, donc rien à installer côté plateforme. Tu as juste
+                    besoin d'un compte web et de Git localement. La procédure est très proche de
+                    <a href="github.html">GitHub</a>&nbsp;: les commandes Git sont strictement les mêmes,
+                    seuls les noms d'écrans et les URLs changent.
+                </p>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Créer un compte GitLab</h4>
+                        <ol>
+                            <li>Va sur <a href="https://gitlab.com/users/sign_up" target="_blank" rel="noopener noreferrer">gitlab.com/users/sign_up</a>.</li>
+                            <li>Choisis un <em>username</em> stable (il apparaîtra dans toutes tes URLs <code>gitlab.com/&lt;username&gt;/...</code>).</li>
+                            <li>Utilise une adresse e-mail durable.</li>
+                            <li>Active la <strong>vérification en deux étapes</strong> dès que possible (Settings → Account → Two-Factor Authentication).</li>
+                        </ol>
+                        <div class="info-box warning">
+                            <div class="info-title">2FA et CI</div>
+                            <p>Comme GitHub, GitLab pousse fortement vers la 2FA obligatoire. Active-la à la création avec une appli type Authy / Google Authenticator. Pour les push depuis ton PC, tu utiliseras des clés SSH (étape 5) ou un Personal Access Token — la 2FA ne te dérange pas.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer ton premier projet</h4>
+                        <p>Sur GitLab, on parle de <strong>Project</strong> (équivalent du Repository de GitHub).</p>
+                        <ol>
+                            <li>Clique sur <strong>« New project »</strong> en haut à droite, puis <em>« Create blank project »</em>.</li>
+                            <li>Donne un nom au projet (ex. <code>devia-tp1</code>).</li>
+                            <li>Choisis la <strong>visibility level</strong> : Private, Internal (visible à tous les utilisateurs connectés du serveur) ou Public. Internal est une nuance que GitHub n'a pas — utile en entreprise / école.</li>
+                            <li>Coche <em>« Initialize repository with a README »</em>.</li>
+                            <li>Optionnel : ajoute un <code>.gitignore</code> Python.</li>
+                            <li>Clique sur <strong>« Create project »</strong>.</li>
+                        </ol>
+                    </li>
+
+                    <li>
+                        <h4>Installer Git sur ton PC</h4>
+                        <p>
+                            Étape <strong>strictement identique</strong> à GitHub — Git est un outil unique,
+                            indépendant du service distant. Si Git est déjà installé pour GitHub, passe à
+                            l'étape suivante.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># macOS</span>
+<span class="tk-cmd">brew</span> install git
+
+<span class="tk-comment"># Linux (Debian / Ubuntu)</span>
+<span class="tk-cmd">sudo</span> apt install git
+
+<span class="tk-comment"># Windows</span>
+<span class="tk-cmd">winget</span> install --id Git.Git -e
+
+<span class="tk-comment"># Vérifier</span>
+<span class="tk-cmd">git</span> --version</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer ton identité Git</h4>
+                        <p>Aussi indépendant du service. Si déjà fait pour GitHub, c'est OK pour GitLab.</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> config --global user.name <span class="tk-string">"Ton Prénom"</span>
+<span class="tk-cmd">git</span> config --global user.email <span class="tk-string">"ton-email@example.fr"</span>
+<span class="tk-cmd">git</span> config --global init.defaultBranch main</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">E-mail privé GitLab</div>
+                            <p>Pour ne pas exposer ton e-mail dans les commits, GitLab fournit aussi un alias du type <code>123456-username@users.noreply.gitlab.com</code>. Trouve-le dans Settings → Profile → <em>Public email / commit email</em>.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Authentifier ton PC auprès de GitLab (clé SSH)</h4>
+                        <p>
+                            Même principe que GitHub. Si tu as déjà une paire de clés
+                            <code>id_ed25519</code>, tu peux la réutiliser&nbsp;: une clé SSH n'est pas
+                            attachée à un service en particulier.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Générer une paire de clés (si tu n'en as pas déjà une)</span>
+<span class="tk-cmd">ssh-keygen</span> -t ed25519 -C <span class="tk-string">"ton-email@example.fr"</span>
+
+<span class="tk-comment"># Afficher la clé publique</span>
+<span class="tk-cmd">cat</span> ~/.ssh/id_ed25519.pub</code></pre>
+                        </div>
+                        <p>
+                            Sur GitLab : <strong>avatar (en haut à droite) → Edit profile → SSH Keys</strong>,
+                            colle la clé publique, donne-lui un titre. Vérifie&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">ssh</span> -T git@gitlab.com
+<span class="tk-comment"># → "Welcome to GitLab, @username!"</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Cloner et travailler avec un projet</h4>
+                        <p>Sur la page de ton projet GitLab, clique <strong>Clone → Clone with SSH</strong>.</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> clone git@gitlab.com:&lt;username&gt;/&lt;projet&gt;.git
+<span class="tk-cmd">cd</span> &lt;projet&gt;
+
+<span class="tk-comment"># Modifier un fichier...</span>
+<span class="tk-cmd">git</span> status
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"Mon premier commit"</span>
+<span class="tk-cmd">git</span> push</code></pre>
+                        </div>
+                        <p>
+                            Au premier <code>push</code> sur une nouvelle branche, GitLab te renvoie dans la
+                            console une URL directe pour ouvrir la Merge Request. C'est un petit confort
+                            spécifique à GitLab qu'on apprécie vite.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Configurer VS Code avec GitLab</h4>
+                        <p>
+                            VS Code gère Git nativement. Pour bien intégrer GitLab (MR, issues, pipelines)
+                            sans quitter l'éditeur&nbsp;:
+                        </p>
+                        <ol>
+                            <li>
+                                Installe <strong>GitLab Workflow</strong>
+                                (<code>GitLab.gitlab-workflow</code>) — extension officielle qui ajoute la
+                                gestion des MRs, issues, pipelines et snippets directement dans VS Code.
+                            </li>
+                            <li>
+                                Installe <strong>GitLens</strong> (<code>eamodio.gitlens</code>) — agnostique du
+                                service, affiche qui a écrit chaque ligne et l'historique.
+                            </li>
+                            <li>
+                                Connecte ton compte GitLab via un <em>Personal Access Token</em> (Settings →
+                                Access Tokens → cocher <code>api</code> et <code>read_user</code>). VS Code te
+                                demandera ce token au premier démarrage de l'extension.
+                            </li>
+                        </ol>
+                    </li>
+
+                    <li>
+                        <h4>Bonus : un pipeline GitLab CI minimal</h4>
+                        <p>
+                            Là où GitHub utilise <code>.github/workflows/&lt;nom&gt;.yml</code>, GitLab utilise un
+                            seul fichier <code>.gitlab-ci.yml</code> à la racine du dépôt&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">stages</span>:
+  - <span class="tk-string">test</span>
+
+<span class="tk-keyword">test:python</span>:
+  <span class="tk-keyword">stage</span>: test
+  <span class="tk-keyword">image</span>: python:3.12
+  <span class="tk-keyword">script</span>:
+    - pip install -r requirements.txt
+    - pytest</code></pre>
+                        </div>
+                        <p>
+                            Pousse ce fichier, et GitLab lance automatiquement le pipeline. Le résultat
+                            apparaît sur la page de ta MR (badge ✓ ou ✗) et dans l'onglet
+                            <strong>Build → Pipelines</strong>.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Modèle mental</div>
+                            <p>Un <strong>job</strong> GitLab CI tourne dans une image Docker que tu choisis (<code>image: python:3.12</code>), exécute une liste de commandes (<code>script:</code>), et est regroupé dans un <strong>stage</strong>. Les stages s'enchaînent en série, les jobs d'un même stage tournent en parallèle. C'est l'équivalent direct des <code>jobs:</code> de GitHub Actions, avec un vocabulaire un peu différent.</p>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>GitLab vs GitHub : que choisir et pourquoi</h2>
+                <p>
+                    Les deux services rendent le même service de base — héberger du code Git, faire des revues
+                    de code, lancer des pipelines CI/CD. Les différences sont surtout d'<strong>identité</strong>,
+                    de <strong>périmètre</strong> et d'<strong>écosystème</strong>.
+                </p>
+
+                <h3>Le vocabulaire qui change</h3>
+                <ul>
+                    <li><strong>Pull Request (GitHub) → Merge Request (GitLab)</strong> — même concept, nom différent. Tu verras parfois les deux abrégés en «&nbsp;MR&nbsp;» ou «&nbsp;PR&nbsp;» dans la même conversation.</li>
+                    <li><strong>Repository (GitHub) → Project (GitLab)</strong> — c'est ton dépôt + ses issues + ses pipelines + son wiki, vu comme un tout.</li>
+                    <li><strong>Organization (GitHub) → Group (GitLab)</strong> — un espace partagé qui regroupe plusieurs projets.</li>
+                    <li><strong><code>.github/workflows/*.yml</code> (GitHub Actions) → <code>.gitlab-ci.yml</code> (GitLab CI)</strong> — un seul fichier à la racine côté GitLab, un par workflow côté GitHub.</li>
+                    <li><strong>Branch protection rules (GitHub) → Protected branches (GitLab)</strong> — mêmes garde-fous, UI différente.</li>
+                </ul>
+
+                <h3>Forces de chaque côté</h3>
+                <div class="info-box">
+                    <div class="info-title">GitHub — forces</div>
+                    <p>
+                        <strong>(1)</strong> Communauté open source de loin la plus grande&nbsp;: la majorité
+                        des projets visibles que tu croises vivent sur GitHub.
+                        <strong>(2)</strong> Marketplace d'<a href="cicd.html">Actions</a> très riche — pour
+                        chaque besoin de CI/CD, quelqu'un a déjà publié l'action qui va bien.
+                        <strong>(3)</strong> GitHub Copilot (assistant IA dans l'éditeur) très intégré.
+                        <strong>(4)</strong> Standard de facto pour un portfolio dev — un recruteur attendra
+                        plus naturellement un lien GitHub.
+                        <strong>(5)</strong> UI / UX globalement plus polie, plus rapide à prendre en main.
+                    </p>
+                </div>
+                <div class="info-box tip">
+                    <div class="info-title">GitLab — forces</div>
+                    <p>
+                        <strong>(1)</strong> Plateforme <strong>tout-en-un</strong>&nbsp;: CI/CD, container
+                        registry, package registry, security scanning, monitoring, kanban — tout est inclus
+                        sous le même toit sans dépendre d'intégrations externes.
+                        <strong>(2)</strong> <strong>Auto-hébergeable</strong> gratuitement avec GitLab CE
+                        (Community Edition) — utile pour une école, une asso, une boîte qui veut garder le code
+                        sur ses serveurs.
+                        <strong>(3)</strong> <strong>Open source</strong> côté CE — tu peux voir le code de la
+                        plateforme elle-même.
+                        <strong>(4)</strong> <strong>Origine européenne</strong> (entreprise enregistrée aux
+                        Pays-Bas) — pertinent quand la souveraineté des données compte.
+                        <strong>(5)</strong> Visibilité <em>Internal</em> (visible à tous les comptes
+                        connectés du serveur), pratique en entreprise pour les projets «&nbsp;internes mais pas
+                        secrets&nbsp;».
+                    </p>
+                </div>
+
+                <h3>Faiblesses respectives</h3>
+                <ul>
+                    <li><strong>GitHub</strong> est moins «&nbsp;intégré&nbsp;» : pour faire l'équivalent de ce que GitLab fait nativement (container registry, security scan, monitoring), tu vas dépendre d'intégrations tierces. Pas auto-hébergeable gratuitement (GitHub Enterprise Server est payant).</li>
+                    <li><strong>GitLab</strong> a une UI parfois jugée moins fluide (lente sur certaines pages), une communauté plus petite donc moins de projets open source visibles, et moins de notoriété pour un portfolio personnel.</li>
+                </ul>
+
+                <h3>Comment choisir, selon le contexte</h3>
+                <ul>
+                    <li><strong>Projet open source / portfolio / contribuer aux autres</strong> → <strong>GitHub</strong>. C'est là que la communauté est, c'est ce qu'un recruteur regardera.</li>
+                    <li><strong>Stage / job en entreprise DevOps mature</strong> → <strong>GitLab</strong> est très répandu, notamment en Europe et dans les structures qui veulent un outillage intégré.</li>
+                    <li><strong>Auto-hébergement (école, association, boîte sensible à la souveraineté)</strong> → <strong>GitLab CE</strong> sans hésiter — gratuit, open source, complet.</li>
+                    <li><strong>Formation / cours</strong> → l'un ou l'autre selon ce qu'utilise l'école. Les compétences Git restent transférables à 100 %.</li>
+                    <li><strong>En vrai, beaucoup de devs ont les deux</strong>&nbsp;: GitHub pour l'open source perso, GitLab pour le travail.</li>
+                </ul>
+
+                <div class="info-box warning">
+                    <div class="info-title">Tout n'est pas exclusif</div>
+                    <p>Tu peux <strong>miroirer</strong> automatiquement un dépôt GitLab vers GitHub (et inversement). Beaucoup de projets professionnels poussent le code de référence sur GitLab et exposent un miroir public sur GitHub pour la visibilité. Aucun choix n'est définitif.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire Git</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Les commandes Git sont strictement les mêmes que pour <a href="github.html">GitHub</a>&nbsp;:
+                    Git est l'outil local, la plateforme distante (GitLab, GitHub, Bitbucket…) ne change rien.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Démarrer / récupérer</span>
+<span class="tk-cmd">git</span> init                       <span class="tk-comment"># nouveau dépôt local</span>
+<span class="tk-cmd">git</span> clone &lt;url&gt;                <span class="tk-comment"># cloner un dépôt distant</span>
+
+<span class="tk-comment"># Cycle de base</span>
+<span class="tk-cmd">git</span> status
+<span class="tk-cmd">git</span> add &lt;fichier&gt;              <span class="tk-comment"># stage un fichier</span>
+<span class="tk-cmd">git</span> add .                      <span class="tk-comment"># tout</span>
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"message"</span>
+<span class="tk-cmd">git</span> push
+<span class="tk-cmd">git</span> pull
+
+<span class="tk-comment"># Branches</span>
+<span class="tk-cmd">git</span> branch                     <span class="tk-comment"># lister</span>
+<span class="tk-cmd">git</span> checkout -b &lt;nom&gt;          <span class="tk-comment"># créer + basculer</span>
+<span class="tk-cmd">git</span> switch &lt;nom&gt;               <span class="tk-comment"># basculer (équivalent moderne)</span>
+<span class="tk-cmd">git</span> merge &lt;nom&gt;                <span class="tk-comment"># fusionner dans la branche actuelle</span>
+
+<span class="tk-comment"># Inspecter</span>
+<span class="tk-cmd">git</span> log --oneline --graph
+<span class="tk-cmd">git</span> diff
+<span class="tk-cmd">git</span> blame &lt;fichier&gt;
+
+<span class="tk-comment"># Remotes (utile si tu pousses sur plusieurs services)</span>
+<span class="tk-cmd">git</span> remote -v
+<span class="tk-cmd">git</span> remote add gitlab git@gitlab.com:user/repo.git
+<span class="tk-cmd">git</span> push gitlab main</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Documentation GitLab : <a href="https://docs.gitlab.com/" target="_blank" rel="noopener noreferrer">docs.gitlab.com</a></li>
+                    <li>Tutoriels officiels GitLab : <a href="https://docs.gitlab.com/tutorials/" target="_blank" rel="noopener noreferrer">docs.gitlab.com/tutorials</a></li>
+                    <li>GitLab CI/CD : <a href="https://docs.gitlab.com/ci/" target="_blank" rel="noopener noreferrer">docs.gitlab.com/ci</a></li>
+                    <li>Pro Git (livre gratuit) : <a href="https://git-scm.com/book/fr/v2" target="_blank" rel="noopener noreferrer">git-scm.com/book/fr</a></li>
+                    <li>Fiche jumelle sur ce site : <a href="github.html">GitHub</a>.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

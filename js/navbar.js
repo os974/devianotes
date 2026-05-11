@@ -73,6 +73,8 @@
                         <div class="dropdown-section">
                             <div class="dropdown-title">Outils &amp; Tests</div>
                             <a href="${S}github.html">GitHub</a>
+                            <a href="${S}gitlab.html">GitLab</a>
+                            <a href="${S}forgejo.html">Forgejo</a>
                             <a href="${S}cicd.html">CI/CD</a>
                             <a href="${S}pytest.html">pytest</a>
                         </div>

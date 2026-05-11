@@ -63,3 +63,8 @@
 # non-navigateur, y compris depuis les runners GitHub. Le lien est valide
 # pour un humain. C'est le comportement officiel et stable de LinkedIn.
 ^https://www\.linkedin\.com/
+
+# GitHub Marketplace — filtre les User-Agent non-navigateur (réponses 502
+# puis 400 selon le moment) depuis les runners GitHub Actions. Lien valide
+# depuis un navigateur. Comportement stable côté GitHub.
+^https://github\.com/marketplace

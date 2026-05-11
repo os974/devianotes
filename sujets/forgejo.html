@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Forgejo — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Forgejo</div>
+                <h1>Forgejo</h1>
+                <p class="subtitle">
+                    Forge logicielle légère, auto-hébergeable, 100 % logiciel libre, gouvernée par une
+                    association à but non lucratif. Fork communautaire de Gitea né en 2022, maintenu par
+                    Codeberg e.V. À mettre en perspective avec <a href="github.html">GitHub</a> et
+                    <a href="gitlab.html">GitLab</a>.
+                </p>
+                <div class="badge-row">
+                    <span class="tag cloud">Auto-hébergé</span>
+                    <span class="tag">AGPL-3.0+ — logiciel libre</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Forgejo (prononcé «&nbsp;<em>for-djé-jo</em>&nbsp;», l'esperanto pour «&nbsp;forge&nbsp;») est
+                    une <strong>forge logicielle</strong> — c'est-à-dire l'équivalent fonctionnel de
+                    <a href="github.html">GitHub</a> ou <a href="gitlab.html">GitLab</a> que tu installes
+                    sur ton propre serveur. Tu y héberges tes dépôts Git, gères les Pull Requests, suis tes
+                    issues, et exécutes ta CI/CD&nbsp;:
+                </p>
+                <ul>
+                    <li><strong>Hébergement</strong> de tes dépôts Git, sur <em>ton</em> infrastructure.</li>
+                    <li><strong>Pull Requests</strong> (mêmes terminologie et flux que GitHub).</li>
+                    <li><strong>Issues</strong>, milestones, kanban, wiki par projet.</li>
+                    <li><strong>Forgejo Actions</strong>&nbsp;: CI/CD avec une syntaxe quasi-identique à
+                        <a href="cicd.html">GitHub Actions</a> (la plupart des actions sont réutilisables).</li>
+                    <li><strong>Package Registry</strong>&nbsp;: conteneurs Docker, paquets Python / npm /
+                        Maven, etc.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Forgejo, Gitea, Codeberg : qui est qui</div>
+                    <p>
+                        <strong>Gitea</strong> est une forge Go légère, créée en 2016. En 2022, après que
+                        Gitea Ltd. ait pris la main sur la marque, une partie de la communauté a forké le code
+                        pour garantir une gouvernance ouverte&nbsp;: c'est <strong>Forgejo</strong>. Le projet
+                        est porté par <strong>Codeberg e.V.</strong>, une association allemande à but non
+                        lucratif. <strong>Codeberg.org</strong> est <em>une instance Forgejo</em> hébergée par
+                        cette même asso, ouverte gratuitement aux projets logiciels libres. Forgejo n'a
+                        <em>pas</em> de SaaS commercial — c'est volontaire.
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Pourquoi c'est léger</div>
+                    <p>Forgejo est livré comme un <strong>unique binaire Go</strong> (≈ 200 Mo) qui inclut tout&nbsp;: serveur web, moteur Git, base de données SQLite par défaut. Il tourne sur un Raspberry Pi sans transpirer, là où GitLab demande plusieurs Go de RAM et un Postgres dédié.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu es dans une asso d'étudiants, vous voulez héberger vos projets sans dépendre de
+                    GitHub, sans payer GitLab, et sans qu'un VPS à 5&nbsp;€/mois suffoque. Tu lances Forgejo
+                    via Docker en quelques minutes, chacun s'y crée un compte, et le workflow Git reste
+                    strictement identique à GitHub ou GitLab&nbsp;:
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Récupérer la dernière version</span>
+<span class="tk-cmd">git</span> pull origin main
+
+<span class="tk-comment"># Créer une branche pour ta feature</span>
+<span class="tk-cmd">git</span> checkout -b feat/ma-fonctionnalite
+
+<span class="tk-comment"># Coder, puis committer</span>
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"Ajoute la fonctionnalité X"</span>
+
+<span class="tk-comment"># Pousser et ouvrir une Pull Request</span>
+<span class="tk-cmd">git</span> push origin feat/ma-fonctionnalite</code></pre>
+                </div>
+                <p>
+                    Sur l'instance Forgejo, tu cliques <strong>«&nbsp;New Pull Request&nbsp;»</strong>, tu décris
+                    ton changement, ton co-équipier relit, c'est merged. Les Forgejo Actions configurées
+                    relancent les tests à chaque push. Aucun compte tiers, aucune télémétrie, tout est sur
+                    votre serveur.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : utiliser Forgejo</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Deux voies&nbsp;: utiliser <strong>Codeberg.org</strong> (instance publique gratuite, pour
+                    projets libres uniquement) ou <strong>auto-héberger</strong> Forgejo avec
+                    <a href="docker.html">Docker</a>. Cette dernière voie est le cas d'usage principal de
+                    Forgejo.
+                </p>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Voie A — Créer un compte sur Codeberg.org</h4>
+                        <p>Si ton projet est <em>libre</em> (les CGU de Codeberg l'exigent), c'est l'option la plus rapide pour tester.</p>
+                        <ol>
+                            <li>Va sur <a href="https://codeberg.org/user/sign_up" target="_blank" rel="noopener noreferrer">codeberg.org/user/sign_up</a>.</li>
+                            <li>Choisis un <em>username</em>, une adresse e-mail durable.</li>
+                            <li>Lis et accepte les conditions d'utilisation (rappel&nbsp;: projets libres / open source uniquement).</li>
+                            <li>Active la 2FA (Settings → Security).</li>
+                        </ol>
+                        <div class="info-box warning">
+                            <div class="info-title">Codeberg n'accepte pas tout</div>
+                            <p>Codeberg.org est financée par dons et a une politique stricte&nbsp;: pas de projets propriétaires, pas de hosting opportuniste, pas de mining, pas de spam. Pour un projet privé ou commercial, c'est <strong>auto-hébergement</strong> obligatoire (voie B).</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Voie B — Auto-héberger Forgejo avec Docker</h4>
+                        <p>Le cas d'usage typique. Tu as un VPS / Raspberry Pi / serveur perso&nbsp;:</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># docker-compose.yml minimal pour démarrer</span>
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    restart: unless-stopped
+    environment:
+      - <span class="tk-string">USER_UID=1000</span>
+      - <span class="tk-string">USER_GID=1000</span>
+    volumes:
+      - <span class="tk-string">./data:/data</span>
+      - <span class="tk-string">/etc/timezone:/etc/timezone:ro</span>
+      - <span class="tk-string">/etc/localtime:/etc/localtime:ro</span>
+    ports:
+      - <span class="tk-string">"3000:3000"</span>   <span class="tk-comment"># UI web</span>
+      - <span class="tk-string">"222:22"</span>     <span class="tk-comment"># SSH Git (port interne 22)</span></code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> compose up -d</code></pre>
+                        </div>
+                        <p>
+                            Ouvre <code>http://localhost:3000</code> — un assistant d'installation web te
+                            demande la base de données (laisse SQLite pour démarrer, suffisant jusqu'à
+                            quelques dizaines d'utilisateurs), l'URL publique et le compte admin. Puis tu es
+                            opérationnel.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Pour la prod</div>
+                            <p>Mets Forgejo derrière un reverse proxy <a href="traefik.html">Traefik</a> ou Caddy pour le HTTPS automatique, passe sur Postgres si tu dépasses 50 utilisateurs, et configure les sauvegardes du volume <code>data/</code> (le seul état persistant).</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer ton premier dépôt</h4>
+                        <p>Le vocabulaire est <strong>identique</strong> à GitHub (Repository, Organization, Pull Request) — pas de renommage façon GitLab.</p>
+                        <ol>
+                            <li>En haut à droite, clique <strong>« + » → New Repository</strong>.</li>
+                            <li>Donne un nom au dépôt (ex. <code>devia-tp1</code>).</li>
+                            <li>Choisis <strong>Private</strong> ou <strong>Public</strong>.</li>
+                            <li>Coche <em>« Initialize Repository »</em> et choisis éventuellement un <code>.gitignore</code> Python.</li>
+                            <li>Clique <strong>« Create Repository »</strong>.</li>
+                        </ol>
+                    </li>
+
+                    <li>
+                        <h4>Installer Git sur ton PC</h4>
+                        <p>
+                            Étape <strong>strictement identique</strong> à GitHub / GitLab — Git est l'outil
+                            local, indépendant de la forge. Si déjà installé, passe.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># macOS</span>
+<span class="tk-cmd">brew</span> install git
+
+<span class="tk-comment"># Linux (Debian / Ubuntu)</span>
+<span class="tk-cmd">sudo</span> apt install git
+
+<span class="tk-comment"># Windows</span>
+<span class="tk-cmd">winget</span> install --id Git.Git -e
+
+<span class="tk-cmd">git</span> --version</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Configurer ton identité Git</h4>
+                        <p>Indépendant du service. Si déjà fait pour GitHub / GitLab, c'est OK.</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> config --global user.name <span class="tk-string">"Ton Prénom"</span>
+<span class="tk-cmd">git</span> config --global user.email <span class="tk-string">"ton-email@example.fr"</span>
+<span class="tk-cmd">git</span> config --global init.defaultBranch main</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Authentifier ton PC (clé SSH)</h4>
+                        <p>Tu peux réutiliser ta paire de clés <code>id_ed25519</code> existante.</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Si pas de clé existante</span>
+<span class="tk-cmd">ssh-keygen</span> -t ed25519 -C <span class="tk-string">"ton-email@example.fr"</span>
+
+<span class="tk-cmd">cat</span> ~/.ssh/id_ed25519.pub</code></pre>
+                        </div>
+                        <p>
+                            Sur ton instance Forgejo (ou Codeberg) : <strong>Settings → SSH / GPG Keys → Add Key</strong>.
+                            Colle la clé publique. Vérifie&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Sur Codeberg</span>
+<span class="tk-cmd">ssh</span> -T git@codeberg.org
+
+<span class="tk-comment"># Sur une instance auto-hébergée (port SSH 222 dans l'exemple Docker)</span>
+<span class="tk-cmd">ssh</span> -T -p 222 git@&lt;ton-domaine&gt;</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Cloner et travailler avec un dépôt</h4>
+                        <p>Sur la page du dépôt, clique <strong>« Use SSH »</strong> en haut à droite et copie l'URL.</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> clone git@codeberg.org:&lt;username&gt;/&lt;repo&gt;.git
+<span class="tk-cmd">cd</span> &lt;repo&gt;
+
+<span class="tk-cmd">git</span> status
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"Mon premier commit"</span>
+<span class="tk-cmd">git</span> push</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>VS Code avec Forgejo</h4>
+                        <p>
+                            Forgejo n'a pas d'extension VS Code officielle (la communauté est encore jeune).
+                            En pratique tu travailles avec&nbsp;:
+                        </p>
+                        <ol>
+                            <li>Le support <strong>Git natif</strong> de VS Code (clone, commit, push, branches) — déjà tout ce qu'il faut côté code.</li>
+                            <li><strong>GitLens</strong> (<code>eamodio.gitlens</code>) — annotations <em>blame</em>, historique, comparaisons.</li>
+                            <li>L'interface web de Forgejo pour gérer les Pull Requests et les issues — elle est rapide et claire, le va-et-vient avec VS Code n'est pas pénalisant.</li>
+                        </ol>
+                        <div class="info-box tip">
+                            <div class="info-title">Astuce</div>
+                            <p>Forgejo expose une API REST quasi compatible avec celle de Gitea (et globalement inspirée de GitHub). Si tu veux scripter (créer des issues, fermer des PR…), regarde la doc&nbsp;: <code>/api/v1/...</code> avec un Personal Access Token.</p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Bonus : un workflow Forgejo Actions minimal</h4>
+                        <p>
+                            Forgejo Actions reprend la syntaxe de <a href="cicd.html">GitHub Actions</a>. Le
+                            fichier va dans <code>.forgejo/workflows/ci.yml</code> (ou
+                            <code>.gitea/workflows/</code>, accepté par compatibilité)&nbsp;:
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn" type="button">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">name</span>: CI
+
+<span class="tk-keyword">on</span>:
+  <span class="tk-keyword">push</span>:
+    <span class="tk-keyword">branches</span>: [main]
+  <span class="tk-keyword">pull_request</span>:
+
+<span class="tk-keyword">jobs</span>:
+  <span class="tk-keyword">test</span>:
+    <span class="tk-keyword">runs-on</span>: docker
+    <span class="tk-keyword">steps</span>:
+      - <span class="tk-keyword">uses</span>: actions/checkout@v4
+      - <span class="tk-keyword">uses</span>: actions/setup-python@v5
+        <span class="tk-keyword">with</span>:
+          <span class="tk-keyword">python-version</span>: <span class="tk-string">"3.12"</span>
+      - <span class="tk-keyword">run</span>: pip install -r requirements.txt
+      - <span class="tk-keyword">run</span>: pytest</code></pre>
+                        </div>
+                        <p>
+                            Pour que ça tourne sur ton instance auto-hébergée, il te faut un
+                            <strong>runner Forgejo</strong> (un petit binaire Go qui exécute les jobs, à
+                            installer une fois). La doc officielle décrit l'install runner en quelques
+                            minutes.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Pourquoi choisir Forgejo en particulier</h2>
+                <p>
+                    Forgejo joue dans une catégorie spécifique&nbsp;: la <strong>forge légère, libre, et
+                    auto-hébergée</strong>. Il ne cherche pas à remplacer GitHub ou GitLab sur tous les
+                    terrains — il occupe un créneau précis où il est même <em>meilleur</em> que ses
+                    concurrents.
+                </p>
+
+                <h3>Les 5 raisons qui le différencient</h3>
+                <ol>
+                    <li>
+                        <strong>Légèreté radicale</strong> — un binaire Go ≈&nbsp;200 Mo, SQLite suffit pour
+                        une petite équipe, tourne confortablement sur un Raspberry Pi ou un VPS à 3&nbsp;€/mois.
+                        Pour la même charge, GitLab CE veut au moins 4 Go de RAM et un Postgres dédié.
+                    </li>
+                    <li>
+                        <strong>Logiciel libre fort (AGPL-3.0+)</strong> — la licence copyleft garantit que
+                        toute fork hébergée publiquement devra rester libre. C'est une protection contre la
+                        captation propriétaire que la licence MIT de Gitea n'offrait pas (et qui a mené au
+                        fork de 2022).
+                    </li>
+                    <li>
+                        <strong>Gouvernance associative</strong> — Codeberg e.V. est une asso allemande à but
+                        non lucratif, financée par dons, sans investisseurs. Pas de risque de pivot
+                        commercial, pas de monétisation des données, pas de feature gardée derrière un
+                        paywall.
+                    </li>
+                    <li>
+                        <strong>Compatibilité GitHub Actions</strong> — Forgejo Actions reprend la syntaxe et
+                        une bonne partie des actions de l'écosystème GitHub. Tu apprends une chose, tu sais
+                        écrire un pipeline pour les deux.
+                    </li>
+                    <li>
+                        <strong>Souveraineté complète</strong> — sur ton serveur, sur ton domaine, sous tes
+                        sauvegardes. Aucune télémétrie, aucun appel sortant. Pertinent en milieu
+                        institutionnel, scolaire, ou simplement par hygiène.
+                    </li>
+                </ol>
+
+                <h3>Forgejo vs GitHub / GitLab CE — quand choisir quoi</h3>
+                <div class="info-box">
+                    <div class="info-title">Forgejo vs GitHub</div>
+                    <p>
+                        GitHub gagne sur&nbsp;: la communauté open source (immense), la visibilité (portfolio,
+                        recrutement), le marketplace d'Actions, GitHub Copilot. <strong>Forgejo gagne</strong>
+                        sur&nbsp;: l'auto-hébergement, la privacy, la souveraineté, l'absence de vendor
+                        lock-in, et la possibilité de continuer à fonctionner même si le projet upstream
+                        change radicalement de politique.
+                    </p>
+                </div>
+                <div class="info-box tip">
+                    <div class="info-title">Forgejo vs GitLab CE</div>
+                    <p>
+                        Les deux sont auto-hébergeables et libres. GitLab gagne sur&nbsp;: l'intégration
+                        DevOps tout-en-un (security scan, monitoring, kanban avancé), l'écosystème
+                        d'entreprise, les fonctionnalités EE pour grands déploiements. <strong>Forgejo
+                        gagne</strong> sur&nbsp;: la simplicité (un seul binaire), les ressources requises
+                        (Pi vs VM puissante), la rapidité de l'UI, la gouvernance associative (vs entreprise
+                        commerciale).
+                    </p>
+                </div>
+
+                <h3>Les limites qu'il faut connaître</h3>
+                <ul>
+                    <li><strong>Pas de SaaS commercial</strong>. Codeberg.org existe mais n'accepte que des projets libres. Pour héberger un projet privé / pro, tu dois auto-héberger — donc gérer un serveur.</li>
+                    <li><strong>Communauté plus petite</strong> que GitHub et GitLab. Tu trouveras moins de tutos en français, moins de réponses sur Stack Overflow, moins de templates prêts à l'emploi.</li>
+                    <li><strong>Pas de marketplace équivalent</strong> à celui de GitHub. La majorité des actions GitHub fonctionnent, mais sans le côté découverte UI.</li>
+                    <li><strong>Pas d'IA intégrée</strong> de niveau Copilot. Tu peux brancher des outils externes mais il n'y a pas d'offre native.</li>
+                    <li><strong>Fédération en cours</strong>&nbsp;: l'idée d'envoyer une PR depuis ton instance vers une autre est en développement (codename F3 / ActivityPub). Pas encore production-ready.</li>
+                </ul>
+
+                <h3>Cas d'usage où Forgejo est <em>la bonne réponse</em></h3>
+                <ul>
+                    <li><strong>Asso étudiante / hackerspace / collectif</strong> qui veut un Git interne sans payer ni dépendre de GitHub. C'est <em>le</em> cas d'école.</li>
+                    <li><strong>Projets libres</strong> qui veulent une alternative éthique à GitHub&nbsp;: code chez Codeberg.org, miroir public sur GitHub pour la visibilité.</li>
+                    <li><strong>Petites équipes / freelances</strong> qui veulent leur propre forge sans la complexité de GitLab.</li>
+                    <li><strong>Souveraineté</strong>&nbsp;: organismes publics, écoles, ONGs qui ne veulent pas que leur code transite par des services étrangers.</li>
+                    <li><strong>Apprentissage de l'auto-hébergement</strong>&nbsp;: Forgejo est un excellent premier service à auto-héberger — léger, retour visuel immédiat, peu de pièges.</li>
+                </ul>
+
+                <div class="info-box warning">
+                    <div class="info-title">Garde l'angle ouvert</div>
+                    <p>Comme pour GitLab, rien n'empêche d'utiliser Forgejo <strong>en plus</strong> de GitHub. Beaucoup de projets gardent leur code source de référence sur Codeberg et exposent un miroir GitHub pour la visibilité. <code>git remote add github …</code> et un push double, c'est la solution la plus simple.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire Git</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Toujours les mêmes commandes Git — la forge ne change rien. Voir les fiches
+                    <a href="github.html">GitHub</a> et <a href="gitlab.html">GitLab</a> pour le détail.
+                    Spécificité Forgejo&nbsp;: si ton instance auto-hébergée écoute SSH sur un port non
+                    standard (ex. 222), il faut le préciser dans l'URL ou dans <code>~/.ssh/config</code>.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn" type="button">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Cycle de base (identique partout)</span>
+<span class="tk-cmd">git</span> clone &lt;url&gt;
+<span class="tk-cmd">git</span> status
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"message"</span>
+<span class="tk-cmd">git</span> push
+<span class="tk-cmd">git</span> pull
+
+<span class="tk-comment"># Cloner depuis une instance Forgejo avec port SSH non standard</span>
+<span class="tk-cmd">git</span> clone ssh://git@mon-forgejo.fr:222/user/repo.git
+
+<span class="tk-comment"># Ou configurer une fois dans ~/.ssh/config :</span>
+<span class="tk-comment">#   Host mon-forgejo.fr</span>
+<span class="tk-comment">#     Port 222</span>
+<span class="tk-comment">#     User git</span>
+<span class="tk-comment"># Puis : git clone git@mon-forgejo.fr:user/repo.git</span>
+
+<span class="tk-comment"># Avoir plusieurs remotes (Codeberg + miroir GitHub par ex.)</span>
+<span class="tk-cmd">git</span> remote -v
+<span class="tk-cmd">git</span> remote add github git@github.com:user/repo.git
+<span class="tk-cmd">git</span> push github main</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel Forgejo : <a href="https://forgejo.org/" target="_blank" rel="noopener noreferrer">forgejo.org</a></li>
+                    <li>Documentation : <a href="https://forgejo.org/docs/latest/" target="_blank" rel="noopener noreferrer">forgejo.org/docs/latest</a></li>
+                    <li>Instance publique pour projets libres : <a href="https://codeberg.org/" target="_blank" rel="noopener noreferrer">codeberg.org</a></li>
+                    <li>Forgejo Actions : <a href="https://forgejo.org/docs/latest/user/actions/" target="_blank" rel="noopener noreferrer">forgejo.org/docs/latest/user/actions</a></li>
+                    <li>Fiches jumelles sur ce site : <a href="github.html">GitHub</a> et <a href="gitlab.html">GitLab</a>.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
