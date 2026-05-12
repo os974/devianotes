@@ -69,9 +69,6 @@
 # depuis un navigateur. Comportement stable côté GitHub.
 ^https://github\.com/marketplace
 
-# min.io docs — documentation Python SDK, URL restructurée ou filtrée depuis les runners GitHub.
-^https://min\\.io/docs/minio/linux/developers/python/minio-py\\.html
-
 # Démo publique MinIO (play.min.io) — répond 403 depuis les runners GitHub
 # (protection anti-bot/CDN). Instance accessible depuis un navigateur.
-^https://play\\.min\\.io/
+^https://play\.min\.io/
