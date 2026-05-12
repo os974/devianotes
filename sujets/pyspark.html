@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>PySpark — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / PySpark</div>
+                <h1>PySpark</h1>
+                <p class="subtitle">
+                    L'API Python d'<strong>Apache Spark</strong>, le moteur de calcul distribué.
+                    En une seule API tu manipules des datasets de quelques Mo comme des téraoctets
+                    répartis sur des dizaines de machines. Le standard du « big data » côté
+                    traitement.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    <a href="pandas.html">pandas</a> est parfait jusqu'à quelques Go de données.
+                    Au-delà, il sature la RAM d'une machine. Spark résout ce problème en
+                    <strong>distribuant</strong> automatiquement le calcul sur plusieurs nœuds
+                    d'un cluster : tu écris ton code comme s'il s'agissait d'un seul DataFrame,
+                    Spark découpe en partitions et fait travailler chaque machine sur sa part.
+                </p>
+                <ul>
+                    <li><strong>ETL massif</strong> — transformer des dizaines de To de logs, de
+                        ventes ou de capteurs IoT.</li>
+                    <li><strong>Préparation de datasets ML</strong> — agréger, joindre, nettoyer
+                        de gros volumes pour entraîner ensuite un modèle.</li>
+                    <li><strong>Requêtes SQL distribuées</strong> — Spark SQL transforme un
+                        DataFrame en table requêtable en SQL, sans serveur de base de données.</li>
+                    <li><strong>Streaming</strong> — traiter des flux en quasi temps réel (Spark
+                        Structured Streaming, alimenté par Kafka par exemple).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">pandas, Polars, PySpark — quand utiliser quoi ?</div>
+                    <p>
+                        <strong>pandas</strong> : jusqu'à quelques Go, données qui tiennent en
+                        RAM, dev rapide, écosystème ML riche.
+                        <strong>Polars</strong> : pour aller plus vite sur une seule machine
+                        (10-100 Go), API très proche de pandas mais multi-cœur et écrite en
+                        Rust.
+                        <strong>PySpark</strong> : quand un seul nœud ne suffit plus — données
+                        sur S3/HDFS, traitement réparti sur plusieurs machines. Coût d'entrée
+                        plus élevé (cluster, JVM), mais scale virtuellement sans limite.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Les 3 concepts clés</h2>
+                <ul>
+                    <li>
+                        <strong>SparkSession</strong> — le point d'entrée. C'est l'objet qui
+                        crée la connexion au cluster (ou au mode « local » sur ta machine) et
+                        à partir duquel tu lis tes données. Une seule par programme.
+                    </li>
+                    <li>
+                        <strong>DataFrame</strong> — la structure principale, conceptuellement
+                        identique à un DataFrame pandas (lignes × colonnes nommées). En interne,
+                        c'est un ensemble de <em>partitions</em> réparties sur les workers.
+                    </li>
+                    <li>
+                        <strong>Lazy execution</strong> — c'est <em>la</em> différence
+                        fondamentale avec pandas. Les transformations
+                        (<code>filter</code>, <code>select</code>, <code>groupBy</code>) ne sont
+                        pas exécutées immédiatement : elles sont accumulées dans un plan
+                        logique, qu'on n'exécute que lorsqu'une <em>action</em>
+                        (<code>show</code>, <code>collect</code>, <code>write</code>) le demande.
+                        Spark optimise alors l'ensemble avant de lancer le calcul.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Transformations vs actions</div>
+                    <p>
+                        Une <strong>transformation</strong> renvoie un nouveau DataFrame
+                        (lazy) : <code>select</code>, <code>filter</code>, <code>withColumn</code>,
+                        <code>groupBy</code>, <code>join</code>… Tant que tu enchaînes des
+                        transformations, rien ne s'exécute. Une <strong>action</strong>
+                        déclenche le calcul réel : <code>show()</code>, <code>count()</code>,
+                        <code>collect()</code>, <code>write</code>. Si tu lances un script qui
+                        « ne fait rien » alors qu'il a un <code>filter()</code>, c'est
+                        normal — il te manque une action.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Reprenons l'exemple du fichier de ventes vu côté
+                    <a href="pandas.html">pandas</a>, mais cette fois en PySpark :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> pyspark.sql <span class="tk-keyword">import</span> SparkSession
+<span class="tk-keyword">from</span> pyspark.sql <span class="tk-keyword">import</span> functions <span class="tk-keyword">as</span> F
+
+<span class="tk-comment"># Créer la session Spark (mode local, tous les cœurs)</span>
+spark = SparkSession.<span class="tk-fn">builder</span>.<span class="tk-fn">appName</span>(<span class="tk-string">"ventes"</span>).<span class="tk-fn">master</span>(<span class="tk-string">"local[*]"</span>).<span class="tk-fn">getOrCreate</span>()
+
+<span class="tk-comment"># Charger le CSV (lazy : aucune lecture réelle pour l'instant)</span>
+df = spark.read.<span class="tk-fn">csv</span>(<span class="tk-string">"ventes.csv"</span>, header=<span class="tk-keyword">True</span>, inferSchema=<span class="tk-keyword">True</span>)
+
+<span class="tk-comment"># Filtrer + grouper + agréger (toujours lazy)</span>
+totaux = (
+    df.<span class="tk-fn">filter</span>(F.col(<span class="tk-string">"montant"</span>) &gt; <span class="tk-num">100</span>)
+      .<span class="tk-fn">groupBy</span>(<span class="tk-string">"produit"</span>)
+      .<span class="tk-fn">agg</span>(F.<span class="tk-fn">sum</span>(<span class="tk-string">"montant"</span>).<span class="tk-fn">alias</span>(<span class="tk-string">"total"</span>))
+      .<span class="tk-fn">orderBy</span>(F.<span class="tk-fn">desc</span>(<span class="tk-string">"total"</span>))
+)
+
+<span class="tk-comment"># Action : c'est ici que Spark exécute réellement</span>
+totaux.<span class="tk-fn">show</span>(<span class="tk-num">10</span>)
+
+spark.<span class="tk-fn">stop</span>()</code></pre>
+                </div>
+                <p>
+                    Le code <em>ressemble</em> à pandas mais a deux différences clés : on passe
+                    par <code>F.col()</code> pour référencer une colonne, et rien ne s'exécute
+                    avant l'appel à <code>show()</code>. Sur 100 Mo c'est plus lent que pandas
+                    (overhead de la JVM), sur 100 Go ça devient gagnant — et sur 100 To c'est
+                    la seule option.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser PySpark</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer PySpark</h4>
+                        <p>
+                            PySpark embarque Spark dans son wheel. Mais Spark est en Scala/Java,
+                            donc il te faut aussi <strong>Java 11 ou 17</strong> sur ta machine
+                            (souvent déjà présent, sinon <code>sudo apt install
+                            openjdk-17-jre</code> sur Linux).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add pyspark
+java --version   <span class="tk-comment"># vérifier que Java est dispo</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">L'astuce pour le dev local</div>
+                            <p>
+                                Pour expérimenter, le mode <code>local[*]</code> fait tourner
+                                Spark sur ta machine en utilisant tous les cœurs, sans cluster.
+                                C'est ce qu'on utilise en formation et pour développer avant de
+                                déployer.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer une SparkSession</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> pyspark.sql <span class="tk-keyword">import</span> SparkSession
+
+spark = (
+    SparkSession.<span class="tk-fn">builder</span>
+    .<span class="tk-fn">appName</span>(<span class="tk-string">"mon-app"</span>)
+    .<span class="tk-fn">master</span>(<span class="tk-string">"local[*]"</span>)            <span class="tk-comment"># local, tous les cœurs</span>
+    .<span class="tk-fn">config</span>(<span class="tk-string">"spark.sql.shuffle.partitions"</span>, <span class="tk-string">"8"</span>)
+    .<span class="tk-fn">getOrCreate</span>()
+)</code></pre>
+                        </div>
+                        <p>
+                            Pour un cluster réel, on remplace <code>local[*]</code> par
+                            <code>spark://master:7077</code> (Spark standalone) ou
+                            <code>yarn</code> (cluster Hadoop), mais le reste du code ne change
+                            pas.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Charger des données</h4>
+                        <p>
+                            Spark lit nativement <strong>CSV, JSON, Parquet, Avro, ORC</strong>,
+                            mais aussi directement depuis <strong>S3</strong>
+                            (<a href="minio.html">MinIO</a>), HDFS, JDBC. Le format de
+                            prédilection en prod est <strong>Parquet</strong> : colonnes,
+                            compressé, typé.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df = spark.read.<span class="tk-fn">csv</span>(<span class="tk-string">"f.csv"</span>, header=<span class="tk-keyword">True</span>, inferSchema=<span class="tk-keyword">True</span>)
+df = spark.read.<span class="tk-fn">parquet</span>(<span class="tk-string">"f.parquet"</span>)
+df = spark.read.<span class="tk-fn">json</span>(<span class="tk-string">"f.json"</span>)
+
+<span class="tk-comment"># Depuis MinIO/S3</span>
+df = spark.read.<span class="tk-fn">parquet</span>(<span class="tk-string">"s3a://bucket/path/"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Explorer un DataFrame</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">show</span>(<span class="tk-num">5</span>)             <span class="tk-comment"># aperçu (action)</span>
+df.<span class="tk-fn">printSchema</span>()       <span class="tk-comment"># types des colonnes</span>
+df.columns            <span class="tk-comment"># noms des colonnes</span>
+df.<span class="tk-fn">count</span>()            <span class="tk-comment"># nb de lignes (action)</span>
+df.<span class="tk-fn">describe</span>().<span class="tk-fn">show</span>()  <span class="tk-comment"># stats sur les colonnes numériques</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sélectionner, filtrer, transformer</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> pyspark.sql <span class="tk-keyword">import</span> functions <span class="tk-keyword">as</span> F
+
+<span class="tk-comment"># Sélectionner des colonnes</span>
+df.<span class="tk-fn">select</span>(<span class="tk-string">"produit"</span>, <span class="tk-string">"montant"</span>)
+
+<span class="tk-comment"># Filtrer des lignes</span>
+df.<span class="tk-fn">filter</span>(F.col(<span class="tk-string">"montant"</span>) &gt; <span class="tk-num">100</span>)
+df.<span class="tk-fn">filter</span>((F.col(<span class="tk-string">"montant"</span>) &gt; <span class="tk-num">100</span>) &amp; (F.col(<span class="tk-string">"produit"</span>) == <span class="tk-string">"A"</span>))
+
+<span class="tk-comment"># Ajouter une colonne calculée</span>
+df.<span class="tk-fn">withColumn</span>(<span class="tk-string">"ttc"</span>, F.col(<span class="tk-string">"montant"</span>) * <span class="tk-num">1.20</span>)
+
+<span class="tk-comment"># Renommer / supprimer</span>
+df.<span class="tk-fn">withColumnRenamed</span>(<span class="tk-string">"montant"</span>, <span class="tk-string">"montant_ht"</span>)
+df.<span class="tk-fn">drop</span>(<span class="tk-string">"colonne_inutile"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Grouper et agréger</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">groupBy</span>(<span class="tk-string">"produit"</span>).<span class="tk-fn">agg</span>(
+    F.<span class="tk-fn">sum</span>(<span class="tk-string">"montant"</span>).<span class="tk-fn">alias</span>(<span class="tk-string">"total"</span>),
+    F.<span class="tk-fn">avg</span>(<span class="tk-string">"montant"</span>).<span class="tk-fn">alias</span>(<span class="tk-string">"moyenne"</span>),
+    F.<span class="tk-fn">count</span>(<span class="tk-string">"*"</span>).<span class="tk-fn">alias</span>(<span class="tk-string">"nb"</span>),
+).<span class="tk-fn">orderBy</span>(F.<span class="tk-fn">desc</span>(<span class="tk-string">"total"</span>))</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Joindre deux DataFrames</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>ventes.<span class="tk-fn">join</span>(produits, on=<span class="tk-string">"produit_id"</span>, how=<span class="tk-string">"left"</span>)
+ventes.<span class="tk-fn">join</span>(produits, ventes.pid == produits.id, how=<span class="tk-string">"inner"</span>)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Attention au shuffle</div>
+                            <p>
+                                Un <code>join</code> ou un <code>groupBy</code> entraîne
+                                souvent un <em>shuffle</em> : Spark redistribue les données
+                                entre les workers selon la clé. C'est l'opération la plus
+                                coûteuse du framework. Quand c'est possible, broadcaste la
+                                petite table : <code>df.join(F.broadcast(petit_df), ...)</code>
+                                — ça évite le shuffle.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Spark SQL : du SQL directement</h4>
+                        <p>
+                            On peut « publier » un DataFrame comme table temporaire et le
+                            requêter en SQL pur :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">createOrReplaceTempView</span>(<span class="tk-string">"ventes"</span>)
+
+resultat = spark.<span class="tk-fn">sql</span>(<span class="tk-string">"""
+    SELECT produit, SUM(montant) AS total
+    FROM ventes
+    WHERE montant &gt; 100
+    GROUP BY produit
+    ORDER BY total DESC
+"""</span>)
+
+resultat.<span class="tk-fn">show</span>()</code></pre>
+                        </div>
+                        <p>
+                            Très pratique pour les requêtes longues ou pour porter du code SQL
+                            existant vers Spark sans tout réécrire.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder le résultat</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">write</span>.<span class="tk-fn">parquet</span>(<span class="tk-string">"sortie/"</span>, mode=<span class="tk-string">"overwrite"</span>)
+df.<span class="tk-fn">write</span>.<span class="tk-fn">csv</span>(<span class="tk-string">"sortie.csv"</span>, header=<span class="tk-keyword">True</span>)
+df.<span class="tk-fn">write</span>.<span class="tk-fn">mode</span>(<span class="tk-string">"append"</span>).<span class="tk-fn">parquet</span>(<span class="tk-string">"data/"</span>)</code></pre>
+                        </div>
+                        <p>
+                            En sortie, Spark écrit en <em>plusieurs</em> fichiers (un par
+                            partition) — c'est voulu, ça permet la parallélisation à la
+                            relecture. Pour un seul fichier, <code>df.coalesce(1).write...</code>
+                            mais c'est à éviter sur de gros volumes.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Convertir vers/depuis pandas</h4>
+                        <p>
+                            Quand le résultat tient en mémoire, on peut basculer vers pandas
+                            pour la phase finale (visu, ML) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>pdf = df.<span class="tk-fn">toPandas</span>()        <span class="tk-comment"># Spark → pandas (ATTENTION : tout en mémoire)</span>
+sdf = spark.<span class="tk-fn">createDataFrame</span>(pdf)  <span class="tk-comment"># pandas → Spark</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Le piège du <code>toPandas()</code></div>
+                            <p>
+                                <code>toPandas()</code> ramène toutes les lignes sur le driver
+                                (ta machine) — il faut que ça tienne en RAM. À n'utiliser
+                                qu'après avoir filtré/agrégé pour passer de To à quelques Mo.
+                                Même remarque pour <code>collect()</code>.
+                            </p>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (session)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> pyspark.sql <span class="tk-keyword">import</span> SparkSession, functions <span class="tk-keyword">as</span> F
+
+spark = SparkSession.<span class="tk-fn">builder</span>.<span class="tk-fn">master</span>(<span class="tk-string">"local[*]"</span>).<span class="tk-fn">getOrCreate</span>()
+spark.<span class="tk-fn">stop</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (lecture / écriture)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>spark.read.<span class="tk-fn">csv</span>(<span class="tk-string">"f.csv"</span>, header=<span class="tk-keyword">True</span>, inferSchema=<span class="tk-keyword">True</span>)
+spark.read.<span class="tk-fn">parquet</span>(<span class="tk-string">"f.parquet"</span>)
+df.<span class="tk-fn">write</span>.<span class="tk-fn">parquet</span>(<span class="tk-string">"out/"</span>, mode=<span class="tk-string">"overwrite"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (transformations courantes)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df.<span class="tk-fn">select</span>(<span class="tk-string">"a"</span>, <span class="tk-string">"b"</span>)
+df.<span class="tk-fn">filter</span>(F.col(<span class="tk-string">"x"</span>) &gt; <span class="tk-num">0</span>)
+df.<span class="tk-fn">withColumn</span>(<span class="tk-string">"y"</span>, F.col(<span class="tk-string">"x"</span>) * <span class="tk-num">2</span>)
+df.<span class="tk-fn">groupBy</span>(<span class="tk-string">"k"</span>).<span class="tk-fn">agg</span>(F.<span class="tk-fn">sum</span>(<span class="tk-string">"v"</span>).<span class="tk-fn">alias</span>(<span class="tk-string">"total"</span>))
+df.<span class="tk-fn">join</span>(other, on=<span class="tk-string">"id"</span>, how=<span class="tk-string">"left"</span>)
+df.<span class="tk-fn">orderBy</span>(F.<span class="tk-fn">desc</span>(<span class="tk-string">"total"</span>))
+df.<span class="tk-fn">dropDuplicates</span>([<span class="tk-string">"id"</span>])
+df.<span class="tk-fn">dropna</span>(); df.<span class="tk-fn">fillna</span>(<span class="tk-num">0</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (actions — exécutent vraiment)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df.<span class="tk-fn">show</span>(<span class="tk-num">20</span>)
+df.<span class="tk-fn">count</span>()
+df.<span class="tk-fn">collect</span>()           <span class="tk-comment"># liste de Row (tout en RAM driver)</span>
+df.<span class="tk-fn">toPandas</span>()          <span class="tk-comment"># conversion (tout en RAM)</span>
+df.<span class="tk-fn">write</span>.<span class="tk-fn">parquet</span>(<span class="tk-string">"..."</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (Spark SQL)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df.<span class="tk-fn">createOrReplaceTempView</span>(<span class="tk-string">"t"</span>)
+spark.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM t WHERE x &gt; 0"</span>).<span class="tk-fn">show</span>()</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>PySpark et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> — API très proche.
+                        En MLOps, le pattern courant est : préparation lourde en PySpark
+                        (To de données → Mo agrégés), puis bascule en pandas pour
+                        l'entraînement.
+                    </li>
+                    <li>
+                        <strong><a href="jupyter.html">Jupyter</a></strong> — l'environnement
+                        idéal pour développer un job PySpark : on itère cellule par cellule
+                        avec <code>df.show()</code> à chaque étape.
+                    </li>
+                    <li>
+                        <strong><a href="minio.html">MinIO</a></strong> — Spark lit
+                        nativement les buckets S3-compatibles via le préfixe
+                        <code>s3a://</code>. C'est le combo classique pour un data lake
+                        auto-hébergé.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — sait logger un
+                        modèle <code>pyspark.ml</code> (le module ML de Spark) avec sa
+                        signature. Pour traiter des features à grande échelle puis entraîner
+                        directement dans Spark, sans sortir vers pandas.
+                    </li>
+                    <li>
+                        <strong><a href="kafka.html">Kafka</a></strong> — Spark Structured
+                        Streaming s'abonne à un topic Kafka et traite les événements en
+                        micro-batches avec la même API DataFrame qu'en batch.
+                    </li>
+                    <li>
+                        <strong><a href="prefect.html">Prefect</a></strong> — orchestrer un
+                        job PySpark planifié, monitorer son succès/échec et déclencher des
+                        étapes suivantes (ex. invalidation de cache, ré-entraînement).
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">PySpark, Databricks et Delta Lake</div>
+                    <p>
+                        <strong>Databricks</strong> est la plateforme commerciale fondée par
+                        les créateurs de Spark : un Spark managé clé en main, avec notebooks
+                        et orchestration intégrés. <strong>Delta Lake</strong> est leur format
+                        open source qui ajoute des transactions ACID au-dessus de Parquet —
+                        souvent évoqué avec Spark, à connaître au moins de nom.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://spark.apache.org/docs/latest/api/python/" target="_blank" rel="noopener noreferrer">spark.apache.org/docs/latest/api/python</a></li>
+                    <li>Guide officiel PySpark : <a href="https://spark.apache.org/docs/latest/api/python/getting_started/index.html" target="_blank" rel="noopener noreferrer">Getting Started with PySpark</a></li>
+                    <li>Liste des fonctions <code>F</code> : <a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/functions.html" target="_blank" rel="noopener noreferrer">pyspark.sql.functions</a></li>
+                    <li>Delta Lake (table format ACID au-dessus de Parquet) : <a href="https://delta.io/" target="_blank" rel="noopener noreferrer">delta.io</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

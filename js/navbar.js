@@ -116,6 +116,7 @@
                             <a href="${S}sqlalchemy.html">SQLAlchemy</a>
                             <a href="${S}supabase.html">Supabase</a>
                             <a href="${S}pandas.html">pandas</a>
+                            <a href="${S}pyspark.html">PySpark</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Stockage</div>
