@@ -77,3 +77,8 @@
 # GitHub (filtre User-Agent / plages d'IPs cloud). Lien valide depuis un
 # navigateur. Comportement stable côté Microsoft.
 ^https://code\.visualstudio\.com
+
+# Site officiel PyTorch — derrière Cloudflare, filtre fréquemment les
+# requêtes des runners GitHub (réponses 403 ou timeouts). Lien valide
+# depuis un navigateur.
+^https://pytorch\.org

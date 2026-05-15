@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>PyTorch — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / PyTorch</div>
+                <h1>PyTorch</h1>
+                <p class="subtitle">
+                    Le framework de deep learning de Meta, devenu le standard de la recherche
+                    et de l'industrie. Des tenseurs façon <a href="numpy.html">NumPy</a> mais accélérés GPU, une
+                    différentiation automatique, et tout ce qu'il faut pour entraîner un
+                    réseau de neurones — de la régression simple au modèle qui propulse YOLO.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    PyTorch sert à <strong>entraîner et utiliser des réseaux de neurones</strong>
+                    en Python. Là où scikit-learn s'arrête (modèles classiques sur données
+                    tabulaires), PyTorch prend le relais pour tout ce qui est deep learning :
+                    vision par ordinateur, NLP, audio, génération.
+                </p>
+                <p>
+                    Trois briques fondamentales :
+                </p>
+                <ul>
+                    <li><strong>Tensor</strong> — un tableau multidimensionnel, équivalent du
+                        ndarray NumPy mais qui peut tourner sur GPU et garder en mémoire les
+                        opérations qu'on lui applique.</li>
+                    <li><strong>Autograd</strong> — calcul automatique des gradients. Tu écris
+                        ton calcul, PyTorch calcule les dérivées partielles pour toi.</li>
+                    <li><strong>nn.Module</strong> — la classe de base pour construire un
+                        modèle : on déclare des couches, on définit <code>forward()</code>,
+                        PyTorch s'occupe du reste.</li>
+                </ul>
+                <p>
+                    À ces trois briques s'ajoutent des outils périphériques :
+                    <code>DataLoader</code> pour itérer sur des batchs,
+                    <code>torch.optim</code> pour les optimiseurs (SGD, Adam…), et tout
+                    l'écosystème <strong>torchvision</strong> / <strong>torchaudio</strong> /
+                    <strong>torchtext</strong> pour les modèles pré-entraînés.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">PyTorch, TensorFlow, scikit-learn… c'est quoi la différence&nbsp;?</div>
+                    <p>
+                        <strong>scikit-learn</strong> = ML classique sur données tabulaires
+                        (random forest, régression…). <strong>PyTorch</strong> et
+                        <strong>TensorFlow</strong> font tous les deux du deep learning ; en
+                        2026 PyTorch domine largement la recherche et de plus en plus
+                        l'industrie, grâce à une API plus pythonique. <strong>YOLO</strong>
+                        (versions modernes) et <strong>HuggingFace Transformers</strong>
+                        reposent sur PyTorch.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    On entraîne une mini-régression linéaire « à la main » pour voir le pattern
+                    de base : tenseurs, modèle, loss, optimiseur, boucle d'entraînement.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> torch
+<span class="tk-keyword">from</span> torch <span class="tk-keyword">import</span> nn
+
+<span class="tk-comment"># Données : y = 2x + 1 avec un peu de bruit</span>
+X = torch.<span class="tk-fn">linspace</span>(<span class="tk-num">0</span>, <span class="tk-num">10</span>, <span class="tk-num">100</span>).<span class="tk-fn">unsqueeze</span>(<span class="tk-num">1</span>)
+y = <span class="tk-num">2</span> * X + <span class="tk-num">1</span> + torch.<span class="tk-fn">randn_like</span>(X) * <span class="tk-num">0.5</span>
+
+<span class="tk-comment"># Modèle : une seule couche linéaire (1 → 1)</span>
+model = nn.<span class="tk-fn">Linear</span>(in_features=<span class="tk-num">1</span>, out_features=<span class="tk-num">1</span>)
+loss_fn = nn.<span class="tk-fn">MSELoss</span>()
+optimizer = torch.optim.<span class="tk-fn">SGD</span>(model.<span class="tk-fn">parameters</span>(), lr=<span class="tk-num">0.01</span>)
+
+<span class="tk-comment"># Boucle d'entraînement</span>
+<span class="tk-keyword">for</span> epoch <span class="tk-keyword">in</span> <span class="tk-fn">range</span>(<span class="tk-num">200</span>):
+    pred = <span class="tk-fn">model</span>(X)                  <span class="tk-comment"># forward</span>
+    loss = <span class="tk-fn">loss_fn</span>(pred, y)
+    optimizer.<span class="tk-fn">zero_grad</span>()             <span class="tk-comment"># reset des gradients</span>
+    loss.<span class="tk-fn">backward</span>()                   <span class="tk-comment"># backward (autograd)</span>
+    optimizer.<span class="tk-fn">step</span>()                   <span class="tk-comment"># mise à jour des poids</span>
+
+<span class="tk-fn">print</span>(<span class="tk-string">"poids appris :"</span>, model.weight.<span class="tk-fn">item</span>())  <span class="tk-comment"># ≈ 2.0</span>
+<span class="tk-fn">print</span>(<span class="tk-string">"biais appris :"</span>, model.bias.<span class="tk-fn">item</span>())     <span class="tk-comment"># ≈ 1.0</span></code></pre>
+                </div>
+                <p>
+                    Toutes les boucles d'entraînement PyTorch suivent ce squelette :
+                    <strong>forward → loss → zero_grad → backward → step</strong>. Que ce
+                    soit pour une régression à 1 paramètre ou un transformeur à 100 milliards
+                    de paramètres, c'est le même schéma.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser PyTorch</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer PyTorch</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a>, pour la version CPU (suffisant pour
+                            apprendre et faire tourner de l'inférence légère) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add torch torchvision</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Pour le GPU : passer par l'index officiel</div>
+                            <p>
+                                Si tu as une carte NVIDIA et que tu veux CUDA, suis le
+                                configurateur officiel sur <a href="https://pytorch.org/get-started/locally/" target="_blank" rel="noopener noreferrer">pytorch.org/get-started/locally</a>.
+                                Il génère la commande exacte selon ton OS, ta version de CUDA
+                                et ton outil de package. Avec UV : on ajoute un
+                                <code>--extra-index-url</code> pointant sur l'index PyTorch
+                                spécifique.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Manipuler des tenseurs</h4>
+                        <p>
+                            L'API est volontairement proche de NumPy — si tu connais NumPy,
+                            tu connais déjà 80% de l'API tensor.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> torch
+
+<span class="tk-comment"># Créer un tenseur</span>
+t = torch.<span class="tk-fn">tensor</span>([[<span class="tk-num">1.</span>, <span class="tk-num">2.</span>], [<span class="tk-num">3.</span>, <span class="tk-num">4.</span>]])
+torch.<span class="tk-fn">zeros</span>(<span class="tk-num">3</span>, <span class="tk-num">4</span>); torch.<span class="tk-fn">ones</span>(<span class="tk-num">10</span>)
+torch.<span class="tk-fn">randn</span>(<span class="tk-num">3</span>, <span class="tk-num">4</span>)                <span class="tk-comment"># aléatoire normal</span>
+
+<span class="tk-comment"># Inspection</span>
+t.shape, t.dtype, t.device
+
+<span class="tk-comment"># Opérations vectorisées (comme NumPy)</span>
+t + <span class="tk-num">1</span>; t * <span class="tk-num">2</span>; t @ t.<span class="tk-fn">T</span>          <span class="tk-comment"># produit matriciel</span>
+
+<span class="tk-comment"># Conversion avec NumPy</span>
+<span class="tk-keyword">import</span> numpy <span class="tk-keyword">as</span> np
+arr = t.<span class="tk-fn">numpy</span>()                    <span class="tk-comment"># tensor → array</span>
+t2 = torch.<span class="tk-fn">from_numpy</span>(arr)         <span class="tk-comment"># array → tensor</span>
+
+<span class="tk-comment"># Déplacer sur GPU si disponible</span>
+device = <span class="tk-string">"cuda"</span> <span class="tk-keyword">if</span> torch.cuda.<span class="tk-fn">is_available</span>() <span class="tk-keyword">else</span> <span class="tk-string">"cpu"</span>
+t = t.<span class="tk-fn">to</span>(device)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Comprendre autograd</h4>
+                        <p>
+                            Si on met <code>requires_grad=True</code> sur un tenseur, PyTorch
+                            trace toutes les opérations et peut calculer la dérivée
+                            automatiquement :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>x = torch.<span class="tk-fn">tensor</span>(<span class="tk-num">3.0</span>, requires_grad=<span class="tk-keyword">True</span>)
+y = x ** <span class="tk-num">2</span> + <span class="tk-num">2</span> * x + <span class="tk-num">1</span>     <span class="tk-comment"># y = x² + 2x + 1</span>
+y.<span class="tk-fn">backward</span>()                <span class="tk-comment"># calcule dy/dx</span>
+<span class="tk-fn">print</span>(x.grad)              <span class="tk-comment"># 8.0  (= 2x + 2 en x=3)</span></code></pre>
+                        </div>
+                        <p>
+                            C'est ce mécanisme qui rend possible la rétropropagation : on
+                            écrit le calcul du loss, PyTorch trouve seul comment ajuster
+                            chaque paramètre pour le réduire.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Définir un modèle avec nn.Module</h4>
+                        <p>
+                            Pour autre chose qu'une couche unique, on sous-classe
+                            <code>nn.Module</code>, on déclare les couches dans
+                            <code>__init__</code>, et on définit le passage avant dans
+                            <code>forward</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> torch <span class="tk-keyword">import</span> nn
+
+<span class="tk-keyword">class</span> <span class="tk-fn">MLP</span>(nn.Module):
+    <span class="tk-keyword">def</span> <span class="tk-fn">__init__</span>(<span class="tk-keyword">self</span>, n_in, n_hidden, n_out):
+        <span class="tk-fn">super</span>().<span class="tk-fn">__init__</span>()
+        <span class="tk-keyword">self</span>.net = nn.<span class="tk-fn">Sequential</span>(
+            nn.<span class="tk-fn">Linear</span>(n_in, n_hidden),
+            nn.<span class="tk-fn">ReLU</span>(),
+            nn.<span class="tk-fn">Linear</span>(n_hidden, n_out),
+        )
+
+    <span class="tk-keyword">def</span> <span class="tk-fn">forward</span>(<span class="tk-keyword">self</span>, x):
+        <span class="tk-keyword">return</span> <span class="tk-keyword">self</span>.<span class="tk-fn">net</span>(x)
+
+model = <span class="tk-fn">MLP</span>(n_in=<span class="tk-num">10</span>, n_hidden=<span class="tk-num">64</span>, n_out=<span class="tk-num">3</span>)
+<span class="tk-fn">print</span>(model)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Charger des données avec Dataset et DataLoader</h4>
+                        <p>
+                            <code>Dataset</code> = un objet qui répond à
+                            <code>__len__</code> et <code>__getitem__</code>.
+                            <code>DataLoader</code> en fait des batchs avec mélange et parallélisme.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> torch.utils.data <span class="tk-keyword">import</span> Dataset, DataLoader
+
+<span class="tk-keyword">class</span> <span class="tk-fn">SimpleDataset</span>(Dataset):
+    <span class="tk-keyword">def</span> <span class="tk-fn">__init__</span>(<span class="tk-keyword">self</span>, X, y):
+        <span class="tk-keyword">self</span>.X, <span class="tk-keyword">self</span>.y = X, y
+
+    <span class="tk-keyword">def</span> <span class="tk-fn">__len__</span>(<span class="tk-keyword">self</span>):
+        <span class="tk-keyword">return</span> <span class="tk-fn">len</span>(<span class="tk-keyword">self</span>.X)
+
+    <span class="tk-keyword">def</span> <span class="tk-fn">__getitem__</span>(<span class="tk-keyword">self</span>, i):
+        <span class="tk-keyword">return</span> <span class="tk-keyword">self</span>.X[i], <span class="tk-keyword">self</span>.y[i]
+
+train_ds = <span class="tk-fn">SimpleDataset</span>(X_train, y_train)
+train_dl = <span class="tk-fn">DataLoader</span>(train_ds, batch_size=<span class="tk-num">32</span>, shuffle=<span class="tk-keyword">True</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>La boucle d'entraînement standard</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>loss_fn = nn.<span class="tk-fn">CrossEntropyLoss</span>()        <span class="tk-comment"># classification</span>
+optimizer = torch.optim.<span class="tk-fn">Adam</span>(model.<span class="tk-fn">parameters</span>(), lr=<span class="tk-num">1e-3</span>)
+
+<span class="tk-keyword">for</span> epoch <span class="tk-keyword">in</span> <span class="tk-fn">range</span>(<span class="tk-num">10</span>):
+    model.<span class="tk-fn">train</span>()
+    <span class="tk-keyword">for</span> xb, yb <span class="tk-keyword">in</span> train_dl:
+        xb, yb = xb.<span class="tk-fn">to</span>(device), yb.<span class="tk-fn">to</span>(device)
+        pred = <span class="tk-fn">model</span>(xb)
+        loss = <span class="tk-fn">loss_fn</span>(pred, yb)
+        optimizer.<span class="tk-fn">zero_grad</span>()
+        loss.<span class="tk-fn">backward</span>()
+        optimizer.<span class="tk-fn">step</span>()
+    <span class="tk-fn">print</span>(<span class="tk-string">f"epoch </span><span class="tk-string">{</span>epoch<span class="tk-string">} - loss </span><span class="tk-string">{</span>loss.<span class="tk-fn">item</span>()<span class="tk-string">:.4f}"</span>)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">model.train() vs model.eval()</div>
+                            <p>
+                                Certaines couches (Dropout, BatchNorm) se comportent
+                                différemment en entraînement et en évaluation. Toujours
+                                appeler <code>model.train()</code> avant la boucle d'entraînement
+                                et <code>model.eval()</code> + <code>with torch.no_grad():</code>
+                                au moment de l'évaluation.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Évaluer et prédire</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>model.<span class="tk-fn">eval</span>()
+<span class="tk-keyword">with</span> torch.<span class="tk-fn">no_grad</span>():            <span class="tk-comment"># pas de calcul de gradient</span>
+    correct = <span class="tk-num">0</span>; total = <span class="tk-num">0</span>
+    <span class="tk-keyword">for</span> xb, yb <span class="tk-keyword">in</span> test_dl:
+        pred = <span class="tk-fn">model</span>(xb.<span class="tk-fn">to</span>(device))
+        correct += (pred.<span class="tk-fn">argmax</span>(<span class="tk-num">1</span>).<span class="tk-fn">cpu</span>() == yb).<span class="tk-fn">sum</span>().<span class="tk-fn">item</span>()
+        total += <span class="tk-fn">len</span>(yb)
+<span class="tk-fn">print</span>(<span class="tk-string">f"accuracy : </span><span class="tk-string">{</span>correct/total<span class="tk-string">:.2%}"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder et recharger un modèle</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Sauver SEULEMENT les poids (recommandé)</span>
+torch.<span class="tk-fn">save</span>(model.<span class="tk-fn">state_dict</span>(), <span class="tk-string">"model.pt"</span>)
+
+<span class="tk-comment"># Recharger : il faut d'abord reconstruire le même nn.Module</span>
+model = <span class="tk-fn">MLP</span>(n_in=<span class="tk-num">10</span>, n_hidden=<span class="tk-num">64</span>, n_out=<span class="tk-num">3</span>)
+model.<span class="tk-fn">load_state_dict</span>(torch.<span class="tk-fn">load</span>(<span class="tk-string">"model.pt"</span>))
+model.<span class="tk-fn">eval</span>()</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (tenseurs)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>torch.<span class="tk-fn">tensor</span>([<span class="tk-num">1</span>, <span class="tk-num">2</span>]); torch.<span class="tk-fn">zeros</span>(<span class="tk-num">3</span>, <span class="tk-num">4</span>); torch.<span class="tk-fn">randn</span>(<span class="tk-num">2</span>, <span class="tk-num">3</span>)
+t.shape, t.dtype, t.device
+t.<span class="tk-fn">to</span>(<span class="tk-string">"cuda"</span>); t.<span class="tk-fn">cpu</span>(); t.<span class="tk-fn">numpy</span>()
+t.<span class="tk-fn">view</span>(<span class="tk-num">-1</span>, <span class="tk-num">3</span>), t.<span class="tk-fn">unsqueeze</span>(<span class="tk-num">0</span>), t.<span class="tk-fn">squeeze</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (modèle)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> torch <span class="tk-keyword">import</span> nn
+model = nn.<span class="tk-fn">Sequential</span>(
+    nn.<span class="tk-fn">Linear</span>(<span class="tk-num">10</span>, <span class="tk-num">64</span>), nn.<span class="tk-fn">ReLU</span>(),
+    nn.<span class="tk-fn">Linear</span>(<span class="tk-num">64</span>, <span class="tk-num">3</span>),
+)
+loss_fn = nn.<span class="tk-fn">CrossEntropyLoss</span>()
+optim = torch.optim.<span class="tk-fn">Adam</span>(model.<span class="tk-fn">parameters</span>(), lr=<span class="tk-num">1e-3</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (boucle)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">for</span> xb, yb <span class="tk-keyword">in</span> dl:
+    pred = <span class="tk-fn">model</span>(xb)
+    loss = <span class="tk-fn">loss_fn</span>(pred, yb)
+    optim.<span class="tk-fn">zero_grad</span>(); loss.<span class="tk-fn">backward</span>(); optim.<span class="tk-fn">step</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (sauver / charger)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>torch.<span class="tk-fn">save</span>(model.<span class="tk-fn">state_dict</span>(), <span class="tk-string">"m.pt"</span>)
+model.<span class="tk-fn">load_state_dict</span>(torch.<span class="tk-fn">load</span>(<span class="tk-string">"m.pt"</span>))</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>PyTorch et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong>NumPy</strong> — les tenseurs PyTorch et les arrays NumPy
+                        partagent la même mémoire quand c'est possible. On passe de l'un à
+                        l'autre avec <code>t.numpy()</code> et <code>torch.from_numpy(arr)</code>.
+                    </li>
+                    <li>
+                        <strong><a href="scikit-learn.html">scikit-learn</a></strong> — pour
+                        un problème tabulaire de taille modeste, sklearn est plus simple et
+                        souvent suffisant. PyTorch devient utile dès qu'on a des données non
+                        tabulaires (images, texte, audio) ou un dataset trop gros pour
+                        sklearn.
+                    </li>
+                    <li>
+                        <strong><a href="yolo.html">YOLO</a></strong> — les versions modernes
+                        (Ultralytics) sont écrites en PyTorch. Quand tu fais
+                        <code>model = YOLO("yolov8n.pt")</code>, tu charges un
+                        <code>nn.Module</code> avec ses poids.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> —
+                        <code>mlflow.pytorch.log_model(model, "model")</code> sauvegarde un
+                        modèle PyTorch comme artifact de run, prêt à être servi.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pour exposer un
+                        modèle PyTorch comme service web : on charge le modèle au démarrage,
+                        chaque requête fait <code>model(input_tensor)</code> dans un
+                        <code>torch.no_grad()</code>.
+                    </li>
+                    <li>
+                        <strong><a href="matplotlib.html">matplotlib</a></strong> — pour tracer
+                        la loss d'entraînement à chaque epoch et détecter
+                        sur-apprentissage / sous-apprentissage.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Aller plus loin : Lightning &amp; HuggingFace</div>
+                    <p>
+                        Une fois la boucle PyTorch maîtrisée, deux libs montent d'un cran :
+                        <strong>PyTorch Lightning</strong> structure le code d'entraînement
+                        (training step, validation step, checkpointing) pour éviter le
+                        boilerplate. <strong>HuggingFace Transformers</strong> donne accès à
+                        des milliers de modèles pré-entraînés (BERT, GPT-2, Whisper…) avec
+                        une API uniforme.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://pytorch.org/" target="_blank" rel="noopener noreferrer">pytorch.org</a></li>
+                    <li>Tutoriel officiel « Learn the Basics » : <a href="https://pytorch.org/tutorials/beginner/basics/intro.html" target="_blank" rel="noopener noreferrer">pytorch.org/tutorials/beginner/basics</a></li>
+                    <li>Configurateur d'installation (CPU/GPU/OS) : <a href="https://pytorch.org/get-started/locally/" target="_blank" rel="noopener noreferrer">pytorch.org/get-started/locally</a></li>
+                    <li>PyTorch Lightning : <a href="https://lightning.ai/docs/pytorch/stable/" target="_blank" rel="noopener noreferrer">lightning.ai/docs/pytorch</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

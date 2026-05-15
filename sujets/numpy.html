@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>NumPy — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / NumPy</div>
+                <h1>NumPy</h1>
+                <p class="subtitle">
+                    La bibliothèque fondamentale du calcul scientifique en Python : des
+                    tableaux multidimensionnels rapides et une algèbre vectorielle complète.
+                    pandas, scikit-learn, matplotlib, <a href="pytorch.html">PyTorch</a> — presque tout l'écosystème
+                    data Python est construit dessus.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    NumPy introduit un nouveau type d'objet en Python : le
+                    <strong>ndarray</strong> (n-dimensional array). C'est un tableau de
+                    nombres stocké en mémoire compacte (comme en C), sur lequel on peut faire
+                    des opérations <strong>vectorisées</strong> — c'est-à-dire appliquées
+                    à tout le tableau en une seule instruction, plutôt qu'avec une boucle.
+                </p>
+                <p>
+                    Résultat : ce qui prendrait une boucle Python lente devient une opération
+                    quasi-instantanée en NumPy.
+                </p>
+                <ul>
+                    <li><strong>Tableaux 1D, 2D, ND</strong> — vecteurs, matrices, tenseurs.</li>
+                    <li><strong>Opérations vectorisées</strong> — addition, multiplication
+                        élément par élément, opérations matricielles.</li>
+                    <li><strong>Indexation puissante</strong> — slicing, indexation booléenne,
+                        indexation par tableau.</li>
+                    <li><strong>Algèbre linéaire</strong> — produit matriciel, inversion,
+                        décomposition, valeurs propres.</li>
+                    <li><strong>Statistiques de base</strong> — moyenne, écart-type, min, max,
+                        somme sur n'importe quel axe.</li>
+                    <li><strong>Génération aléatoire</strong> — distributions classiques pour
+                        simulations et initialisation de modèles.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">NumPy vs liste Python ?</div>
+                    <p>
+                        Une liste Python est flexible mais lente : chaque élément est un objet
+                        Python séparé en mémoire. Un tableau NumPy stocke les nombres
+                        <strong>côte à côte en mémoire compacte</strong> et exécute les
+                        opérations en C natif. Pour 1 million d'éléments, une somme NumPy est
+                        typiquement 50× plus rapide qu'une boucle Python.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as les températures relevées sur 30 jours et tu veux calculer quelques
+                    statistiques, puis détecter les jours anormalement chauds :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> numpy <span class="tk-keyword">as</span> np
+
+temperatures = np.<span class="tk-fn">array</span>([
+    <span class="tk-num">14</span>, <span class="tk-num">15</span>, <span class="tk-num">16</span>, <span class="tk-num">18</span>, <span class="tk-num">20</span>, <span class="tk-num">22</span>, <span class="tk-num">19</span>, <span class="tk-num">17</span>, <span class="tk-num">16</span>, <span class="tk-num">15</span>,
+    <span class="tk-num">14</span>, <span class="tk-num">15</span>, <span class="tk-num">17</span>, <span class="tk-num">20</span>, <span class="tk-num">24</span>, <span class="tk-num">27</span>, <span class="tk-num">28</span>, <span class="tk-num">26</span>, <span class="tk-num">23</span>, <span class="tk-num">21</span>,
+    <span class="tk-num">19</span>, <span class="tk-num">18</span>, <span class="tk-num">20</span>, <span class="tk-num">22</span>, <span class="tk-num">25</span>, <span class="tk-num">28</span>, <span class="tk-num">30</span>, <span class="tk-num">31</span>, <span class="tk-num">29</span>, <span class="tk-num">26</span>,
+])
+
+<span class="tk-comment"># Statistiques de base</span>
+<span class="tk-fn">print</span>(temperatures.<span class="tk-fn">mean</span>())   <span class="tk-comment"># 21.0</span>
+<span class="tk-fn">print</span>(temperatures.<span class="tk-fn">std</span>())    <span class="tk-comment"># 5.16…</span>
+<span class="tk-fn">print</span>(temperatures.<span class="tk-fn">max</span>())    <span class="tk-comment"># 31</span>
+
+<span class="tk-comment"># Convertir en Fahrenheit en une ligne (vectorisé)</span>
+fahrenheit = temperatures * <span class="tk-num">9</span> / <span class="tk-num">5</span> + <span class="tk-num">32</span>
+
+<span class="tk-comment"># Indexation booléenne : tous les jours > moyenne + 1 écart-type</span>
+seuil = temperatures.<span class="tk-fn">mean</span>() + temperatures.<span class="tk-fn">std</span>()
+jours_chauds = temperatures[temperatures &gt; seuil]
+<span class="tk-fn">print</span>(jours_chauds)              <span class="tk-comment"># [27 28 26 25 28 30 31 29 26]</span>
+<span class="tk-fn">print</span>(np.<span class="tk-fn">where</span>(temperatures &gt; seuil))  <span class="tk-comment"># indices</span></code></pre>
+                </div>
+                <p>
+                    Aucune boucle dans ce code. <code>temperatures * 9 / 5 + 32</code> applique
+                    l'opération à <em>chaque</em> élément. <code>temperatures &gt; seuil</code>
+                    renvoie un tableau de booléens, qu'on utilise comme masque pour ne garder
+                    que les jours chauds.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser NumPy</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer NumPy</h4>
+                        <p>
+                            Dépendance principale (cf. <a href="uv.html">UV</a>) — mais le plus
+                            souvent NumPy s'installe automatiquement avec pandas, scikit-learn,
+                            matplotlib, etc., car ils en dépendent.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add numpy</code></pre>
+                        </div>
+                        <p>
+                            Convention universelle : importer sous l'alias <code>np</code>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> numpy <span class="tk-keyword">as</span> np</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer un tableau</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Depuis une liste</span>
+a = np.<span class="tk-fn">array</span>([<span class="tk-num">1</span>, <span class="tk-num">2</span>, <span class="tk-num">3</span>, <span class="tk-num">4</span>])
+
+<span class="tk-comment"># 2D : matrice (liste de listes)</span>
+m = np.<span class="tk-fn">array</span>([[<span class="tk-num">1</span>, <span class="tk-num">2</span>], [<span class="tk-num">3</span>, <span class="tk-num">4</span>]])
+
+<span class="tk-comment"># Tableaux construits</span>
+np.<span class="tk-fn">zeros</span>((<span class="tk-num">3</span>, <span class="tk-num">4</span>))         <span class="tk-comment"># matrice 3×4 de zéros</span>
+np.<span class="tk-fn">ones</span>(<span class="tk-num">10</span>)              <span class="tk-comment"># vecteur de 1</span>
+np.<span class="tk-fn">arange</span>(<span class="tk-num">0</span>, <span class="tk-num">10</span>, <span class="tk-num">2</span>)       <span class="tk-comment"># [0 2 4 6 8]</span>
+np.<span class="tk-fn">linspace</span>(<span class="tk-num">0</span>, <span class="tk-num">1</span>, <span class="tk-num">5</span>)      <span class="tk-comment"># [0. 0.25 0.5 0.75 1.]</span>
+
+<span class="tk-comment"># Aléatoire</span>
+rng = np.random.<span class="tk-fn">default_rng</span>(seed=<span class="tk-num">42</span>)
+rng.<span class="tk-fn">normal</span>(loc=<span class="tk-num">0</span>, scale=<span class="tk-num">1</span>, size=(<span class="tk-num">100</span>,))</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Inspecter un tableau</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>a.shape       <span class="tk-comment"># (4,) ou (3, 4) selon la dimension</span>
+a.ndim        <span class="tk-comment"># nombre de dimensions</span>
+a.size        <span class="tk-comment"># nombre total d'éléments</span>
+a.dtype       <span class="tk-comment"># int64, float64, bool, …</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Indexer et slicer</h4>
+                        <p>
+                            Comme une liste Python, mais en plus puissant — y compris en 2D :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>a = np.<span class="tk-fn">arange</span>(<span class="tk-num">10</span>)            <span class="tk-comment"># [0 1 2 ... 9]</span>
+a[<span class="tk-num">0</span>]                        <span class="tk-comment"># 0</span>
+a[<span class="tk-num">-1</span>]                       <span class="tk-comment"># 9</span>
+a[<span class="tk-num">2</span>:<span class="tk-num">5</span>]                      <span class="tk-comment"># [2 3 4]</span>
+a[::<span class="tk-num">2</span>]                      <span class="tk-comment"># [0 2 4 6 8] (un sur deux)</span>
+
+<span class="tk-comment"># 2D : [ligne, colonne]</span>
+m = np.<span class="tk-fn">arange</span>(<span class="tk-num">12</span>).<span class="tk-fn">reshape</span>(<span class="tk-num">3</span>, <span class="tk-num">4</span>)
+m[<span class="tk-num">0</span>, <span class="tk-num">1</span>]                     <span class="tk-comment"># élément ligne 0, colonne 1</span>
+m[:, <span class="tk-num">0</span>]                      <span class="tk-comment"># toute la 1ère colonne</span>
+m[<span class="tk-num">1</span>, :]                      <span class="tk-comment"># toute la 2e ligne</span>
+
+<span class="tk-comment"># Indexation booléenne (très utile en data)</span>
+data = np.<span class="tk-fn">array</span>([<span class="tk-num">3</span>, <span class="tk-num">7</span>, <span class="tk-num">2</span>, <span class="tk-num">9</span>, <span class="tk-num">4</span>])
+data[data &gt; <span class="tk-num">5</span>]                <span class="tk-comment"># [7 9]</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Opérations vectorisées</h4>
+                        <p>
+                            Les opérateurs <code>+</code>, <code>-</code>, <code>*</code>,
+                            <code>/</code> s'appliquent <strong>élément par élément</strong> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>a = np.<span class="tk-fn">array</span>([<span class="tk-num">1</span>, <span class="tk-num">2</span>, <span class="tk-num">3</span>])
+b = np.<span class="tk-fn">array</span>([<span class="tk-num">10</span>, <span class="tk-num">20</span>, <span class="tk-num">30</span>])
+
+a + b           <span class="tk-comment"># [11 22 33]</span>
+a * <span class="tk-num">2</span>           <span class="tk-comment"># [2 4 6]</span>
+a ** <span class="tk-num">2</span>          <span class="tk-comment"># [1 4 9]</span>
+np.<span class="tk-fn">sqrt</span>(a)      <span class="tk-comment"># [1. 1.414 1.732]</span>
+np.<span class="tk-fn">exp</span>(a)       <span class="tk-comment"># exponentielle</span>
+
+<span class="tk-comment"># Produit matriciel (≠ multiplication élément par élément)</span>
+A = np.<span class="tk-fn">array</span>([[<span class="tk-num">1</span>, <span class="tk-num">2</span>], [<span class="tk-num">3</span>, <span class="tk-num">4</span>]])
+B = np.<span class="tk-fn">array</span>([[<span class="tk-num">5</span>, <span class="tk-num">6</span>], [<span class="tk-num">7</span>, <span class="tk-num">8</span>]])
+A @ B          <span class="tk-comment"># produit matriciel</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Agréger sur un axe</h4>
+                        <p>
+                            En 2D, on peut résumer ligne par ligne (<code>axis=1</code>) ou
+                            colonne par colonne (<code>axis=0</code>) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>m = np.<span class="tk-fn">array</span>([[<span class="tk-num">1</span>, <span class="tk-num">2</span>, <span class="tk-num">3</span>],
+              [<span class="tk-num">4</span>, <span class="tk-num">5</span>, <span class="tk-num">6</span>]])
+
+m.<span class="tk-fn">sum</span>()              <span class="tk-comment"># 21 (somme totale)</span>
+m.<span class="tk-fn">sum</span>(axis=<span class="tk-num">0</span>)        <span class="tk-comment"># [5 7 9] (somme par colonne)</span>
+m.<span class="tk-fn">sum</span>(axis=<span class="tk-num">1</span>)        <span class="tk-comment"># [6 15] (somme par ligne)</span>
+m.<span class="tk-fn">mean</span>(axis=<span class="tk-num">0</span>)       <span class="tk-comment"># moyenne de chaque colonne</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Mémoriser axis=0 et axis=1</div>
+                            <p>
+                                <strong>axis=0</strong> = on agrège <em>le long des lignes</em>,
+                                donc on se déplace verticalement → résultat <em>par colonne</em>.
+                                <strong>axis=1</strong> = on agrège <em>le long des colonnes</em>,
+                                donc on se déplace horizontalement → résultat <em>par ligne</em>.
+                                Quand tu hésites, fais un petit test avec <code>shape</code>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Reshape et broadcasting</h4>
+                        <p>
+                            <code>reshape</code> change la forme sans copier les données.
+                            <strong>Broadcasting</strong> = NumPy aligne automatiquement deux
+                            tableaux de formes compatibles pour faire l'opération :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>a = np.<span class="tk-fn">arange</span>(<span class="tk-num">12</span>)             <span class="tk-comment"># shape (12,)</span>
+a.<span class="tk-fn">reshape</span>(<span class="tk-num">3</span>, <span class="tk-num">4</span>)              <span class="tk-comment"># shape (3, 4)</span>
+a.<span class="tk-fn">reshape</span>(<span class="tk-num">-1</span>, <span class="tk-num">2</span>)             <span class="tk-comment"># -1 = calcule automatiquement</span>
+
+<span class="tk-comment"># Broadcasting : ajouter un vecteur à chaque ligne d'une matrice</span>
+m = np.<span class="tk-fn">array</span>([[<span class="tk-num">1</span>, <span class="tk-num">2</span>, <span class="tk-num">3</span>], [<span class="tk-num">4</span>, <span class="tk-num">5</span>, <span class="tk-num">6</span>]])  <span class="tk-comment"># (2, 3)</span>
+v = np.<span class="tk-fn">array</span>([<span class="tk-num">10</span>, <span class="tk-num">20</span>, <span class="tk-num">30</span>])                  <span class="tk-comment"># (3,)</span>
+m + v
+<span class="tk-comment"># [[11 22 33]</span>
+<span class="tk-comment">#  [14 25 36]]</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder et charger</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>np.<span class="tk-fn">save</span>(<span class="tk-string">"data.npy"</span>, a)            <span class="tk-comment"># un tableau, format binaire</span>
+a = np.<span class="tk-fn">load</span>(<span class="tk-string">"data.npy"</span>)
+
+np.<span class="tk-fn">savetxt</span>(<span class="tk-string">"data.csv"</span>, a, delimiter=<span class="tk-string">","</span>)
+np.<span class="tk-fn">loadtxt</span>(<span class="tk-string">"data.csv"</span>, delimiter=<span class="tk-string">","</span>)</code></pre>
+                        </div>
+                        <p>
+                            En pratique, dès que les données ont des colonnes nommées ou des
+                            types mélangés, on préfère <code>pandas</code> (qui produit/consomme
+                            des arrays NumPy en interne).
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (création)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>np.<span class="tk-fn">array</span>([<span class="tk-num">1</span>, <span class="tk-num">2</span>, <span class="tk-num">3</span>])
+np.<span class="tk-fn">zeros</span>((<span class="tk-num">3</span>, <span class="tk-num">4</span>)), np.<span class="tk-fn">ones</span>(<span class="tk-num">5</span>), np.<span class="tk-fn">eye</span>(<span class="tk-num">3</span>)
+np.<span class="tk-fn">arange</span>(<span class="tk-num">0</span>, <span class="tk-num">10</span>, <span class="tk-num">2</span>), np.<span class="tk-fn">linspace</span>(<span class="tk-num">0</span>, <span class="tk-num">1</span>, <span class="tk-num">11</span>)
+rng = np.random.<span class="tk-fn">default_rng</span>(<span class="tk-num">42</span>); rng.<span class="tk-fn">normal</span>(size=<span class="tk-num">10</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (indexation)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>a[<span class="tk-num">0</span>], a[<span class="tk-num">-1</span>], a[<span class="tk-num">2</span>:<span class="tk-num">5</span>], a[::<span class="tk-num">2</span>]
+m[<span class="tk-num">0</span>, <span class="tk-num">1</span>], m[:, <span class="tk-num">0</span>], m[<span class="tk-num">1</span>, :]
+a[a &gt; <span class="tk-num">5</span>]                <span class="tk-comment"># masque booléen</span>
+np.<span class="tk-fn">where</span>(a &gt; <span class="tk-num">5</span>)        <span class="tk-comment"># indices</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (stats &amp; algèbre)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>a.<span class="tk-fn">mean</span>(), a.<span class="tk-fn">std</span>(), a.<span class="tk-fn">min</span>(), a.<span class="tk-fn">max</span>(), a.<span class="tk-fn">sum</span>()
+m.<span class="tk-fn">sum</span>(axis=<span class="tk-num">0</span>), m.<span class="tk-fn">mean</span>(axis=<span class="tk-num">1</span>)
+A @ B                            <span class="tk-comment"># produit matriciel</span>
+np.linalg.<span class="tk-fn">inv</span>(A), np.linalg.<span class="tk-fn">eig</span>(A)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (forme)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>a.shape, a.ndim, a.size, a.dtype
+a.<span class="tk-fn">reshape</span>(<span class="tk-num">3</span>, <span class="tk-num">4</span>), a.<span class="tk-fn">flatten</span>()
+np.<span class="tk-fn">concatenate</span>([a, b]), np.<span class="tk-fn">stack</span>([a, b])</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>NumPy et le reste de l'écosystème</h2>
+                <p>
+                    NumPy n'est presque jamais utilisé seul : c'est la <strong>fondation</strong>
+                    sur laquelle reposent les autres libs data. On le « voit » surtout au
+                    moment du débogage (un <code>df["x"].values</code> renvoie un array NumPy).
+                </p>
+                <ul>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> — un DataFrame est un
+                        ensemble de <em>Series</em>, et chaque Series est un wrapper autour
+                        d'un array NumPy. <code>df.values</code> ou <code>series.to_numpy()</code>
+                        sort le tableau brut.
+                    </li>
+                    <li>
+                        <strong><a href="matplotlib.html">matplotlib</a></strong> — tous les
+                        plots prennent des arrays NumPy en entrée
+                        (<code>ax.plot(x, y)</code> avec <code>x, y</code> des arrays).
+                    </li>
+                    <li>
+                        <strong><a href="scikit-learn.html">scikit-learn</a></strong> — les
+                        modèles attendent des arrays NumPy 2D <code>X</code> (samples × features)
+                        et 1D <code>y</code> (labels). pandas convertit automatiquement.
+                    </li>
+                    <li>
+                        <strong>PyTorch</strong> — les <em>tensors</em> PyTorch sont
+                        l'équivalent GPU des arrays NumPy.
+                        <code>torch.from_numpy(arr)</code> et <code>tensor.numpy()</code>
+                        font la conversion sans copie quand c'est possible.
+                    </li>
+                    <li>
+                        <strong><a href="polars.html">Polars</a></strong> — utilise Apache Arrow
+                        en interne plutôt que NumPy, mais accepte les conversions :
+                        <code>df.to_numpy()</code> et <code>pl.from_numpy(arr)</code>.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand utiliser NumPy directement ?</div>
+                    <p>
+                        Si tes données sont tabulaires (colonnes nommées, types mélangés),
+                        passe par pandas — c'est plus lisible. Tu utilises NumPy directement
+                        pour : du calcul purement numérique (simulations, traitement d'image,
+                        algèbre linéaire), implémenter un algorithme à la main, ou pour des
+                        perfs maximales sur de gros vecteurs homogènes.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://numpy.org/" target="_blank" rel="noopener noreferrer">numpy.org</a></li>
+                    <li>« NumPy: the absolute basics for beginners » : <a href="https://numpy.org/doc/stable/user/absolute_beginners.html" target="_blank" rel="noopener noreferrer">numpy.org/doc/stable/user/absolute_beginners.html</a></li>
+                    <li>Référence API : <a href="https://numpy.org/doc/stable/reference/index.html" target="_blank" rel="noopener noreferrer">numpy.org/doc/stable/reference</a></li>
+                    <li>« From Python to NumPy » (livre libre, Nicolas Rougier) : <a href="https://www.labri.fr/perso/nrougier/from-python-to-numpy/" target="_blank" rel="noopener noreferrer">labri.fr/perso/nrougier/from-python-to-numpy</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

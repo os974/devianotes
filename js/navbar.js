@@ -69,6 +69,7 @@
                             <div class="dropdown-title">Web &amp; API</div>
                             <a href="${S}fastapi.html">FastAPI</a>
                             <a href="${S}streamlit.html">Streamlit</a>
+                            <a href="${S}pydantic.html">Pydantic</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Outils &amp; Tests</div>
@@ -119,6 +120,7 @@
                             <a href="${S}pyspark.html">PySpark</a>
                             <a href="${S}polars.html">Polars</a>
                             <a href="${S}matplotlib.html">matplotlib</a>
+                            <a href="${S}numpy.html">NumPy</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Stockage</div>
@@ -128,6 +130,7 @@
                             <div class="dropdown-title">Modèles IA</div>
                             <a href="${S}yolo.html">YOLO</a>
                             <a href="${S}scikit-learn.html">scikit-learn</a>
+                            <a href="${S}pytorch.html">PyTorch</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>
