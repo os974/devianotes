@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>scikit-learn — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / scikit-learn</div>
+                <h1>scikit-learn</h1>
+                <p class="subtitle">
+                    La bibliothèque de référence du machine learning « classique » en Python :
+                    régression, classification, clustering, prétraitement, évaluation. Une API
+                    unifiée (<code>fit</code> / <code>predict</code>) qui rend tous les modèles
+                    interchangeables.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Dès que tu veux <strong>entraîner un modèle de machine learning sur des
+                    données tabulaires</strong> — prédire un prix, classer un email en spam,
+                    regrouper des clients par profil — scikit-learn est le point de départ
+                    par défaut. C'est l'écosystème ML classique : régression linéaire, arbres
+                    de décision, random forests, SVM, k-means, etc.
+                </p>
+                <p>
+                    Sa grande force, c'est <strong>l'API unifiée</strong> : que tu utilises une
+                    régression linéaire ou un random forest, le code reste le même. Tu peux
+                    changer de modèle en remplaçant une seule ligne.
+                </p>
+                <ul>
+                    <li><strong>Apprentissage supervisé</strong> — régression (prédire un nombre)
+                        et classification (prédire une catégorie).</li>
+                    <li><strong>Apprentissage non supervisé</strong> — clustering (k-means, DBSCAN),
+                        réduction de dimension (PCA).</li>
+                    <li><strong>Prétraitement</strong> — normalisation, encodage des variables
+                        catégorielles, gestion des valeurs manquantes.</li>
+                    <li><strong>Pipelines</strong> — enchaîner prétraitement et modèle dans un
+                        seul objet, ce qui évite les fuites de données.</li>
+                    <li><strong>Évaluation</strong> — split train/test, validation croisée,
+                        métriques (accuracy, RMSE, F1, etc.).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">scikit-learn, PyTorch, YOLO… c'est quoi la différence&nbsp;?</div>
+                    <p>
+                        <strong>scikit-learn</strong> couvre le ML <em>classique</em> : données
+                        tabulaires, modèles statistiques, petits volumes (jusqu'à quelques
+                        millions de lignes). <strong>PyTorch / TensorFlow</strong> servent au
+                        <em>deep learning</em> : réseaux de neurones, GPU, images, texte, audio.
+                        <strong><a href="yolo.html">YOLO</a></strong> est un cas particulier de
+                        deep learning (vision). En MLOps, sklearn reste très utilisé dès qu'on
+                        a un problème tabulaire « business » — bien souvent un random forest
+                        bien tuné bat largement un réseau de neurones mal entraîné.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as un dataset de logements (surface, nombre de pièces, quartier…) et tu
+                    veux prédire leur prix. Le workflow standard en sklearn :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+<span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> train_test_split
+<span class="tk-keyword">from</span> sklearn.ensemble <span class="tk-keyword">import</span> RandomForestRegressor
+<span class="tk-keyword">from</span> sklearn.metrics <span class="tk-keyword">import</span> mean_absolute_error
+
+<span class="tk-comment"># 1. Charger les données</span>
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"logements.csv"</span>)
+X = df[[<span class="tk-string">"surface"</span>, <span class="tk-string">"pieces"</span>, <span class="tk-string">"age"</span>]]
+y = df[<span class="tk-string">"prix"</span>]
+
+<span class="tk-comment"># 2. Séparer train / test</span>
+X_train, X_test, y_train, y_test = <span class="tk-fn">train_test_split</span>(
+    X, y, test_size=<span class="tk-num">0.2</span>, random_state=<span class="tk-num">42</span>
+)
+
+<span class="tk-comment"># 3. Choisir un modèle et l'entraîner</span>
+model = <span class="tk-fn">RandomForestRegressor</span>(n_estimators=<span class="tk-num">100</span>, random_state=<span class="tk-num">42</span>)
+model.<span class="tk-fn">fit</span>(X_train, y_train)
+
+<span class="tk-comment"># 4. Prédire et évaluer</span>
+y_pred = model.<span class="tk-fn">predict</span>(X_test)
+mae = <span class="tk-fn">mean_absolute_error</span>(y_test, y_pred)
+<span class="tk-fn">print</span>(<span class="tk-string">f"Erreur moyenne : </span><span class="tk-string">{</span>mae<span class="tk-string">:.0f}€"</span>)</code></pre>
+                </div>
+                <p>
+                    Quatre étapes, toujours les mêmes : <strong>charger → splitter →
+                    fit → predict + évaluer</strong>. Changer de modèle ne demande de changer
+                    qu'une ligne — remplace <code>RandomForestRegressor</code> par
+                    <code>LinearRegression</code> ou <code>GradientBoostingRegressor</code>, et
+                    tout le reste fonctionne pareil.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser scikit-learn</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer scikit-learn</h4>
+                        <p>
+                            Comme <a href="pandas.html">pandas</a>, dépendance principale
+                            (cf. <a href="uv.html">UV</a>) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add scikit-learn</code></pre>
+                        </div>
+                        <p>
+                            En Python, l'import s'appelle <code>sklearn</code> (pas
+                            <code>scikit-learn</code>) — un piège classique :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> sklearn.linear_model <span class="tk-keyword">import</span> LinearRegression
+<span class="tk-keyword">from</span> sklearn.ensemble <span class="tk-keyword">import</span> RandomForestClassifier</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>L'API universelle : fit, predict, score</h4>
+                        <p>
+                            Tous les modèles sklearn suivent la même interface. Apprends-la une
+                            fois, elle marche partout :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>model = <span class="tk-fn">Modele</span>(hyperparams…)
+
+model.<span class="tk-fn">fit</span>(X_train, y_train)        <span class="tk-comment"># entraîner</span>
+y_pred = model.<span class="tk-fn">predict</span>(X_test)      <span class="tk-comment"># prédire</span>
+score = model.<span class="tk-fn">score</span>(X_test, y_test) <span class="tk-comment"># évaluer (R² ou accuracy)</span>
+
+<span class="tk-comment"># Pour la classification, on a aussi les probabilités</span>
+proba = model.<span class="tk-fn">predict_proba</span>(X_test)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Séparer train et test</h4>
+                        <p>
+                            <strong>Règle absolue</strong> : n'évalue jamais ton modèle sur les
+                            données d'entraînement. <code>train_test_split</code> garde une
+                            portion à l'écart pour mesurer la vraie performance.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> train_test_split
+
+X_train, X_test, y_train, y_test = <span class="tk-fn">train_test_split</span>(
+    X, y,
+    test_size=<span class="tk-num">0.2</span>,       <span class="tk-comment"># 20% pour le test</span>
+    random_state=<span class="tk-num">42</span>,    <span class="tk-comment"># reproductibilité</span>
+    stratify=y          <span class="tk-comment"># utile en classif déséquilibrée</span>
+)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Choisir un modèle</h4>
+                        <p>Quelques modèles à connaître pour démarrer :</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Régression (prédire un nombre)</span>
+<span class="tk-keyword">from</span> sklearn.linear_model <span class="tk-keyword">import</span> LinearRegression, Ridge
+<span class="tk-keyword">from</span> sklearn.ensemble <span class="tk-keyword">import</span> RandomForestRegressor, GradientBoostingRegressor
+
+<span class="tk-comment"># Classification (prédire une catégorie)</span>
+<span class="tk-keyword">from</span> sklearn.linear_model <span class="tk-keyword">import</span> LogisticRegression
+<span class="tk-keyword">from</span> sklearn.ensemble <span class="tk-keyword">import</span> RandomForestClassifier
+<span class="tk-keyword">from</span> sklearn.svm <span class="tk-keyword">import</span> SVC
+<span class="tk-keyword">from</span> sklearn.neighbors <span class="tk-keyword">import</span> KNeighborsClassifier
+
+<span class="tk-comment"># Clustering (regrouper sans étiquettes)</span>
+<span class="tk-keyword">from</span> sklearn.cluster <span class="tk-keyword">import</span> KMeans, DBSCAN
+
+<span class="tk-comment"># Réduction de dimension</span>
+<span class="tk-keyword">from</span> sklearn.decomposition <span class="tk-keyword">import</span> PCA</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Par où commencer&nbsp;?</div>
+                            <p>
+                                Pour un problème tabulaire, un <strong>RandomForest</strong> est
+                                un excellent baseline : pas de prétraitement obligatoire, peu
+                                d'hyperparamètres critiques, performances honnêtes presque
+                                partout. Si ça marche bien, essaie ensuite
+                                <strong>GradientBoosting</strong> (souvent un peu meilleur).
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Prétraiter les données</h4>
+                        <p>
+                            La plupart des modèles attendent des données numériques propres.
+                            sklearn a tout un module <code>preprocessing</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> sklearn.preprocessing <span class="tk-keyword">import</span> StandardScaler, OneHotEncoder
+<span class="tk-keyword">from</span> sklearn.impute <span class="tk-keyword">import</span> SimpleImputer
+
+<span class="tk-comment"># Normaliser les colonnes numériques (moyenne 0, écart-type 1)</span>
+scaler = <span class="tk-fn">StandardScaler</span>()
+X_train_scaled = scaler.<span class="tk-fn">fit_transform</span>(X_train)
+X_test_scaled = scaler.<span class="tk-fn">transform</span>(X_test)   <span class="tk-comment"># PAS de fit ici</span>
+
+<span class="tk-comment"># Encoder les variables catégorielles</span>
+encoder = <span class="tk-fn">OneHotEncoder</span>(sparse_output=<span class="tk-keyword">False</span>)
+X_cat = encoder.<span class="tk-fn">fit_transform</span>(X_train[[<span class="tk-string">"quartier"</span>]])
+
+<span class="tk-comment"># Remplir les valeurs manquantes</span>
+imputer = <span class="tk-fn">SimpleImputer</span>(strategy=<span class="tk-string">"median"</span>)
+X_train = imputer.<span class="tk-fn">fit_transform</span>(X_train)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">fit_transform sur train, transform sur test</div>
+                            <p>
+                                Toujours <code>fit_transform</code> sur les données
+                                d'entraînement et <code>transform</code> (sans <code>fit</code>) sur
+                                celles de test. Sinon, le scaler apprend les stats du test ⇒
+                                fuite de données ⇒ tu surestimes ta performance.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Encapsuler tout dans un Pipeline</h4>
+                        <p>
+                            Plutôt que d'appliquer prétraitement puis modèle séparément,
+                            <code>Pipeline</code> les enchaîne dans un seul objet. Avantage :
+                            le <code>fit</code> ne touche que les données train, et le pipeline
+                            entier peut être sauvegardé d'un coup.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> sklearn.pipeline <span class="tk-keyword">import</span> Pipeline
+<span class="tk-keyword">from</span> sklearn.preprocessing <span class="tk-keyword">import</span> StandardScaler
+<span class="tk-keyword">from</span> sklearn.linear_model <span class="tk-keyword">import</span> LogisticRegression
+
+pipe = <span class="tk-fn">Pipeline</span>([
+    (<span class="tk-string">"scaler"</span>, <span class="tk-fn">StandardScaler</span>()),
+    (<span class="tk-string">"model"</span>, <span class="tk-fn">LogisticRegression</span>()),
+])
+
+pipe.<span class="tk-fn">fit</span>(X_train, y_train)
+pipe.<span class="tk-fn">predict</span>(X_test)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Évaluer correctement (cross-validation et métriques)</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> cross_val_score
+<span class="tk-keyword">from</span> sklearn.metrics <span class="tk-keyword">import</span> (
+    accuracy_score, f1_score, confusion_matrix,
+    mean_absolute_error, mean_squared_error, r2_score
+)
+
+<span class="tk-comment"># Cross-validation : 5 splits, on regarde la moyenne</span>
+scores = <span class="tk-fn">cross_val_score</span>(pipe, X, y, cv=<span class="tk-num">5</span>, scoring=<span class="tk-string">"accuracy"</span>)
+<span class="tk-fn">print</span>(scores.<span class="tk-fn">mean</span>(), scores.<span class="tk-fn">std</span>())
+
+<span class="tk-comment"># Classification</span>
+<span class="tk-fn">accuracy_score</span>(y_test, y_pred)
+<span class="tk-fn">f1_score</span>(y_test, y_pred, average=<span class="tk-string">"weighted"</span>)
+<span class="tk-fn">confusion_matrix</span>(y_test, y_pred)
+
+<span class="tk-comment"># Régression</span>
+<span class="tk-fn">mean_absolute_error</span>(y_test, y_pred)
+<span class="tk-fn">r2_score</span>(y_test, y_pred)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder un modèle entraîné</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> joblib
+
+<span class="tk-comment"># Sauver</span>
+joblib.<span class="tk-fn">dump</span>(pipe, <span class="tk-string">"model.joblib"</span>)
+
+<span class="tk-comment"># Recharger plus tard (dans une API, un script…)</span>
+pipe = joblib.<span class="tk-fn">load</span>(<span class="tk-string">"model.joblib"</span>)
+pipe.<span class="tk-fn">predict</span>(nouvelles_donnees)</code></pre>
+                        </div>
+                        <p>
+                            <code>joblib</code> est livré avec sklearn et gère mieux les gros
+                            tableaux NumPy que <code>pickle</code> standard.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (workflow standard)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> train_test_split
+<span class="tk-keyword">from</span> sklearn.ensemble <span class="tk-keyword">import</span> RandomForestClassifier
+<span class="tk-keyword">from</span> sklearn.metrics <span class="tk-keyword">import</span> accuracy_score
+
+X_train, X_test, y_train, y_test = <span class="tk-fn">train_test_split</span>(X, y, test_size=<span class="tk-num">0.2</span>)
+model = <span class="tk-fn">RandomForestClassifier</span>().<span class="tk-fn">fit</span>(X_train, y_train)
+<span class="tk-fn">accuracy_score</span>(y_test, model.<span class="tk-fn">predict</span>(X_test))</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (prétraitement)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> sklearn.preprocessing <span class="tk-keyword">import</span> StandardScaler, OneHotEncoder
+<span class="tk-keyword">from</span> sklearn.impute <span class="tk-keyword">import</span> SimpleImputer
+<span class="tk-keyword">from</span> sklearn.compose <span class="tk-keyword">import</span> ColumnTransformer</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (pipeline)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> sklearn.pipeline <span class="tk-keyword">import</span> Pipeline
+pipe = <span class="tk-fn">Pipeline</span>([(<span class="tk-string">"scaler"</span>, <span class="tk-fn">StandardScaler</span>()), (<span class="tk-string">"model"</span>, <span class="tk-fn">LogisticRegression</span>())])
+pipe.<span class="tk-fn">fit</span>(X_train, y_train); pipe.<span class="tk-fn">predict</span>(X_test)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (recherche d'hyperparamètres)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> sklearn.model_selection <span class="tk-keyword">import</span> GridSearchCV
+grid = <span class="tk-fn">GridSearchCV</span>(model, {<span class="tk-string">"n_estimators"</span>: [<span class="tk-num">50</span>, <span class="tk-num">100</span>, <span class="tk-num">200</span>]}, cv=<span class="tk-num">5</span>)
+grid.<span class="tk-fn">fit</span>(X, y); grid.best_params_, grid.best_score_</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>scikit-learn et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> /
+                        <strong><a href="polars.html">Polars</a></strong> — les DataFrames sont
+                        le format d'entrée naturel. sklearn accepte directement un DataFrame
+                        pandas, ou un array NumPy. Avec Polars, on convertit en pandas juste
+                        avant le <code>fit</code>.
+                    </li>
+                    <li>
+                        <strong><a href="matplotlib.html">matplotlib</a></strong> — tracer la
+                        loss en cours d'entraînement, la matrice de confusion, l'importance des
+                        features. sklearn fournit même <code>ConfusionMatrixDisplay</code> qui
+                        rend une figure matplotlib en une ligne.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — l'outil naturel pour
+                        suivre tes expériences sklearn. <code>mlflow.sklearn.log_model(pipe,
+                        "model")</code> sauvegarde le pipeline entier (prétraitement +
+                        modèle), prêt à être resservi par MLflow comme une API REST.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pour exposer un
+                        modèle sklearn comme service web. Tu charges le pipeline au démarrage
+                        (<code>joblib.load</code>), et chaque requête appelle
+                        <code>pipe.predict</code>.
+                    </li>
+                    <li>
+                        <strong><a href="prefect.html">Prefect</a></strong> — orchestrer un
+                        pipeline d'entraînement périodique : charger les données fraîches,
+                        re-fit le modèle, logger dans MLflow, déployer la nouvelle version.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand passer au deep learning&nbsp;?</div>
+                    <p>
+                        Sur des données tabulaires de moins d'1 million de lignes, sklearn
+                        (random forest, gradient boosting) bat presque toujours un réseau de
+                        neurones, plus simplement et plus rapidement. Le deep learning
+                        (<strong>PyTorch</strong>, <strong>TensorFlow</strong>) devient
+                        nécessaire pour le <strong>texte, l'image, l'audio</strong> ou les
+                        séquences temporelles complexes — typiquement avec
+                        <a href="yolo.html">YOLO</a> en vision.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://scikit-learn.org/" target="_blank" rel="noopener noreferrer">scikit-learn.org</a></li>
+                    <li>Tutoriel « Getting started » : <a href="https://scikit-learn.org/stable/getting_started.html" target="_blank" rel="noopener noreferrer">scikit-learn.org/stable/getting_started.html</a></li>
+                    <li>Choisir le bon estimateur (flowchart) : <a href="https://scikit-learn.org/stable/machine_learning_map.html" target="_blank" rel="noopener noreferrer">scikit-learn.org/stable/machine_learning_map.html</a></li>
+                    <li>User Guide complet : <a href="https://scikit-learn.org/stable/user_guide.html" target="_blank" rel="noopener noreferrer">scikit-learn.org/stable/user_guide.html</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

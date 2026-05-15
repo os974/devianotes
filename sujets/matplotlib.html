@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>matplotlib — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / matplotlib</div>
+                <h1>matplotlib</h1>
+                <p class="subtitle">
+                    La bibliothèque historique de visualisation en Python. Courbes, histogrammes,
+                    nuages de points, barres — c'est l'outil par défaut pour tracer un graphique
+                    depuis du code, et la fondation sur laquelle s'appuient pandas, seaborn,
+                    <a href="scikit-learn.html">scikit-learn</a> et la plupart des libs de viz.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    matplotlib sert à <strong>transformer des données en image</strong> depuis du
+                    code Python. Que tu sois en exploration dans <a href="jupyter.html">Jupyter</a>,
+                    en train de générer un rapport, ou en train d'afficher un graphique dans une
+                    appli <a href="streamlit.html">Streamlit</a>, c'est probablement matplotlib qui
+                    dessine en dessous.
+                </p>
+                <p>
+                    Quelques cas typiques :
+                </p>
+                <ul>
+                    <li><strong>Courbe</strong> — évolution d'une métrique dans le temps
+                        (loss d'entraînement, ventes mensuelles).</li>
+                    <li><strong>Histogramme</strong> — distribution d'une variable (ages,
+                        notes, salaires).</li>
+                    <li><strong>Scatter plot</strong> — corrélation entre deux variables
+                        (poids vs taille).</li>
+                    <li><strong>Bar chart</strong> — comparaison entre catégories (ventes par
+                        produit).</li>
+                    <li><strong>Heatmap / image</strong> — matrices de confusion, images en
+                        niveaux de gris, etc.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">matplotlib, seaborn, plotly… c'est quoi la différence&nbsp;?</div>
+                    <p>
+                        <strong>matplotlib</strong> est bas niveau : tu contrôles tout, mais il
+                        faut souvent plusieurs lignes pour un beau graphique.
+                        <strong>seaborn</strong> est construit dessus et propose des graphiques
+                        statistiques en une ligne (avec un meilleur style par défaut).
+                        <strong>plotly</strong> produit des graphiques interactifs (zoom,
+                        survol) — utile pour des dashboards. matplotlib reste la base : le
+                        connaître permet de personnaliser ce que les autres libs produisent.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Reprenons le DataFrame de ventes de la fiche <a href="pandas.html">pandas</a> :
+                    on veut tracer le total des ventes par mois.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+<span class="tk-keyword">import</span> matplotlib.pyplot <span class="tk-keyword">as</span> plt
+
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"ventes.csv"</span>, parse_dates=[<span class="tk-string">"date"</span>])
+df[<span class="tk-string">"mois"</span>] = df[<span class="tk-string">"date"</span>].dt.<span class="tk-fn">to_period</span>(<span class="tk-string">"M"</span>)
+totaux = df.<span class="tk-fn">groupby</span>(<span class="tk-string">"mois"</span>)[<span class="tk-string">"montant"</span>].<span class="tk-fn">sum</span>()
+
+<span class="tk-comment"># Création de la figure et du graphique</span>
+fig, ax = plt.<span class="tk-fn">subplots</span>(figsize=(<span class="tk-num">10</span>, <span class="tk-num">5</span>))
+ax.<span class="tk-fn">plot</span>(totaux.index.<span class="tk-fn">astype</span>(<span class="tk-built">str</span>), totaux.values, marker=<span class="tk-string">"o"</span>)
+ax.<span class="tk-fn">set_title</span>(<span class="tk-string">"Ventes mensuelles"</span>)
+ax.<span class="tk-fn">set_xlabel</span>(<span class="tk-string">"Mois"</span>)
+ax.<span class="tk-fn">set_ylabel</span>(<span class="tk-string">"Montant (€)"</span>)
+ax.<span class="tk-fn">grid</span>(<span class="tk-keyword">True</span>, alpha=<span class="tk-num">0.3</span>)
+
+plt.<span class="tk-fn">tight_layout</span>()
+plt.<span class="tk-fn">savefig</span>(<span class="tk-string">"ventes.png"</span>, dpi=<span class="tk-num">150</span>)
+plt.<span class="tk-fn">show</span>()</code></pre>
+                </div>
+                <p>
+                    Le pattern central à comprendre : on crée d'abord une <strong>figure</strong>
+                    (la « feuille de papier »), qui contient un ou plusieurs <strong>axes</strong>
+                    (les graphiques). Toutes les méthodes <code>set_title</code>,
+                    <code>plot</code>, <code>scatter</code>, etc. s'appellent sur un objet
+                    <code>ax</code>. C'est l'approche dite <em>object-oriented</em>, celle
+                    recommandée.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser matplotlib</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer matplotlib</h4>
+                        <p>
+                            Dépendance principale comme <a href="pandas.html">pandas</a>
+                            (cf. <a href="uv.html">UV</a>) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add matplotlib</code></pre>
+                        </div>
+                        <p>
+                            En <a href="jupyter.html">Jupyter</a>, les graphiques s'affichent
+                            automatiquement sous la cellule. En script Python pur, il faut
+                            <code>plt.show()</code> pour ouvrir la fenêtre, ou
+                            <code>plt.savefig(...)</code> pour écrire un fichier image.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Le pattern figure / axes</h4>
+                        <p>
+                            <code>plt.subplots()</code> crée une figure et renvoie deux objets : la
+                            figure et les axes. Tout dessin se fait sur l'<code>ax</code>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> matplotlib.pyplot <span class="tk-keyword">as</span> plt
+
+<span class="tk-comment"># Un seul graphique</span>
+fig, ax = plt.<span class="tk-fn">subplots</span>(figsize=(<span class="tk-num">8</span>, <span class="tk-num">5</span>))
+ax.<span class="tk-fn">plot</span>([<span class="tk-num">1</span>, <span class="tk-num">2</span>, <span class="tk-num">3</span>], [<span class="tk-num">4</span>, <span class="tk-num">5</span>, <span class="tk-num">2</span>])
+plt.<span class="tk-fn">show</span>()
+
+<span class="tk-comment"># Plusieurs graphiques côte à côte</span>
+fig, axes = plt.<span class="tk-fn">subplots</span>(<span class="tk-num">1</span>, <span class="tk-num">2</span>, figsize=(<span class="tk-num">12</span>, <span class="tk-num">5</span>))
+axes[<span class="tk-num">0</span>].<span class="tk-fn">plot</span>(x, y1)
+axes[<span class="tk-num">1</span>].<span class="tk-fn">scatter</span>(x, y2)
+plt.<span class="tk-fn">show</span>()</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">plt.plot() ou ax.plot()&nbsp;?</div>
+                            <p>
+                                Tu verras les deux styles dans la doc. <code>plt.plot()</code>
+                                applique sur la figure courante (style « MATLAB »), pratique pour
+                                des graphiques rapides. <code>ax.plot()</code> est explicite sur
+                                quel axe on dessine. <strong>Privilégie <code>ax.plot()</code></strong>
+                                dès que tu fais un script propre ou plusieurs sous-graphes.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Les graphiques les plus courants</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Courbe</span>
+ax.<span class="tk-fn">plot</span>(x, y, label=<span class="tk-string">"série 1"</span>, color=<span class="tk-string">"steelblue"</span>)
+
+<span class="tk-comment"># Nuage de points</span>
+ax.<span class="tk-fn">scatter</span>(x, y, s=<span class="tk-num">50</span>, alpha=<span class="tk-num">0.5</span>)
+
+<span class="tk-comment"># Histogramme</span>
+ax.<span class="tk-fn">hist</span>(donnees, bins=<span class="tk-num">30</span>)
+
+<span class="tk-comment"># Barres</span>
+ax.<span class="tk-fn">bar</span>(categories, valeurs)
+ax.<span class="tk-fn">barh</span>(categories, valeurs)         <span class="tk-comment"># horizontal</span>
+
+<span class="tk-comment"># Boîte à moustaches</span>
+ax.<span class="tk-fn">boxplot</span>([groupe1, groupe2, groupe3])
+
+<span class="tk-comment"># Image / matrice (matrice de confusion par ex.)</span>
+ax.<span class="tk-fn">imshow</span>(matrice, cmap=<span class="tk-string">"Blues"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Titres, axes, légende</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>ax.<span class="tk-fn">set_title</span>(<span class="tk-string">"Mon graphique"</span>)
+ax.<span class="tk-fn">set_xlabel</span>(<span class="tk-string">"Temps"</span>)
+ax.<span class="tk-fn">set_ylabel</span>(<span class="tk-string">"Valeur"</span>)
+ax.<span class="tk-fn">set_xlim</span>(<span class="tk-num">0</span>, <span class="tk-num">100</span>)             <span class="tk-comment"># bornes de l'axe X</span>
+ax.<span class="tk-fn">set_yscale</span>(<span class="tk-string">"log"</span>)            <span class="tk-comment"># échelle log</span>
+
+<span class="tk-comment"># Légende : il faut un label= sur chaque plot()</span>
+ax.<span class="tk-fn">plot</span>(x, y1, label=<span class="tk-string">"train"</span>)
+ax.<span class="tk-fn">plot</span>(x, y2, label=<span class="tk-string">"validation"</span>)
+ax.<span class="tk-fn">legend</span>()
+
+<span class="tk-comment"># Grille discrète</span>
+ax.<span class="tk-fn">grid</span>(<span class="tk-keyword">True</span>, alpha=<span class="tk-num">0.3</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Couleurs, marqueurs, styles</h4>
+                        <p>
+                            matplotlib accepte les couleurs en nom (<code>"red"</code>), en hex
+                            (<code>"#3a86ff"</code>) ou par index (<code>"C0"</code>,
+                            <code>"C1"</code>… qui suivent la palette par défaut).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>ax.<span class="tk-fn">plot</span>(x, y,
+        color=<span class="tk-string">"#3a86ff"</span>,
+        linewidth=<span class="tk-num">2</span>,
+        linestyle=<span class="tk-string">"--"</span>,         <span class="tk-comment"># solid, dashed, dotted</span>
+        marker=<span class="tk-string">"o"</span>,             <span class="tk-comment"># o, x, ^, s, ...</span>
+        markersize=<span class="tk-num">6</span>)
+
+<span class="tk-comment"># Changer le thème global</span>
+plt.style.<span class="tk-fn">use</span>(<span class="tk-string">"ggplot"</span>)        <span class="tk-comment"># ou seaborn, dark_background...</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder et afficher</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Ajuste les marges pour éviter que les labels soient coupés</span>
+fig.<span class="tk-fn">tight_layout</span>()
+
+<span class="tk-comment"># Sauver en PNG, SVG, PDF…</span>
+fig.<span class="tk-fn">savefig</span>(<span class="tk-string">"graph.png"</span>, dpi=<span class="tk-num">150</span>, bbox_inches=<span class="tk-string">"tight"</span>)
+
+<span class="tk-comment"># Afficher (script seulement, inutile en Jupyter)</span>
+plt.<span class="tk-fn">show</span>()
+
+<span class="tk-comment"># Libérer la mémoire après un usage en boucle</span>
+plt.<span class="tk-fn">close</span>(fig)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">savefig avant show, pas l'inverse</div>
+                            <p>
+                                Dans un script, <code>plt.show()</code> bloque jusqu'à fermeture de
+                                la fenêtre — et selon le backend, ferme aussi la figure. Si tu
+                                appelles <code>savefig</code> après, tu peux récupérer un PNG vide.
+                                Règle simple : <strong>savefig puis show</strong>.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Tracer directement depuis un DataFrame</h4>
+                        <p>
+                            <a href="pandas.html">pandas</a> a une API
+                            <code>df.plot()</code> qui s'appuie sur matplotlib en dessous —
+                            pratique pour des graphiques rapides en exploration :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>df.<span class="tk-fn">plot</span>(x=<span class="tk-string">"date"</span>, y=<span class="tk-string">"montant"</span>, kind=<span class="tk-string">"line"</span>)
+df[<span class="tk-string">"montant"</span>].<span class="tk-fn">hist</span>(bins=<span class="tk-num">30</span>)
+df.<span class="tk-fn">plot</span>.<span class="tk-fn">scatter</span>(x=<span class="tk-string">"poids"</span>, y=<span class="tk-string">"taille"</span>)</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (base)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> matplotlib.pyplot <span class="tk-keyword">as</span> plt
+fig, ax = plt.<span class="tk-fn">subplots</span>(figsize=(<span class="tk-num">8</span>, <span class="tk-num">5</span>))
+ax.<span class="tk-fn">plot</span>(x, y)
+ax.<span class="tk-fn">set_title</span>(<span class="tk-string">"…"</span>); ax.<span class="tk-fn">set_xlabel</span>(<span class="tk-string">"…"</span>); ax.<span class="tk-fn">set_ylabel</span>(<span class="tk-string">"…"</span>)
+fig.<span class="tk-fn">tight_layout</span>(); fig.<span class="tk-fn">savefig</span>(<span class="tk-string">"out.png"</span>, dpi=<span class="tk-num">150</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (types de plots)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>ax.<span class="tk-fn">plot</span>(x, y)                <span class="tk-comment"># courbe</span>
+ax.<span class="tk-fn">scatter</span>(x, y)             <span class="tk-comment"># nuage</span>
+ax.<span class="tk-fn">hist</span>(donnees, bins=<span class="tk-num">30</span>)    <span class="tk-comment"># histo</span>
+ax.<span class="tk-fn">bar</span>(cat, val)             <span class="tk-comment"># barres</span>
+ax.<span class="tk-fn">boxplot</span>([g1, g2])         <span class="tk-comment"># boîtes</span>
+ax.<span class="tk-fn">imshow</span>(M, cmap=<span class="tk-string">"Blues"</span>)   <span class="tk-comment"># matrice</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (mise en forme)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>ax.<span class="tk-fn">legend</span>(loc=<span class="tk-string">"best"</span>)
+ax.<span class="tk-fn">grid</span>(<span class="tk-keyword">True</span>, alpha=<span class="tk-num">0.3</span>)
+ax.<span class="tk-fn">set_xlim</span>(<span class="tk-num">0</span>, <span class="tk-num">100</span>); ax.<span class="tk-fn">set_ylim</span>(<span class="tk-num">0</span>, <span class="tk-num">1</span>)
+ax.<span class="tk-fn">tick_params</span>(axis=<span class="tk-string">"x"</span>, rotation=<span class="tk-num">45</span>)
+plt.style.<span class="tk-fn">use</span>(<span class="tk-string">"ggplot"</span>)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>matplotlib et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> /
+                        <strong><a href="polars.html">Polars</a></strong> — fournissent les
+                        données. <code>df.plot()</code> en pandas est un raccourci direct sur
+                        matplotlib.
+                    </li>
+                    <li>
+                        <strong><a href="jupyter.html">Jupyter</a></strong> — affiche
+                        automatiquement les figures matplotlib sous chaque cellule. C'est
+                        l'environnement le plus naturel pour itérer sur un graphique.
+                    </li>
+                    <li>
+                        <strong><a href="streamlit.html">Streamlit</a></strong> — affiche une
+                        figure matplotlib via <code>st.pyplot(fig)</code>. Idéal pour partager
+                        un graphique en dashboard sans passer par un export d'image.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — logge une figure
+                        directement comme artifact de run avec
+                        <code>mlflow.log_figure(fig, "loss.png")</code>. Très utile pour suivre
+                        l'évolution de la loss ou tracer une matrice de confusion à chaque
+                        entraînement.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand passer à seaborn ou plotly&nbsp;?</div>
+                    <p>
+                        Si tu te retrouves à écrire beaucoup de code pour styliser, ou à vouloir
+                        des graphiques statistiques (régression, distributions, heatmaps de
+                        corrélations), regarde <strong>seaborn</strong> : il fait la même chose
+                        en bien moins de lignes. Si tu veux du <strong>zoom, du survol, ou de
+                        l'interactivité dans le navigateur</strong>, passe à
+                        <strong>plotly</strong>. matplotlib reste indispensable comme socle
+                        commun.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://matplotlib.org/" target="_blank" rel="noopener noreferrer">matplotlib.org</a></li>
+                    <li>Galerie d'exemples (le meilleur point d'entrée) : <a href="https://matplotlib.org/stable/gallery/index.html" target="_blank" rel="noopener noreferrer">matplotlib.org/stable/gallery</a></li>
+                    <li>Cheat sheets officielles : <a href="https://matplotlib.org/cheatsheets/" target="_blank" rel="noopener noreferrer">matplotlib.org/cheatsheets</a></li>
+                    <li>Tutoriel « pyplot » : <a href="https://matplotlib.org/stable/tutorials/pyplot.html" target="_blank" rel="noopener noreferrer">matplotlib.org/stable/tutorials/pyplot.html</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

@@ -117,6 +117,8 @@
                             <a href="${S}supabase.html">Supabase</a>
                             <a href="${S}pandas.html">pandas</a>
                             <a href="${S}pyspark.html">PySpark</a>
+                            <a href="${S}polars.html">Polars</a>
+                            <a href="${S}matplotlib.html">matplotlib</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Stockage</div>
@@ -125,6 +127,7 @@
                         <div class="dropdown-section">
                             <div class="dropdown-title">Modèles IA</div>
                             <a href="${S}yolo.html">YOLO</a>
+                            <a href="${S}scikit-learn.html">scikit-learn</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>

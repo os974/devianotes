@@ -234,7 +234,7 @@ req_logger.<span class="tk-fn">info</span>(<span class="tk-string">"requête tra
                     <li>
                         <h4>Intercepter les logs de la stdlib</h4>
                         <p>
-                            Les libs externes (FastAPI, SQLAlchemy, requests…) utilisent
+                            Les libs externes (FastAPI, <a href="sqlalchemy.html">SQLAlchemy</a>, requests…) utilisent
                             <code>logging</code> de la stdlib. Pour qu'elles passent <em>aussi</em>
                             par Loguru, on installe un <em>handler intercepteur</em> au
                             démarrage. Snippet officiel à copier-coller :
@@ -354,7 +354,7 @@ logger.<span class="tk-fn">opt</span>(colors=<span class="tk-keyword">True</span
                     <li>
                         <strong><a href="loki.html">Loki</a></strong> — combo classique :
                         Loguru écrit en JSON (<code>serialize=True</code>), un agent
-                        (Promtail, Fluent Bit) lit le fichier, l'envoie à Loki, et Grafana
+                        (Promtail, Fluent Bit) lit le fichier, l'envoie à Loki, et <a href="grafana.html">Grafana</a>
                         affiche.
                     </li>
                     <li>
