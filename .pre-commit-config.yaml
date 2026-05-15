@@ -1,0 +1,52 @@
+# =============================================================================
+# Configuration pre-commit du site DevIA Notes
+# =============================================================================
+#
+# pre-commit lance ces hooks AVANT chaque `git commit`, et bloque le commit
+# si l'un échoue. Les mêmes hooks tournent aussi en CI (.github/workflows/ci.yml)
+# comme filet de sécurité, au cas où quelqu'un commit avec --no-verify ou
+# n'a pas fait `pre-commit install` après son clone.
+#
+# Activation locale (UNE FOIS après clone du repo) :
+#   pre-commit install
+#
+# Lancer manuellement sur tout le repo :
+#   pre-commit run --all-files
+#
+# Mettre à jour les versions des hooks :
+#   pre-commit autoupdate
+#
+# Pas de hook Python (Ruff, Black…) : ce repo est du HTML/CSS/JS pur.
+# Pas de hook lychee : déjà couvert par la CI (cf. ci.yml).
+# Ici on se concentre sur l'hygiène générale : whitespace, YAML valide,
+# pas de gros binaire commité par erreur, pas de clé privée.
+# =============================================================================
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Enlève les espaces et tabulations en fin de ligne.
+      - id: trailing-whitespace
+
+      # Garantit qu'un fichier finit par exactement une ligne vide.
+      # Évite les diffs Git inutiles quand un éditeur en ajoute/enlève une.
+      - id: end-of-file-fixer
+
+      # Valide la syntaxe des fichiers .yaml / .yml (workflows GitHub Actions,
+      # config pre-commit elle-même, etc.). Un YAML cassé fait planter la CI
+      # sans message clair — autant l'attraper avant le commit.
+      - id: check-yaml
+
+      # Détecte les marqueurs de conflit de merge oubliés (<<<<<<<, =======, >>>>>>>)
+      # dans les fichiers commités.
+      - id: check-merge-conflict
+
+      # Bloque l'ajout de fichiers > 500 ko. Garde-fou contre un PNG énorme,
+      # un dataset, ou un node_modules commité par erreur.
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+      # Empêche de commiter une clé privée SSH/PGP/RSA. Filet de sécurité au
+      # cas où un id_rsa traîne dans le repo sans qu'on s'en rende compte.
+      - id: detect-private-key

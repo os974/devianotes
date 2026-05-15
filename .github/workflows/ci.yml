@@ -87,6 +87,39 @@ concurrency:
 
 jobs:
   # ===========================================================================
+  # JOB 0 — pre-commit (STRICT)
+  # ===========================================================================
+  # Relance les hooks listés dans .pre-commit-config.yaml (à la racine du
+  # repo) : trailing-whitespace, YAML valide, pas de gros fichier, pas de
+  # clé privée, etc.
+  #
+  # Pourquoi en CI alors que pre-commit tourne déjà en local ?
+  #   - Filet de sécurité contre `git commit --no-verify` (qui contourne
+  #     les hooks).
+  #   - Filet de sécurité contre les contributeurs qui clonent et oublient
+  #     de lancer `pre-commit install`.
+  #   - Garantit que l'historique main reste toujours « propre » selon les
+  #     règles définies en un seul endroit (le YAML), partagées localement
+  #     et en CI.
+  #
+  # `pre-commit/action@v3.0.1` est le wrapper officiel : il installe
+  # pre-commit, met en cache les environnements des hooks, et lance
+  # `pre-commit run --all-files`. Si un hook échoue, le job est rouge.
+  # ===========================================================================
+  pre-commit:
+    name: pre-commit (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # pre-commit est écrit en Python : il faut un interpréteur sur le runner.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: pre-commit/action@v3.0.1
+
+  # ===========================================================================
   # JOB 1 — Liens internes (STRICT)
   # ===========================================================================
   # Lychee en mode --offline ne fait AUCUNE requête réseau. Il ouvre les
@@ -200,10 +233,11 @@ jobs:
   # Publie le site sur https://<user>.github.io/<repo>/.
   #
   # Deux conditions pour que ce job tourne :
-  #   1. `needs: link-check-internal` → le check INTERNE doit être vert.
-  #      ⚠ NOTE IMPORTANTE : on ne met PAS `link-check-external` ici.
-  #      C'est volontaire : un lien externe cassé ne doit pas bloquer la
-  #      publication. C'est le cœur du pattern fail-soft.
+  #   1. `needs: [pre-commit, link-check-internal]` → les checks STRICTS
+  #      doivent être verts. ⚠ NOTE IMPORTANTE : on ne met PAS
+  #      `link-check-external` ici. C'est volontaire : un lien externe
+  #      cassé ne doit pas bloquer la publication. C'est le cœur du
+  #      pattern fail-soft.
   #
   #   2. `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`
   #      → on ne déploie QUE sur push vers main. Sur une PR, le job existe
@@ -216,7 +250,7 @@ jobs:
   # ===========================================================================
   deploy:
     name: Déployer sur GitHub Pages
-    needs: link-check-internal
+    needs: [pre-commit, link-check-internal]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 

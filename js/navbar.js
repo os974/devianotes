@@ -79,6 +79,7 @@
                             <a href="${S}cicd.html">CI/CD</a>
                             <a href="${S}pytest.html">pytest</a>
                             <a href="${S}ruff.html">Ruff</a>
+                            <a href="${S}pre-commit.html">pre-commit</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">MLOps</div>
@@ -114,6 +115,7 @@
                         <div class="dropdown-section">
                             <div class="dropdown-title">Données</div>
                             <a href="${S}sqlite.html">SQLite</a>
+                            <a href="${S}postgresql.html">PostgreSQL</a>
                             <a href="${S}sqlalchemy.html">SQLAlchemy</a>
                             <a href="${S}supabase.html">Supabase</a>
                             <a href="${S}pandas.html">pandas</a>
@@ -149,6 +151,7 @@
                             <a href="${R}experience-cicd.html">CI/CD du site</a>
                             <a href="${R}build-injection.html">Injection au build</a>
                             <a href="${R}git-setup.html">Mettre un projet sur GitHub</a>
+                            <a href="${R}pre-commit-setup.html">pre-commit sur ce site</a>
                         </div>
                     </div>
                 </li>

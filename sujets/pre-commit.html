@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>pre-commit — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / pre-commit</div>
+                <h1>pre-commit</h1>
+                <p class="subtitle">
+                    Un framework qui lance automatiquement des vérifications sur tes fichiers
+                    <strong>avant chaque commit Git</strong>. Tu configures une fois ce que tu
+                    veux vérifier (linter, formateur, tests, secrets…), et pre-commit s'assure
+                    que rien de cassé ne passe dans l'historique du projet.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    En théorie, on devrait toujours lancer Ruff, pytest, ou un check de
+                    formatage <strong>avant</strong> de pousser du code. En pratique, on
+                    oublie. La CI/CD finit par attraper le problème, mais on a déjà perdu
+                    5 minutes à attendre les jobs GitHub et tout le monde voit passer le
+                    « <em>fix lint</em> » dans l'historique.
+                </p>
+                <p>
+                    Pre-commit règle ça en plaçant un <strong>hook Git</strong> qui
+                    intercepte la commande <code>git commit</code> : il lance tes
+                    vérifications, et si l'une échoue, le commit est <strong>bloqué</strong>.
+                    Tu corriges, tu re-commit, ça passe. La CI ne voit jamais de problème
+                    de format.
+                </p>
+                <ul>
+                    <li><strong>Lancer Ruff / Black / isort</strong> sur les fichiers Python
+                        modifiés.</li>
+                    <li><strong>Vérifier le YAML, le TOML, le JSON</strong> de config (pas
+                        de fichier mal formé qui casse le build).</li>
+                    <li><strong>Bloquer les secrets</strong> committés par erreur (clés API,
+                        mots de passe…) avec <code>detect-secrets</code>.</li>
+                    <li><strong>Lancer pytest</strong> sur les tests rapides avant un commit
+                        important.</li>
+                    <li><strong>Auto-corriger</strong> ce qui est corrigible : trailing
+                        whitespace, fins de ligne, ordre des imports…</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Hook Git ? C'est quoi ?</div>
+                    <p>
+                        Un <strong>hook Git</strong> est un script que Git exécute à un
+                        moment précis : avant un commit (<code>pre-commit</code>), avant un
+                        push (<code>pre-push</code>), etc. Ils existent depuis toujours dans
+                        Git, mais sont relous à gérer à la main (un script par hook, par
+                        machine, par projet…). L'outil pre-commit (<em>l'outil</em>, à ne
+                        pas confondre avec le hook du même nom) industrialise tout ça :
+                        une config YAML versionnée dans le repo, un partage automatique
+                        entre l'équipe.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu actives Ruff (lint + format) sur ton projet. Tu modifies un fichier
+                    avec un import inutilisé et des espaces de fin de ligne, tu commits :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">git</span> commit -m <span class="tk-string">"feat: nouvelle route"</span>
+
+ruff (lint).............................................................Failed
+- hook id: ruff
+- exit code: 1
+  src/api.py:3:1: F401 [*] `os` imported but unused
+  Found 1 error.
+trim trailing whitespace................................................Failed
+- hook id: trailing-whitespace
+- exit code: 1
+- files were modified by this hook
+  Fixing src/api.py</code></pre>
+                </div>
+                <p>
+                    Le commit a été <strong>bloqué</strong>. Ruff a signalé l'import inutile,
+                    le hook <code>trailing-whitespace</code> a même corrigé le fichier tout
+                    seul. Tu corriges l'import, tu re-stage les changements, tu re-commit —
+                    cette fois tous les hooks passent et le commit est créé.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser pre-commit</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer l'outil</h4>
+                        <p>
+                            pre-commit est un outil en ligne de commande, indépendant de ton
+                            projet (comme <a href="ruff.html">Ruff</a> ou
+                            <a href="uv.html">UV</a>). On l'installe globalement avec
+                            <code>uv tool</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> tool install pre-commit
+
+<span class="tk-comment"># Vérifier</span>
+<span class="tk-cmd">pre-commit</span> --version</code></pre>
+                        </div>
+                        <p>
+                            Tu peux aussi l'ajouter comme dépendance dev de ton projet
+                            (<code>uv add --dev pre-commit</code>) si tu préfères qu'il soit
+                            installé automatiquement par <code>uv sync</code>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer le fichier de config</h4>
+                        <p>
+                            Toute la configuration tient dans un fichier
+                            <code>.pre-commit-config.yaml</code> à la racine du repo. On y
+                            liste les <em>repos</em> de hooks à utiliser et leurs versions :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (.pre-commit-config.yaml)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format</code></pre>
+                        </div>
+                        <p>
+                            Chaque <code>repo</code> est un dépôt Git contenant un ou
+                            plusieurs hooks. <code>rev</code> fige une version pour la
+                            reproductibilité (toute l'équipe utilise exactement la même).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Installer les hooks dans ton repo</h4>
+                        <p>
+                            Une seule fois par clone du repo, après avoir créé le YAML :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pre-commit</span> install</code></pre>
+                        </div>
+                        <p>
+                            Ça crée le fichier <code>.git/hooks/pre-commit</code> qui appelle
+                            l'outil. À partir de là, chaque <code>git commit</code> dans ce
+                            repo va lancer les hooks définis dans ton YAML.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Et pour les nouveaux clones&nbsp;?</div>
+                            <p>
+                                Le <code>.pre-commit-config.yaml</code> est versionné dans
+                                Git, mais le hook <code>.git/hooks/pre-commit</code>, non
+                                (Git n'inclut jamais son propre dossier). Chaque personne
+                                qui clone doit lancer <code>pre-commit install</code> une
+                                fois. C'est une bonne ligne à mettre dans le README.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer manuellement (sans commiter)</h4>
+                        <p>
+                            Utile la première fois ou après avoir ajouté un hook, pour
+                            corriger d'un coup tout le code existant :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Sur les fichiers modifiés (= staged), comme pendant un commit</span>
+<span class="tk-cmd">pre-commit</span> run
+
+<span class="tk-comment"># Sur TOUT le repo</span>
+<span class="tk-cmd">pre-commit</span> run --all-files
+
+<span class="tk-comment"># Un seul hook</span>
+<span class="tk-cmd">pre-commit</span> run ruff --all-files</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Mettre à jour les versions des hooks</h4>
+                        <p>
+                            Les hooks listés dans le YAML sont figés à une version. Pour
+                            les passer aux dernières versions stables :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pre-commit</span> autoupdate</code></pre>
+                        </div>
+                        <p>
+                            Ça réécrit les <code>rev:</code> dans ton YAML. Tu commits le
+                            fichier modifié et toute l'équipe récupère les nouvelles
+                            versions au prochain pull.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Quelques hooks utiles</h4>
+                        <p>
+                            Le dépôt <code>pre-commit-hooks</code> officiel contient une
+                            collection de checks génériques très pratiques :
+                        </p>
+                        <ul>
+                            <li><code>trailing-whitespace</code> — enlève les espaces de
+                                fin de ligne.</li>
+                            <li><code>end-of-file-fixer</code> — assure une seule ligne vide
+                                à la fin du fichier.</li>
+                            <li><code>check-yaml</code> / <code>check-toml</code> /
+                                <code>check-json</code> — valide la syntaxe.</li>
+                            <li><code>check-added-large-files</code> — bloque les fichiers
+                                trop gros (modèles, datasets accidentels).</li>
+                            <li><code>check-merge-conflict</code> — détecte les
+                                <code>&lt;&lt;&lt;&lt;</code> oubliés.</li>
+                            <li><code>detect-private-key</code> — empêche de commiter une
+                                clé SSH par erreur.</li>
+                        </ul>
+                        <p>
+                            Pour Python, les incontournables :
+                        </p>
+                        <ul>
+                            <li><code>ruff</code> + <code>ruff-format</code> — lint et
+                                formatage (cf. <a href="ruff.html">Ruff</a>).</li>
+                            <li><code>mypy</code> — vérification statique des types.</li>
+                            <li><code>detect-secrets</code> — bloque les mots de passe et
+                                tokens.</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Contourner ponctuellement (à utiliser avec parcimonie)</h4>
+                        <p>
+                            Si tu dois absolument commiter sans déclencher les hooks
+                            (urgence, WIP local) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">git</span> commit --no-verify -m <span class="tk-string">"WIP"</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Pourquoi pas systématiquement ?</div>
+                            <p>
+                                <code>--no-verify</code> contourne <em>tous</em> les hooks
+                                Git, y compris ceux qui vérifient les messages de commit ou
+                                la signature. Si tu te retrouves à l'utiliser souvent, c'est
+                                soit que tes hooks sont trop lents (réfléchir à ce qu'on
+                                lance pré-commit vs pré-push), soit qu'ils râlent à tort
+                                (ajuster la config).
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>L'intégrer aussi en CI</h4>
+                        <p>
+                            Même avec pre-commit installé localement, on relance les hooks
+                            dans la CI : ça protège contre les
+                            <code>git commit --no-verify</code> et les contributeurs qui
+                            n'ont pas <code>pre-commit install</code>é. Étape type dans un
+                            workflow GitHub Actions :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (.github/workflows/ci.yml)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>- <span class="tk-keyword">uses</span>: actions/setup-python@v5
+  <span class="tk-keyword">with</span>:
+    python-version: <span class="tk-string">"3.12"</span>
+- <span class="tk-keyword">uses</span>: pre-commit/action@v3.0.1</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (commandes)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">uv</span> tool install pre-commit
+<span class="tk-cmd">pre-commit</span> install              <span class="tk-comment"># active les hooks Git</span>
+<span class="tk-cmd">pre-commit</span> run --all-files       <span class="tk-comment"># lance sur tout</span>
+<span class="tk-cmd">pre-commit</span> run &lt;hook-id&gt;         <span class="tk-comment"># un seul hook</span>
+<span class="tk-cmd">pre-commit</span> autoupdate            <span class="tk-comment"># bumper les versions</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">yaml (squelette minimal)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>pre-commit et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="ruff.html">Ruff</a></strong> — c'est <em>le</em>
+                        hook que tu installes en premier. Lint + formatage Python sur les
+                        fichiers modifiés, en quelques millisecondes.
+                    </li>
+                    <li>
+                        <strong><a href="pytest.html">pytest</a></strong> — on peut lancer
+                        les tests rapides en pre-commit, mais en général c'est trop lent
+                        pour bloquer chaque commit. Préfère un hook <code>pre-push</code>
+                        ou la <a href="cicd.html">CI/CD</a>.
+                    </li>
+                    <li>
+                        <strong><a href="cicd.html">CI/CD</a></strong> — pre-commit local
+                        et CI sont complémentaires : le local évite les allers-retours,
+                        la CI est le filet de sécurité officiel. On y rejoue les mêmes
+                        hooks pour cohérence.
+                    </li>
+                    <li>
+                        <strong><a href="github.html">GitHub</a></strong> /
+                        <strong><a href="gitlab.html">GitLab</a></strong> — les actions
+                        officielles <code>pre-commit/action</code> facilitent l'intégration
+                        en CI. Sur GitLab CI, on appelle directement
+                        <code>pre-commit run --all-files</code> dans un job.
+                    </li>
+                    <li>
+                        <strong><a href="docstring.html">docstring</a></strong> — on peut
+                        ajouter un hook <code>pydocstyle</code> pour vérifier la présence
+                        et le format des docstrings.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Garder les hooks rapides</div>
+                    <p>
+                        Un commit ne devrait pas attendre plus de 2-3 secondes. Si tes
+                        hooks dépassent ce seuil, tu vas finir par les contourner. Garde
+                        en <em>pre-commit</em> les checks rapides (lint, format), et
+                        bascule les checks lents (tests d'intégration, build Docker) en
+                        <em>pre-push</em> ou en CI.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://pre-commit.com/" target="_blank" rel="noopener noreferrer">pre-commit.com</a></li>
+                    <li>Liste des hooks « génériques » : <a href="https://github.com/pre-commit/pre-commit-hooks" target="_blank" rel="noopener noreferrer">github.com/pre-commit/pre-commit-hooks</a></li>
+                    <li>Hooks Ruff officiels : <a href="https://github.com/astral-sh/ruff-pre-commit" target="_blank" rel="noopener noreferrer">github.com/astral-sh/ruff-pre-commit</a></li>
+                    <li>Action GitHub officielle : <a href="https://github.com/pre-commit/action" target="_blank" rel="noopener noreferrer">github.com/pre-commit/action</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

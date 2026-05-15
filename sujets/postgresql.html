@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>PostgreSQL — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / PostgreSQL</div>
+                <h1>PostgreSQL</h1>
+                <p class="subtitle">
+                    La base de données relationnelle open-source de référence. Robuste, riche
+                    en fonctionnalités, capable de tenir la charge d'une application en
+                    production — et l'option par défaut dès que SQLite n'est plus suffisant.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    PostgreSQL (souvent abrégé <em>Postgres</em>) est une base de données
+                    SQL <strong>serveur</strong> : contrairement à SQLite qui est un simple
+                    fichier, Postgres tourne comme un processus séparé auquel plusieurs
+                    applications peuvent se connecter en même temps via le réseau.
+                </p>
+                <p>
+                    Concrètement, on s'en sert pour :
+                </p>
+                <ul>
+                    <li><strong>Stocker les données métier</strong> d'une API en production
+                        (utilisateurs, produits, commandes…).</li>
+                    <li><strong>Servir plusieurs clients en parallèle</strong> — c'est
+                        précisément ce que SQLite ne sait pas bien faire.</li>
+                    <li><strong>Persister des données complexes</strong> — Postgres gère
+                        nativement le JSON, les tableaux, les types géographiques (PostGIS),
+                        les recherches plein-texte, etc.</li>
+                    <li><strong>Stocker le tracking MLflow</strong> — le serveur MLflow
+                        utilise typiquement Postgres comme <em>backend store</em> pour les
+                        runs, paramètres, métriques.</li>
+                    <li><strong>Servir de base à Supabase</strong> — Supabase, c'est Postgres
+                        + une couche d'outils par-dessus.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">SQLite, PostgreSQL, Supabase… c'est quoi la différence&nbsp;?</div>
+                    <p>
+                        <strong>SQLite</strong> = un fichier, parfait pour le développement ou
+                        les petites applis mono-utilisateur. <strong>PostgreSQL</strong> = un
+                        serveur SQL complet, le standard de production open-source.
+                        <strong>Supabase</strong> = du Postgres hébergé + auth + API REST
+                        auto-générée + storage. En MLOps, on prototype souvent en SQLite
+                        puis on passe en Postgres en production sans changer le code grâce
+                        à SQLAlchemy.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    On lance un Postgres en local (via Docker), on crée une base, et on s'y
+                    connecte depuis une appli Python avec SQLAlchemy :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-comment"># Lancer un Postgres dans Docker en une commande</span>
+<span class="tk-cmd">docker</span> run -d --name pg \
+    -e POSTGRES_PASSWORD=secret \
+    -e POSTGRES_DB=appdb \
+    -p 5432:5432 \
+    postgres:16
+
+<span class="tk-comment"># Se connecter avec psql (client en CLI)</span>
+<span class="tk-cmd">docker</span> exec -it pg psql -U postgres -d appdb</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> sqlalchemy <span class="tk-keyword">import</span> create_engine, text
+
+<span class="tk-comment"># Format : postgresql+psycopg://user:password@host:port/database</span>
+engine = <span class="tk-fn">create_engine</span>(<span class="tk-string">"postgresql+psycopg://postgres:secret@localhost:5432/appdb"</span>)
+
+<span class="tk-keyword">with</span> engine.<span class="tk-fn">connect</span>() <span class="tk-keyword">as</span> conn:
+    conn.<span class="tk-fn">execute</span>(<span class="tk-fn">text</span>(<span class="tk-string">"CREATE TABLE IF NOT EXISTS users (id SERIAL, name TEXT)"</span>))
+    conn.<span class="tk-fn">execute</span>(<span class="tk-fn">text</span>(<span class="tk-string">"INSERT INTO users (name) VALUES ('Alice')"</span>))
+    conn.<span class="tk-fn">commit</span>()
+    rows = conn.<span class="tk-fn">execute</span>(<span class="tk-fn">text</span>(<span class="tk-string">"SELECT * FROM users"</span>)).<span class="tk-fn">fetchall</span>()
+<span class="tk-fn">print</span>(rows)   <span class="tk-comment"># [(1, 'Alice')]</span></code></pre>
+                </div>
+                <p>
+                    En quelques lignes, tu as un Postgres prêt, une connexion depuis Python,
+                    une table créée et un premier enregistrement. Le passage de SQLite à
+                    Postgres dans un projet existant se résume souvent à changer la
+                    <em>connection string</em> dans la config.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser PostgreSQL</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer un Postgres en local (Docker, recommandé)</h4>
+                        <p>
+                            L'image officielle <code>postgres</code> est la façon la plus
+                            simple — pas besoin de l'installer sur ta machine, et chaque
+                            projet peut avoir sa propre version. Avec <a href="docker.html">Docker</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name pg \
+    -e POSTGRES_USER=app \
+    -e POSTGRES_PASSWORD=secret \
+    -e POSTGRES_DB=appdb \
+    -p 5432:5432 \
+    -v pgdata:/var/lib/postgresql/data \
+    postgres:16</code></pre>
+                        </div>
+                        <p>
+                            Le <code>-v pgdata:/var/lib/postgresql/data</code> est important :
+                            il monte un volume Docker pour <strong>persister les données</strong>
+                            entre redémarrages du conteneur (sinon, tu perds tout à chaque
+                            <code>docker rm</code>).
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">docker-compose, encore mieux</div>
+                            <p>
+                                En pratique, on déclare la DB dans un
+                                <code>docker-compose.yml</code> aux côtés de l'API et des
+                                autres services. <code>docker compose up</code> et tout
+                                démarre ensemble — c'est le pattern standard d'un projet
+                                FastAPI + Postgres.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Se connecter avec psql</h4>
+                        <p>
+                            <code>psql</code> est le client SQL en ligne de commande de
+                            Postgres. Pour entrer dans la DB du conteneur :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> exec -it pg psql -U app -d appdb</code></pre>
+                        </div>
+                        <p>
+                            Une fois dans <code>psql</code>, quelques commandes utiles :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">sql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>\l                      <span class="tk-comment">-- lister les bases</span>
+\c appdb                <span class="tk-comment">-- se connecter à une base</span>
+\dt                     <span class="tk-comment">-- lister les tables</span>
+\d users                <span class="tk-comment">-- décrire la table users</span>
+\du                     <span class="tk-comment">-- lister les utilisateurs</span>
+\q                      <span class="tk-comment">-- quitter</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer une base, un utilisateur, des droits</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">sql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment">-- Connecté en tant que superuser (postgres)</span>
+CREATE DATABASE projet_devia;
+CREATE USER devia WITH PASSWORD <span class="tk-string">'un_mdp_solide'</span>;
+GRANT ALL PRIVILEGES ON DATABASE projet_devia TO devia;
+
+<span class="tk-comment">-- Droits plus fins (recommandé en prod)</span>
+\c projet_devia
+GRANT USAGE ON SCHEMA <span class="tk-keyword">public</span> TO devia;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA <span class="tk-keyword">public</span> TO devia;</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Se connecter depuis Python</h4>
+                        <p>
+                            Le pilote moderne est <code>psycopg</code> (v3). SQLAlchemy reste
+                            recommandé par-dessus, pour pouvoir changer de DB sans toucher
+                            au code.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add <span class="tk-string">"sqlalchemy[postgresql]"</span> psycopg</code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> sqlalchemy <span class="tk-keyword">import</span> create_engine
+
+DATABASE_URL = <span class="tk-string">"postgresql+psycopg://devia:un_mdp_solide@localhost:5432/projet_devia"</span>
+engine = <span class="tk-fn">create_engine</span>(DATABASE_URL)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Connection string : à ne jamais commiter</div>
+                            <p>
+                                Le mot de passe ne doit jamais finir dans le code. Stocke-le
+                                dans un <code>.env</code> (gitignoré) et lis-le via
+                                <a href="pydantic.html">Pydantic</a> Settings — c'est le
+                                pattern standard.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Types Postgres utiles à connaître</h4>
+                        <p>
+                            Postgres a des types riches au-delà du SQL standard, qu'on utilise
+                            souvent en MLOps :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">sql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>CREATE TABLE predictions (
+    id          SERIAL PRIMARY KEY,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    user_id     UUID NOT NULL,
+    inputs      JSONB,           <span class="tk-comment">-- JSON indexable</span>
+    score       NUMERIC(<span class="tk-num">5</span>, <span class="tk-num">3</span>),    <span class="tk-comment">-- précis (5 chiffres, 3 décimales)</span>
+    tags        TEXT[]           <span class="tk-comment">-- tableau de strings</span>
+);</code></pre>
+                        </div>
+                        <p>
+                            <code>JSONB</code> est particulièrement utile pour stocker les
+                            inputs/outputs variables d'un modèle ML sans figer un schéma.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Backup et restore</h4>
+                        <p>
+                            <code>pg_dump</code> exporte une base entière (schéma + données)
+                            dans un fichier SQL. <code>psql</code> peut le rejouer.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Export</span>
+<span class="tk-cmd">docker</span> exec pg pg_dump -U app appdb &gt; backup.sql
+
+<span class="tk-comment"># Restore</span>
+<span class="tk-cmd">cat</span> backup.sql | <span class="tk-cmd">docker</span> exec -i pg psql -U app -d appdb</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Migrations de schéma (Alembic)</h4>
+                        <p>
+                            En prod, on ne modifie jamais le schéma à la main : on utilise
+                            des migrations versionnées dans Git. <strong>Alembic</strong>
+                            (intégré à SQLAlchemy) gère ça :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add alembic
+<span class="tk-cmd">uv</span> run alembic init migrations
+<span class="tk-cmd">uv</span> run alembic revision --autogenerate -m <span class="tk-string">"add users"</span>
+<span class="tk-cmd">uv</span> run alembic upgrade head</code></pre>
+                        </div>
+                        <p>
+                            Chaque commande crée un fichier de migration dans
+                            <code>migrations/versions/</code> — versionné dans Git, rejouable
+                            en CI/CD pour mettre à jour la prod automatiquement.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Optimiser : index et EXPLAIN</h4>
+                        <p>
+                            Quand une requête devient lente, on regarde son plan d'exécution
+                            avec <code>EXPLAIN ANALYZE</code> puis on ajoute un index si
+                            besoin :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">sql</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>EXPLAIN ANALYZE SELECT * FROM predictions WHERE user_id = <span class="tk-string">'…'</span>;
+
+<span class="tk-comment">-- Si l'on voit Seq Scan sur une grosse table, ajouter un index :</span>
+CREATE INDEX idx_predictions_user_id ON predictions(user_id);</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (Docker)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d --name pg -e POSTGRES_PASSWORD=… -p 5432:5432 postgres:16
+<span class="tk-cmd">docker</span> exec -it pg psql -U postgres
+<span class="tk-cmd">docker</span> exec pg pg_dump -U app appdb &gt; backup.sql</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">psql (raccourcis)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>\l, \c db, \dt, \d table, \du, \q
+\timing      <span class="tk-comment">-- afficher le temps d'exécution</span>
+\x           <span class="tk-comment">-- affichage vertical (utile pour wide rows)</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sql (connection string)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>postgresql+psycopg://user:password@host:port/dbname
+<span class="tk-comment">-- Exemple local :</span>
+postgresql+psycopg://app:secret@localhost:5432/appdb</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">sql (types riches)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>SERIAL, BIGSERIAL          <span class="tk-comment">-- auto-increment</span>
+UUID                       <span class="tk-comment">-- identifiant unique</span>
+TIMESTAMPTZ                <span class="tk-comment">-- date+heure avec fuseau</span>
+JSONB                      <span class="tk-comment">-- JSON binaire, indexable</span>
+TEXT[]                     <span class="tk-comment">-- tableau de strings</span>
+NUMERIC(p, s)              <span class="tk-comment">-- précis (financier)</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>PostgreSQL et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="sqlalchemy.html">SQLAlchemy</a></strong> — la couche
+                        Python qu'on met systématiquement entre Postgres et le code. On
+                        écrit du Python, SQLAlchemy traduit en SQL Postgres. Permet aussi
+                        de basculer SQLite ↔ Postgres en changeant juste la connection string.
+                    </li>
+                    <li>
+                        <strong><a href="sqlite.html">SQLite</a></strong> — la base de poche
+                        utilisée pendant le développement et les tests. Postgres prend le
+                        relais en prod. Avec SQLAlchemy, le code reste identique.
+                    </li>
+                    <li>
+                        <strong><a href="supabase.html">Supabase</a></strong> — du Postgres
+                        managé avec auth et API REST par-dessus. Si tu veux les bénéfices
+                        de Postgres sans gérer le serveur, c'est l'option.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pile classique :
+                        FastAPI expose une API qui parle à Postgres via SQLAlchemy. Les
+                        modèles d'entrée/sortie sont validés par
+                        <a href="pydantic.html">Pydantic</a>.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> /
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> — Postgres
+                        tourne quasi toujours dans un conteneur en dev et en prod. L'image
+                        officielle est l'une des plus utilisées au monde.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — peut utiliser
+                        Postgres comme <em>tracking backend</em> à la place de SQLite
+                        (<code>--backend-store-uri postgresql+psycopg://...</code>).
+                        Indispensable dès que plusieurs personnes loguent en même temps.
+                    </li>
+                    <li>
+                        <strong><a href="prefect.html">Prefect</a></strong> — utilise aussi
+                        Postgres comme base de métadonnées en self-hosted (suivi des flux,
+                        états des runs).
+                    </li>
+                    <li>
+                        <strong><a href="grafana.html">Grafana</a></strong> — peut brancher
+                        Postgres comme source pour des dashboards SQL (à côté de
+                        <a href="prometheus.html">Prometheus</a> et <a href="loki.html">Loki</a>).
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Postgres = défaut quasi universel en MLOps</div>
+                    <p>
+                        Si tu hésites pour ton projet final, choisis Postgres. C'est gratuit,
+                        open source, mature depuis 1996, et c'est ce que MLflow, Prefect,
+                        Supabase et la majorité des frameworks modernes attendent par défaut.
+                        Le seul vrai concurrent est SQLite, mais uniquement quand un seul
+                        processus écrit dans la base.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.postgresql.org/" target="_blank" rel="noopener noreferrer">postgresql.org</a></li>
+                    <li>Documentation officielle (référence) : <a href="https://www.postgresql.org/docs/current/" target="_blank" rel="noopener noreferrer">postgresql.org/docs/current</a></li>
+                    <li>Image Docker officielle : <a href="https://hub.docker.com/_/postgres" target="_blank" rel="noopener noreferrer">hub.docker.com/_/postgres</a></li>
+                    <li>Alembic (migrations) : <a href="https://alembic.sqlalchemy.org/" target="_blank" rel="noopener noreferrer">alembic.sqlalchemy.org</a></li>
+                    <li>« PostgreSQL Exercises » (tuto interactif) : <a href="https://pgexercises.com/" target="_blank" rel="noopener noreferrer">pgexercises.com</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

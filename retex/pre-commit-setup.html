@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Retex — pre-commit sur ce site — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Retex — pre-commit sur ce site</div>
+                <h1>Installer pre-commit sur un repo non-Python</h1>
+                <p class="subtitle">
+                    Comment j'ai branché <a href="../sujets/pre-commit.html">pre-commit</a> sur
+                    ce site (HTML/CSS/JS pur), pourquoi j'ai laissé tomber les hooks Python
+                    « standards », et comment l'intégrer à une CI GitHub Actions existante sans
+                    casser le pattern fail-loud/fail-soft.
+                </p>
+                <div class="badge-row">
+                    <span class="tag">Cas réel</span>
+                    <span class="tag">Repo HTML/JS</span>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    La <a href="../sujets/pre-commit.html">fiche théorique pre-commit</a>
+                    décrit l'outil avec sa config Python type (Ruff, Black, isort). Mais ce
+                    repo n'a <strong>aucune ligne de Python</strong> — c'est du HTML, du CSS
+                    et du JavaScript vanilla. Du coup, plusieurs questions concrètes se
+                    posent au moment de l'install :
+                </p>
+                <ul>
+                    <li>Quels hooks garder, lesquels enlever ?</li>
+                    <li>Faut-il rajouter un hook lychee local alors que la
+                        <a href="../sujets/cicd.html">CI</a> en a déjà deux ?</li>
+                    <li>Comment intégrer pre-commit au workflow GitHub Actions existant
+                        sans casser le pattern fail-loud/fail-soft qu'on a mis en place ?</li>
+                    <li>Que faire si le tout premier run de pre-commit casse plein de
+                        fichiers d'un coup ?</li>
+                </ul>
+                <p>
+                    Cette fiche raconte les décisions prises à chaque étape, plutôt que de
+                    redonner la doc générique.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-title">Différence avec la fiche pre-commit</div>
+                    <p>
+                        La <a href="../sujets/pre-commit.html">fiche pre-commit</a> explique
+                        l'outil dans l'absolu : la notion de hook Git, la config YAML, les
+                        hooks courants. Cette fiche-ci raconte un <em>cas concret</em> :
+                        comment l'installer sur un repo qui n'a pas le profil « Python type »
+                        attendu par la plupart des tutos.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Au tout premier <code>pre-commit run --all-files</code>, sur un repo qui
+                    avait déjà du contenu et une CI verte depuis des semaines :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>trim trailing whitespace.................................................Passed
+fix end of files.........................................................Failed
+- hook id: end-of-file-fixer
+- exit code: 1
+- files were modified by this hook
+  Fixing .lycheeignore
+
+check yaml...............................................................Passed
+check for merge conflicts................................................Passed
+check for added large files..............................................Passed
+detect private key.......................................................Passed</code></pre>
+                </div>
+                <p>
+                    Un fichier corrigé tout seul (<code>.lycheeignore</code> n'avait pas de
+                    newline finale). Aucune autre erreur. La CI était verte, mais pas le
+                    repo : <strong>pre-commit attrape ce que les yeux humains laissent
+                    passer</strong>. C'est exactement à ça qu'il sert.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : ce que j'ai fait, dans l'ordre</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Choisir les hooks pour <em>ce</em> repo</h4>
+                        <p>
+                            La plupart des tutos pre-commit commencent par
+                            <code>ruff</code> ou <code>black</code>. Inutile ici : pas de
+                            Python. La règle que j'ai suivie : <strong>choisir les hooks
+                            selon le langage du repo, pas selon la liste standard</strong>.
+                        </p>
+                        <p>
+                            Au final, six hooks « hygiène générale » suffisent :
+                        </p>
+                        <ul>
+                            <li><code>trailing-whitespace</code> + <code>end-of-file-fixer</code>
+                                — propreté des fichiers texte.</li>
+                            <li><code>check-yaml</code> — valide les workflows GitHub Actions
+                                et le YAML de pre-commit lui-même.</li>
+                            <li><code>check-merge-conflict</code> — détecte les marqueurs
+                                oubliés.</li>
+                            <li><code>check-added-large-files</code> (max 500 ko) — bloque
+                                les gros binaires committés par erreur (capture d'écran lourde,
+                                node_modules…).</li>
+                            <li><code>detect-private-key</code> — par hygiène, même si peu
+                                probable sur ce repo.</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Décider : pas de hook lychee local</h4>
+                        <p>
+                            Tentation : ajouter un hook qui lance lychee avant chaque commit.
+                            Refusé. Raisons :
+                        </p>
+                        <ul>
+                            <li>La CI a déjà deux jobs lychee (interne strict + externe
+                                informatif). Doublonner localement ralentit chaque commit
+                                pour zéro gain.</li>
+                            <li>Le check externe a besoin du réseau, ce qui casse le principe
+                                « pre-commit doit être rapide ». 2-3 secondes max.</li>
+                            <li>Le check interne offline serait redondant avec ce que GitHub
+                                Actions fait en ~2 s, sans valeur ajoutée locale.</li>
+                        </ul>
+                        <p>
+                            Règle dégagée : <strong>ne pas dupliquer en pre-commit ce que la
+                            CI couvre déjà bien</strong>. pre-commit = filet rapide,
+                            CI = vérité définitive.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Installer l'outil avec uv tool</h4>
+                        <p>
+                            Pre-commit étant un outil global (comme <a href="../sujets/ruff.html">Ruff</a>
+                            ou <a href="../sujets/uv.html">UV</a> lui-même), je l'ai installé
+                            avec <code>uv tool</code> plutôt que comme dépendance du repo :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> tool install pre-commit</code></pre>
+                        </div>
+                        <p>
+                            Avantage : disponible dans tous les repos, sans polluer le
+                            <code>pyproject.toml</code> du projet (qui n'existe d'ailleurs
+                            pas ici).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer le YAML à la racine</h4>
+                        <p>
+                            <strong>Piège</strong> : pre-commit cherche son fichier de config
+                            <em>exactement</em> à <code>.pre-commit-config.yaml</code> à la
+                            racine du repo. On ne peut pas le mettre dans
+                            <code>.github/</code> ou ailleurs. À ne pas confondre avec le
+                            workflow CI lui-même, qui lui vit dans
+                            <code>.github/workflows/ci.yml</code>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>devianotes/
+├── .pre-commit-config.yaml          ← config pre-commit (racine)
+├── .github/workflows/
+│   └── ci.yml                       ← workflow GitHub Actions
+└── ...</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Activer le hook Git local</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pre-commit</span> install</code></pre>
+                        </div>
+                        <p>
+                            Ça crée <code>.git/hooks/pre-commit</code>. À refaire à chaque
+                            clone du repo (le dossier <code>.git/</code> n'est jamais versionné
+                            par Git lui-même). À mentionner dans le README pour les futurs
+                            collaborateurs.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Premier run sur tout l'existant</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">pre-commit</span> run --all-files</code></pre>
+                        </div>
+                        <p>
+                            Sur ce repo, un seul fichier corrigé
+                            (<code>.lycheeignore</code> sans newline finale). Sur un repo
+                            plus ancien ou plus gros, attends-toi à un diff plus large —
+                            ce n'est pas grave : tu re-stages et tu commits d'un coup
+                            le « grand nettoyage ».
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Le piège : si trop de fichiers changent</div>
+                            <p>
+                                Sur un gros repo qui n'a jamais eu pre-commit, le premier
+                                run peut modifier des centaines de fichiers (whitespace,
+                                newlines). Mieux vaut faire un commit dédié
+                                « chore: pre-commit run --all-files » <em>après</em> avoir
+                                installé pre-commit mais <em>avant</em> de mélanger avec
+                                d'autres changements. Le diff reste lisible.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter le job pre-commit en CI</h4>
+                        <p>
+                            pre-commit local n'est pas suffisant : il faut un filet de
+                            sécurité côté CI, sinon un <code>git commit --no-verify</code>
+                            ou un contributeur qui n'a pas <code>pre-commit install</code>é
+                            casse l'historique. J'ai ajouté un nouveau job dans
+                            <code>ci.yml</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>pre-commit:
+  name: pre-commit (strict)
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v5
+      with:
+        python-version: <span class="tk-string">"3.12"</span>
+    - uses: pre-commit/action@v3.0.1</code></pre>
+                        </div>
+                        <p>
+                            L'action officielle <code>pre-commit/action</code> installe
+                            pre-commit, met en cache les environnements des hooks, et lance
+                            <code>pre-commit run --all-files</code>. Trois lignes, c'est tout.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Brancher pre-commit dans <code>deploy.needs</code></h4>
+                        <p>
+                            Le point crucial. Un job CI qui ne bloque pas le déploiement
+                            n'est qu'une décoration. Donc :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (avant)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>deploy:
+  needs: link-check-internal</code></pre>
+                        </div>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml (après)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>deploy:
+  needs: [pre-commit, link-check-internal]</code></pre>
+                        </div>
+                        <p>
+                            Côté pattern, ça respecte le fail-loud/fail-soft du projet :
+                            pre-commit rejoint le check de liens internes (strict) comme
+                            <em>bloquant</em>, pendant que le check de liens externes reste
+                            <em>informatif</em>. Cohérent : c'est de l'hygiène qu'on contrôle,
+                            donc bloquant.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Vérifier le tout</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Re-run en local pour confirmer que rien ne reste à fixer</span>
+<span class="tk-cmd">pre-commit</span> run --all-files
+
+<span class="tk-comment"># Tenter un commit normal : les hooks doivent passer silencieusement</span>
+<span class="tk-cmd">git</span> add .
+<span class="tk-cmd">git</span> commit -m <span class="tk-string">"chore: setup pre-commit"</span></code></pre>
+                        </div>
+                        <p>
+                            Si le commit passe sans rejet, le setup est complet. Au prochain
+                            push, le job pre-commit s'exécutera en CI en parallèle des deux
+                            checks lychee, et bloquera le déploiement en cas de problème.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Ce que j'ai appris</h2>
+                <ul>
+                    <li>
+                        <strong>Les hooks pre-commit se choisissent selon le langage du
+                        repo</strong>, pas selon la « liste standard » qu'on voit partout.
+                        Pour un repo non-Python, six hooks d'hygiène générale suffisent
+                        largement.
+                    </li>
+                    <li>
+                        <strong>Pre-commit et CI sont complémentaires, pas concurrents.</strong>
+                        Pre-commit = rapide et local, pour éviter les allers-retours.
+                        CI = définitive et bloquante, pour ce qui sort du repo. On ne
+                        duplique pas ce que la CI fait déjà bien (ex : lychee chez moi).
+                    </li>
+                    <li>
+                        <strong>Un job pre-commit en CI qui ne bloque pas le deploy ne sert
+                        à rien.</strong> Le mettre dans <code>needs:</code> de
+                        <code>deploy</code> est ce qui transforme l'outil en vrai filet de
+                        sécurité.
+                    </li>
+                    <li>
+                        <strong><code>end-of-file-fixer</code> a attrapé un truc dès le
+                        premier run.</strong> Preuve immédiate que ça apporte de la valeur
+                        même sur un repo « propre » à l'œil.
+                    </li>
+                    <li>
+                        <strong><code>pre-commit install</code> est par-machine, pas
+                        versionné.</strong> Ça doit aller dans le README pour les futurs
+                        cloneurs du repo, sinon ils contournent le filet local sans le savoir.
+                    </li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Fiche théorique : <a href="../sujets/pre-commit.html">pre-commit (théorie)</a></li>
+                    <li>Site officiel : <a href="https://pre-commit.com/" target="_blank" rel="noopener noreferrer">pre-commit.com</a></li>
+                    <li>Liste des hooks « génériques » : <a href="https://github.com/pre-commit/pre-commit-hooks" target="_blank" rel="noopener noreferrer">github.com/pre-commit/pre-commit-hooks</a></li>
+                    <li>Action GitHub officielle : <a href="https://github.com/pre-commit/action" target="_blank" rel="noopener noreferrer">github.com/pre-commit/action</a></li>
+                    <li>Retex voisin : <a href="experience-cicd.html">CI/CD du site (pattern fail-loud / fail-soft)</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
