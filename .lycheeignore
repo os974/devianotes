@@ -72,3 +72,8 @@
 # Démo publique MinIO (play.min.io) — répond 403 depuis les runners GitHub
 # (protection anti-bot/CDN). Instance accessible depuis un navigateur.
 ^https://play\.min\.io/
+
+# Site officiel VS Code (Microsoft) — répond 403 aux requêtes des runners
+# GitHub (filtre User-Agent / plages d'IPs cloud). Lien valide depuis un
+# navigateur. Comportement stable côté Microsoft.
+^https://code\.visualstudio\.com
