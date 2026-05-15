@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>httpx — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / httpx</div>
+                <h1>httpx</h1>
+                <p class="subtitle">
+                    Le client HTTP moderne pour Python : même API que la lib historique
+                    <code>requests</code>, mais avec en bonus le support
+                    <strong>async</strong>, le HTTP/2, et l'intégration native dans
+                    l'écosystème FastAPI. Le choix par défaut pour parler à une API
+                    externe depuis du code Python en 2026.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Dès que ton code Python doit <strong>parler à une autre API</strong>
+                    (météo, <a href="github.html">GitHub</a>, OpenAI, ton propre backend depuis ton frontend Python…),
+                    il te faut un client HTTP. Python a une lib standard
+                    (<code>urllib</code>) mais elle est verbeuse — la communauté utilise
+                    depuis 15 ans <code>requests</code>, et depuis 2020 son successeur
+                    moderne : <strong>httpx</strong>.
+                </p>
+                <ul>
+                    <li><strong>API synchrone style requests</strong> — drop-in remplaçant
+                        pour <code>requests.get(...)</code>.</li>
+                    <li><strong>API async</strong> — la <em>vraie</em> raison d'utiliser
+                        httpx. Indispensable dans une app FastAPI ou pour des appels
+                        parallèles.</li>
+                    <li><strong>HTTP/2</strong> — plus rapide pour multiplexer plusieurs
+                        requêtes sur la même connexion.</li>
+                    <li><strong>Test client pour FastAPI</strong> — <code>TestClient</code>
+                        de FastAPI est basé sur httpx, donc apprendre httpx te sert deux
+                        fois.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">httpx vs requests vs urllib ?</div>
+                    <p>
+                        <strong>urllib</strong> = stdlib Python, verbeux, à éviter sauf
+                        contrainte « zéro dépendance ». <strong>requests</strong> = lib
+                        historique (2011), API très lisible mais maintenance ralentie et
+                        pas d'async. <strong>httpx</strong> = même API que requests +
+                        async + HTTP/2 + typage. Pour un nouveau projet, prends httpx.
+                        Sur un vieux projet, requests reste très bien — le code se
+                        traduit ligne à ligne.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu veux récupérer la météo actuelle d'une ville depuis l'API publique
+                    open-meteo.com :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> httpx
+
+response = httpx.<span class="tk-fn">get</span>(
+    <span class="tk-string">"https://api.open-meteo.com/v1/forecast"</span>,
+    params={
+        <span class="tk-string">"latitude"</span>: <span class="tk-num">50.85</span>,
+        <span class="tk-string">"longitude"</span>: <span class="tk-num">4.35</span>,
+        <span class="tk-string">"current"</span>: <span class="tk-string">"temperature_2m"</span>,
+    },
+    timeout=<span class="tk-num">10.0</span>,
+)
+
+response.<span class="tk-fn">raise_for_status</span>()              <span class="tk-comment"># exception si 4xx/5xx</span>
+data = response.<span class="tk-fn">json</span>()
+<span class="tk-fn">print</span>(data[<span class="tk-string">"current"</span>][<span class="tk-string">"temperature_2m"</span>])  <span class="tk-comment"># 12.3</span></code></pre>
+                </div>
+                <p>
+                    Le code se lit comme du pseudo-code : URL, paramètres, timeout. On
+                    appelle <code>raise_for_status()</code> pour transformer un code
+                    HTTP d'erreur en exception explicite, puis <code>.json()</code> pour
+                    parser le corps de la réponse.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser httpx</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer httpx</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add httpx</code></pre>
+                        </div>
+                        <p>
+                            Pour activer HTTP/2 (optionnel), il faut un extra :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add <span class="tk-string">"httpx[http2]"</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Les méthodes HTTP de base</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> httpx
+
+<span class="tk-comment"># GET (avec query parameters)</span>
+r = httpx.<span class="tk-fn">get</span>(<span class="tk-string">"https://api.example.com/users"</span>, params={<span class="tk-string">"page"</span>: <span class="tk-num">2</span>})
+
+<span class="tk-comment"># POST (avec corps JSON)</span>
+r = httpx.<span class="tk-fn">post</span>(<span class="tk-string">"https://api.example.com/users"</span>,
+                json={<span class="tk-string">"name"</span>: <span class="tk-string">"Alice"</span>, <span class="tk-string">"age"</span>: <span class="tk-num">30</span>})
+
+<span class="tk-comment"># PUT / PATCH / DELETE — même signature</span>
+httpx.<span class="tk-fn">put</span>(url, json=...)
+httpx.<span class="tk-fn">patch</span>(url, json=...)
+httpx.<span class="tk-fn">delete</span>(url)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Inspecter la réponse</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>r.status_code        <span class="tk-comment"># 200, 404, 500…</span>
+r.headers            <span class="tk-comment"># dict des en-têtes de réponse</span>
+r.text               <span class="tk-comment"># corps en str</span>
+r.content            <span class="tk-comment"># corps en bytes (binaire)</span>
+r.<span class="tk-fn">json</span>()             <span class="tk-comment"># parse en dict/list</span>
+r.url                <span class="tk-comment"># URL finale (après redirects)</span>
+
+r.<span class="tk-fn">raise_for_status</span>()  <span class="tk-comment"># exception si 4xx/5xx</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Headers, auth, timeouts</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Headers personnalisés (ex: token API)</span>
+r = httpx.<span class="tk-fn">get</span>(
+    url,
+    headers={<span class="tk-string">"Authorization"</span>: <span class="tk-string">f"Bearer </span><span class="tk-string">{</span>token<span class="tk-string">}"</span>,
+             <span class="tk-string">"User-Agent"</span>: <span class="tk-string">"mon-app/1.0"</span>},
+)
+
+<span class="tk-comment"># Auth basique</span>
+r = httpx.<span class="tk-fn">get</span>(url, auth=(<span class="tk-string">"user"</span>, <span class="tk-string">"password"</span>))
+
+<span class="tk-comment"># Timeout</span>
+r = httpx.<span class="tk-fn">get</span>(url, timeout=<span class="tk-num">10.0</span>)
+r = httpx.<span class="tk-fn">get</span>(url, timeout=httpx.<span class="tk-fn">Timeout</span>(
+    connect=<span class="tk-num">5.0</span>, read=<span class="tk-num">30.0</span>, write=<span class="tk-num">10.0</span>, pool=<span class="tk-num">5.0</span>,
+))</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Toujours mettre un timeout</div>
+                            <p>
+                                Sans <code>timeout</code>, une requête peut bloquer ton
+                                code indéfiniment si le serveur tarde à répondre. C'est
+                                particulièrement critique dans une API
+                                <a href="fastapi.html">FastAPI</a> : un appel sortant sans
+                                timeout peut pendre toutes tes requêtes entrantes. httpx
+                                <strong>met un timeout par défaut de 5s</strong> (contrairement
+                                à requests qui n'en met pas) — bonne pratique conservée.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser un Client pour plusieurs requêtes</h4>
+                        <p>
+                            Si tu fais plus d'une requête vers le même hôte, utilise un
+                            <code>Client</code> : il réutilise la connexion TCP (plus
+                            rapide) et factorise la config.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">with</span> httpx.<span class="tk-fn">Client</span>(
+    base_url=<span class="tk-string">"https://api.github.com"</span>,
+    headers={<span class="tk-string">"Authorization"</span>: <span class="tk-string">f"Bearer </span><span class="tk-string">{</span>token<span class="tk-string">}"</span>},
+    timeout=<span class="tk-num">10.0</span>,
+) <span class="tk-keyword">as</span> client:
+    user = client.<span class="tk-fn">get</span>(<span class="tk-string">"/user"</span>).<span class="tk-fn">json</span>()
+    repos = client.<span class="tk-fn">get</span>(<span class="tk-string">"/user/repos"</span>).<span class="tk-fn">json</span>()
+    issues = client.<span class="tk-fn">get</span>(<span class="tk-string">"/issues"</span>).<span class="tk-fn">json</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Async pour les requêtes en parallèle</h4>
+                        <p>
+                            C'est <em>la</em> raison d'utiliser httpx plutôt que requests.
+                            <code>AsyncClient</code> permet de lancer N requêtes
+                            simultanément sans bloquer le thread.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> asyncio
+<span class="tk-keyword">import</span> httpx
+
+<span class="tk-keyword">async</span> <span class="tk-keyword">def</span> <span class="tk-fn">fetch_all</span>(urls):
+    <span class="tk-keyword">async</span> <span class="tk-keyword">with</span> httpx.<span class="tk-fn">AsyncClient</span>(timeout=<span class="tk-num">10</span>) <span class="tk-keyword">as</span> client:
+        tasks = [client.<span class="tk-fn">get</span>(u) <span class="tk-keyword">for</span> u <span class="tk-keyword">in</span> urls]
+        responses = <span class="tk-keyword">await</span> asyncio.<span class="tk-fn">gather</span>(*tasks)
+        <span class="tk-keyword">return</span> [r.<span class="tk-fn">json</span>() <span class="tk-keyword">for</span> r <span class="tk-keyword">in</span> responses]
+
+urls = [<span class="tk-string">"https://api.x.com/a"</span>, <span class="tk-string">"https://api.x.com/b"</span>, <span class="tk-string">"…"</span>]
+results = asyncio.<span class="tk-fn">run</span>(<span class="tk-fn">fetch_all</span>(urls))</code></pre>
+                        </div>
+                        <p>
+                            10 requêtes séquentielles à 200 ms = 2 s. Les mêmes 10 en
+                            async avec <code>gather</code> = ~200 ms total. Différence
+                            massive sur un appel-aggregator (style « passerelle » qui
+                            interroge plusieurs services).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Upload de fichier et download streamé</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Upload (multipart/form-data)</span>
+<span class="tk-keyword">with</span> <span class="tk-fn">open</span>(<span class="tk-string">"photo.jpg"</span>, <span class="tk-string">"rb"</span>) <span class="tk-keyword">as</span> f:
+    r = httpx.<span class="tk-fn">post</span>(url, files={<span class="tk-string">"image"</span>: f})
+
+<span class="tk-comment"># Download streamé (pour gros fichiers, sans tout mettre en RAM)</span>
+<span class="tk-keyword">with</span> httpx.<span class="tk-fn">stream</span>(<span class="tk-string">"GET"</span>, big_url) <span class="tk-keyword">as</span> r:
+    <span class="tk-keyword">with</span> <span class="tk-fn">open</span>(<span class="tk-string">"out.zip"</span>, <span class="tk-string">"wb"</span>) <span class="tk-keyword">as</span> f:
+        <span class="tk-keyword">for</span> chunk <span class="tk-keyword">in</span> r.<span class="tk-fn">iter_bytes</span>():
+            f.<span class="tk-fn">write</span>(chunk)</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (one-shot)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> httpx
+r = httpx.<span class="tk-fn">get</span>(url, params={<span class="tk-string">"q"</span>: <span class="tk-string">"…"</span>}, timeout=<span class="tk-num">10</span>)
+r.<span class="tk-fn">raise_for_status</span>(); r.<span class="tk-fn">json</span>()
+httpx.<span class="tk-fn">post</span>(url, json={...})
+httpx.<span class="tk-fn">put</span>(url, json={...}); httpx.<span class="tk-fn">delete</span>(url)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (Client réutilisable)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">with</span> httpx.<span class="tk-fn">Client</span>(base_url=<span class="tk-string">"…"</span>, timeout=<span class="tk-num">10</span>) <span class="tk-keyword">as</span> c:
+    c.<span class="tk-fn">get</span>(<span class="tk-string">"/a"</span>); c.<span class="tk-fn">post</span>(<span class="tk-string">"/b"</span>, json=...)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (async)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">async</span> <span class="tk-keyword">with</span> httpx.<span class="tk-fn">AsyncClient</span>() <span class="tk-keyword">as</span> c:
+    r = <span class="tk-keyword">await</span> c.<span class="tk-fn">get</span>(url)
+results = <span class="tk-keyword">await</span> asyncio.<span class="tk-fn">gather</span>(*tasks)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (réponse)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>r.status_code; r.headers; r.text; r.content
+r.<span class="tk-fn">json</span>(); r.<span class="tk-fn">raise_for_status</span>()</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>httpx et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — couple
+                        évident. FastAPI <em>est</em> un serveur asynchrone ; depuis du
+                        code FastAPI on parle aux autres APIs avec
+                        <code>AsyncClient</code> pour ne pas bloquer le worker. Le
+                        <code>TestClient</code> de FastAPI est lui-même un wrapper httpx.
+                    </li>
+                    <li>
+                        <strong><a href="pydantic.html">Pydantic</a></strong> — pattern
+                        habituel : <code>data = MyModel.model_validate(response.json())</code>.
+                        Tu transformes une réponse JSON en objet typé d'un coup.
+                    </li>
+                    <li>
+                        <strong><a href="pytest.html">pytest</a></strong> — le module
+                        <code>respx</code> mocke httpx pour les tests, sans toucher au
+                        réseau. Tests rapides et déterministes.
+                    </li>
+                    <li>
+                        <strong><a href="beautifulsoup.html">BeautifulSoup</a></strong> —
+                        scraping = récupérer le HTML avec httpx, le parser avec
+                        BeautifulSoup. Remplace progressivement le couple
+                        requests + BeautifulSoup.
+                    </li>
+                    <li>
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> /
+                        <strong><a href="ollama.html">Ollama</a></strong> — pour appeler
+                        les endpoints HTTP de ces services depuis Python (inférence à
+                        distance d'un modèle).
+                    </li>
+                    <li>
+                        <strong><a href="loguru.html">Loguru</a></strong> /
+                        <strong><a href="logging.html">logging</a></strong> — en cas
+                        d'erreur, logger <code>r.status_code</code> et <code>r.text</code>
+                        rend le debug bien plus rapide qu'une simple
+                        <code>HTTPStatusError</code>.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Migration depuis requests</div>
+                    <p>
+                        La majorité du code traduit ligne-à-ligne :
+                        <code>requests.get(...)</code> → <code>httpx.get(...)</code>,
+                        même API pour <code>params</code>, <code>json</code>,
+                        <code>headers</code>, <code>auth</code>. Les rares différences :
+                        timeout par défaut (httpx en met un, requests non),
+                        <code>Session</code> → <code>Client</code>, et le support async
+                        en bonus.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.python-httpx.org/" target="_blank" rel="noopener noreferrer">python-httpx.org</a></li>
+                    <li>Quickstart : <a href="https://www.python-httpx.org/quickstart/" target="_blank" rel="noopener noreferrer">python-httpx.org/quickstart</a></li>
+                    <li>Async client : <a href="https://www.python-httpx.org/async/" target="_blank" rel="noopener noreferrer">python-httpx.org/async</a></li>
+                    <li>respx (mock httpx pour pytest) : <a href="https://lundberg.github.io/respx/" target="_blank" rel="noopener noreferrer">lundberg.github.io/respx</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

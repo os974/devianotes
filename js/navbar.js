@@ -70,6 +70,7 @@
                             <a href="${S}fastapi.html">FastAPI</a>
                             <a href="${S}streamlit.html">Streamlit</a>
                             <a href="${S}pydantic.html">Pydantic</a>
+                            <a href="${S}httpx.html">httpx</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Outils &amp; Tests</div>
@@ -80,6 +81,7 @@
                             <a href="${S}pytest.html">pytest</a>
                             <a href="${S}ruff.html">Ruff</a>
                             <a href="${S}pre-commit.html">pre-commit</a>
+                            <a href="${S}mypy.html">mypy</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">MLOps</div>
@@ -124,6 +126,8 @@
                             <a href="${S}polars.html">Polars</a>
                             <a href="${S}matplotlib.html">matplotlib</a>
                             <a href="${S}numpy.html">NumPy</a>
+                            <a href="${S}duckdb.html">DuckDB</a>
+                            <a href="${S}mongodb.html">MongoDB</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Stockage</div>
@@ -134,6 +138,10 @@
                             <a href="${S}yolo.html">YOLO</a>
                             <a href="${S}scikit-learn.html">scikit-learn</a>
                             <a href="${S}pytorch.html">PyTorch</a>
+                            <a href="${S}huggingface.html">Hugging Face</a>
+                            <a href="${S}ollama.html">Ollama</a>
+                            <a href="${S}pillow.html">Pillow</a>
+                            <a href="${S}opencv.html">OpenCV</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>

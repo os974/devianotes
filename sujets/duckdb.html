@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>DuckDB — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / DuckDB</div>
+                <h1>DuckDB</h1>
+                <p class="subtitle">
+                    Le « SQLite de l'analytique » : une base de données SQL dans un fichier
+                    (ou même en mémoire), conçue pour aller vite sur des requêtes
+                    analytiques. Capable de lire un Parquet ou un CSV directement, sans
+                    import préalable, en quelques millions de lignes par seconde.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    DuckDB se positionne entre SQLite et un vrai data warehouse :
+                </p>
+                <ul>
+                    <li>Comme <a href="sqlite.html">SQLite</a>, c'est <strong>une base
+                        embarquée dans un fichier</strong> (ou en mémoire) — pas de
+                        serveur à lancer, pas d'install de Postgres.</li>
+                    <li>Comme <a href="postgresql.html">PostgreSQL</a>, c'est du SQL
+                        complet et standard (CTE, fenêtres, JSON…).</li>
+                    <li>Comme <a href="polars.html">Polars</a>, le moteur est
+                        <strong>vectorisé et orienté colonne</strong>, ce qui le rend
+                        ultra-rapide sur des agrégations.</li>
+                </ul>
+                <p>
+                    Cas typiques où DuckDB est l'outil parfait :
+                </p>
+                <ul>
+                    <li><strong>Analyser un gros CSV / Parquet</strong> en SQL, sans
+                        l'importer dans une vraie base.</li>
+                    <li><strong>Requêter des fichiers sur S3 / MinIO</strong> directement
+                        depuis du SQL — particulièrement puissant en data engineering.</li>
+                    <li><strong>Pipelines de transformation</strong> (style dbt) en local
+                        avant de pousser vers un warehouse.</li>
+                    <li><strong>Notebook exploratoire</strong> où on alterne SQL et
+                        pandas/Polars sans friction.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">SQLite, PostgreSQL, DuckDB, Polars… c'est quoi la différence ?</div>
+                    <p>
+                        <strong>SQLite</strong> = base transactionnelle légère (OLTP),
+                        optimisée pour insertions/lectures aléatoires.
+                        <strong>PostgreSQL</strong> = base transactionnelle complète
+                        (multi-utilisateur, prod). <strong>DuckDB</strong> = base
+                        analytique (OLAP) embarquée, optimisée pour agréger des millions
+                        de lignes vite. <strong>Polars</strong> = même genre de moteur
+                        mais en API DataFrame Python plutôt que SQL. En pratique :
+                        SQLite/Postgres pour le stockage applicatif, DuckDB/Polars pour
+                        l'analyse.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as un dossier de fichiers Parquet de ventes (un par mois, 50 Mo
+                    chacun). Tu veux le top 10 des produits sur toute la période, sans
+                    rien importer :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> duckdb
+
+result = duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"""
+    SELECT produit, SUM(montant) AS total
+    FROM 'ventes/*.parquet'
+    WHERE montant &gt; 100
+    GROUP BY produit
+    ORDER BY total DESC
+    LIMIT 10
+"""</span>).<span class="tk-fn">df</span>()
+
+<span class="tk-fn">print</span>(result)</code></pre>
+                </div>
+                <p>
+                    DuckDB scanne directement les fichiers Parquet (compressés, columnar),
+                    ne lit que les colonnes <code>produit</code> et <code>montant</code>
+                    (predicate/projection pushdown automatique), et renvoie un DataFrame
+                    pandas. Pas d'import, pas de schéma à déclarer, pas de serveur.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser DuckDB</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer DuckDB</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add duckdb</code></pre>
+                        </div>
+                        <p>
+                            Il y a aussi un binaire CLI <code>duckdb</code> qu'on peut
+                            installer séparément (style <code>psql</code>) pour des
+                            requêtes ad-hoc en terminal.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>En mémoire ou en fichier</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> duckdb
+
+<span class="tk-comment"># En mémoire (par défaut)</span>
+con = duckdb.<span class="tk-fn">connect</span>()
+
+<span class="tk-comment"># Persistant : un fichier .duckdb</span>
+con = duckdb.<span class="tk-fn">connect</span>(<span class="tk-string">"projet.duckdb"</span>)
+
+<span class="tk-comment"># Ou raccourci sans connexion explicite (in-memory)</span>
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT 42"</span>).<span class="tk-fn">show</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lire des CSV et Parquet directement</h4>
+                        <p>
+                            Le superpouvoir de DuckDB : les fichiers <em>sont</em> des
+                            tables. Pas besoin de <code>CREATE TABLE</code> ni d'import.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 'data.csv' LIMIT 5"</span>)
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 'data.parquet' LIMIT 5"</span>)
+
+<span class="tk-comment"># Plusieurs fichiers d'un coup</span>
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 'logs/*.csv'"</span>)
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 'year=*/month=*/*.parquet'"</span>)  <span class="tk-comment"># Hive partitioning</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Requêter un DataFrame pandas ou Polars</h4>
+                        <p>
+                            Tu peux mélanger SQL et DataFrames librement :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+<span class="tk-keyword">import</span> duckdb
+
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"ventes.csv"</span>)
+
+<span class="tk-comment"># df est visible directement comme une table dans la requête</span>
+result = duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"""
+    SELECT produit, COUNT(*) AS n, AVG(montant) AS prix_moyen
+    FROM df
+    GROUP BY produit
+"""</span>).<span class="tk-fn">df</span>()           <span class="tk-comment"># renvoie un DataFrame pandas</span></code></pre>
+                        </div>
+                        <p>
+                            <code>.df()</code> renvoie pandas, <code>.pl()</code> renvoie
+                            <a href="polars.html">Polars</a>,
+                            <code>.fetchall()</code> renvoie une liste de tuples.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer, charger, sauvegarder une table</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>con = duckdb.<span class="tk-fn">connect</span>(<span class="tk-string">"projet.duckdb"</span>)
+
+<span class="tk-comment"># Créer une table à partir d'un fichier</span>
+con.<span class="tk-fn">sql</span>(<span class="tk-string">"""
+    CREATE TABLE ventes AS
+    SELECT * FROM 'ventes.parquet'
+"""</span>)
+
+<span class="tk-comment"># Exporter une table en Parquet (compressé, rapide à relire)</span>
+con.<span class="tk-fn">sql</span>(<span class="tk-string">"""
+    COPY (SELECT * FROM ventes WHERE montant &gt; 0)
+    TO 'ventes_clean.parquet' (FORMAT PARQUET)
+"""</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lire depuis S3 / MinIO</h4>
+                        <p>
+                            DuckDB sait lire directement depuis du stockage S3-compatible,
+                            comme <a href="minio.html">MinIO</a>. Très utile pour
+                            interroger des datasets stockés sur ton infra sans télécharger.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>con.<span class="tk-fn">sql</span>(<span class="tk-string">"""
+    INSTALL httpfs;
+    LOAD httpfs;
+    SET s3_endpoint='localhost:9000';
+    SET s3_access_key_id='…';
+    SET s3_secret_access_key='…';
+    SET s3_url_style='path';
+    SET s3_use_ssl=false;
+"""</span>)
+
+con.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 's3://bucket/data.parquet' LIMIT 10"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser le CLI pour de l'ad-hoc</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">duckdb</span>                                <span class="tk-comment"># shell interactif (in-memory)</span>
+<span class="tk-cmd">duckdb</span> projet.duckdb                   <span class="tk-comment"># ouvre un fichier</span>
+
+<span class="tk-comment"># Exécuter une requête one-shot</span>
+<span class="tk-cmd">duckdb</span> -c <span class="tk-string">"SELECT COUNT(*) FROM 'data.parquet'"</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Pourquoi Parquet plutôt que CSV&nbsp;?</div>
+                            <p>
+                                Le format Parquet est <strong>columnar</strong> et
+                                compressé : DuckDB lit seulement les colonnes nécessaires
+                                à la requête, ignorant le reste. Sur un fichier 1 Go en
+                                CSV vs 100 Mo en Parquet, la requête peut être 10× plus
+                                rapide. Si tu fais beaucoup d'analytique, exporte une fois
+                                en Parquet, requête ensuite.
+                            </p>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (one-shot)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> duckdb
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 'data.parquet' LIMIT 5"</span>).<span class="tk-fn">df</span>()
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM 'data/*.csv'"</span>).<span class="tk-fn">df</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (connexion persistante)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>con = duckdb.<span class="tk-fn">connect</span>(<span class="tk-string">"db.duckdb"</span>)
+con.<span class="tk-fn">sql</span>(<span class="tk-string">"CREATE TABLE t AS SELECT * FROM 'f.parquet'"</span>)
+con.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM t"</span>).<span class="tk-fn">df</span>()
+con.<span class="tk-fn">close</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (DataFrame ↔ SQL)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"…"</span>)
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"SELECT * FROM df WHERE x &gt; 0"</span>).<span class="tk-fn">df</span>()
+duckdb.<span class="tk-fn">sql</span>(<span class="tk-string">"…"</span>).<span class="tk-fn">pl</span>()       <span class="tk-comment"># Polars</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (CLI)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">duckdb</span> db.duckdb
+<span class="tk-cmd">duckdb</span> -c <span class="tk-string">"SELECT 1"</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>DuckDB et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> /
+                        <strong><a href="polars.html">Polars</a></strong> — alliés
+                        naturels. DuckDB peut lire ces DataFrames directement comme des
+                        tables, et leur renvoyer un résultat de requête. Utile pour
+                        ajouter une couche SQL sur du code DataFrame existant.
+                    </li>
+                    <li>
+                        <strong><a href="sqlite.html">SQLite</a></strong> — DuckDB n'est
+                        pas un remplaçant : SQLite reste meilleur pour les bases
+                        applicatives (beaucoup d'insertions). DuckDB est meilleur pour
+                        l'analyse en lecture (agrégations sur des millions de lignes).
+                    </li>
+                    <li>
+                        <strong><a href="postgresql.html">PostgreSQL</a></strong> — DuckDB
+                        a une extension pour requêter Postgres comme une source. Pratique
+                        pour préparer un dashboard local sans charger le serveur Postgres.
+                    </li>
+                    <li>
+                        <strong><a href="minio.html">MinIO</a></strong> — combo très
+                        puissant : tes données vivent dans MinIO au format Parquet,
+                        DuckDB les requête directement en SQL avec
+                        <code>INSTALL httpfs</code>.
+                    </li>
+                    <li>
+                        <strong><a href="jupyter.html">Jupyter</a></strong> — DuckDB
+                        a une extension <code>%sql</code> qui permet d'écrire du SQL
+                        directement dans une cellule sans wrapping Python.
+                    </li>
+                    <li>
+                        <strong><a href="sqlalchemy.html">SQLAlchemy</a></strong> — DuckDB
+                        a un driver SQLAlchemy, donc on peut le brancher comme backend
+                        d'un projet existant pour de l'analytique.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand DuckDB plutôt que Polars (ou inversement)&nbsp;?</div>
+                    <p>
+                        DuckDB et Polars sont très proches en perf et philosophie. Choisis
+                        DuckDB si tu préfères <strong>écrire du SQL</strong> (avec joins,
+                        CTE, window functions) — c'est l'outil parfait pour quelqu'un
+                        qui pense SQL. Choisis Polars si tu préfères une
+                        <strong>API DataFrame Python</strong> chainée — moins verbeux pour
+                        les transformations en plusieurs étapes. Tu peux aussi mélanger
+                        les deux.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://duckdb.org/" target="_blank" rel="noopener noreferrer">duckdb.org</a></li>
+                    <li>Documentation : <a href="https://duckdb.org/docs/" target="_blank" rel="noopener noreferrer">duckdb.org/docs</a></li>
+                    <li>« Friendlier SQL with DuckDB » : <a href="https://duckdb.org/docs/sql/dialect/friendly_sql.html" target="_blank" rel="noopener noreferrer">duckdb.org/docs/sql/dialect/friendly_sql.html</a></li>
+                    <li>Cookbook Python : <a href="https://duckdb.org/docs/api/python/overview" target="_blank" rel="noopener noreferrer">duckdb.org/docs/api/python/overview</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
