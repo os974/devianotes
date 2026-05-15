@@ -85,6 +85,20 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# -----------------------------------------------------------------------------
+# Forcer Node 24 pour les actions JavaScript.
+# -----------------------------------------------------------------------------
+# À partir du 2 juin 2026, GitHub Actions force Node 24 par défaut.
+# Plusieurs actions tournent encore en Node 20 (actions/cache@v4,
+# actions/setup-python@v5, etc.) et provoquent un warning de dépréciation.
+#
+# Cette variable d'environnement opt-in dès maintenant sur Node 24, ce qui
+# élimine le warning et garantit que rien ne casse à la bascule de juin.
+# Mesure transitoire : à retirer quand toutes les actions du workflow
+# embarqueront Node 24 nativement (versions à venir).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ===========================================================================
   # JOB 0 — pre-commit (STRICT)
