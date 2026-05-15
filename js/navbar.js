@@ -85,6 +85,7 @@
                             <div class="dropdown-title">MLOps</div>
                             <a href="${S}mlflow.html">MLflow</a>
                             <a href="${S}prefect.html">Prefect</a>
+                            <a href="${S}dvc.html">DVC</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Messagerie &amp; tâches</div>
