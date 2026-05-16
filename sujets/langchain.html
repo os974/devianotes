@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>LangChain — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / LangChain</div>
+                <h1>LangChain</h1>
+                <p class="subtitle">
+                    Le framework Python le plus populaire pour construire des applications
+                    autour des LLMs : chaînes de traitement, agents, RAG, intégrations
+                    avec des dizaines de services. Une boîte à outils complète pour
+                    transformer un appel à un LLM en application réelle.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Appeler un LLM en Python, c'est trois lignes : on envoie un prompt,
+                    on récupère du texte. Construire une <strong>application</strong>
+                    autour, c'est beaucoup plus : gérer la mémoire d'une conversation,
+                    aller chercher de l'info dans des documents, appeler des outils
+                    externes, enchaîner plusieurs étapes, gérer les erreurs, switcher
+                    entre LLMs sans tout réécrire.
+                </p>
+                <p>
+                    LangChain fournit les briques standardisées pour tout ça :
+                </p>
+                <ul>
+                    <li><strong>Wrappers de LLMs</strong> — API uniforme pour OpenAI,
+                        Anthropic, Ollama, Mistral, HuggingFace… Tu changes une ligne pour
+                        switcher de modèle.</li>
+                    <li><strong>Chains</strong> — enchaîner prompt → LLM → parser →
+                        traitement, le tout déclaratif avec la syntaxe LCEL (LangChain
+                        Expression Language).</li>
+                    <li><strong>Retrievers et RAG</strong> — charger des documents, les
+                        découper en chunks, les indexer dans un vector store, et les
+                        retrouver par similarité au moment de répondre.</li>
+                    <li><strong>Tools et Agents</strong> — donner au LLM la capacité
+                        d'utiliser des outils (calculatrice, recherche web, API maison)
+                        et de décider lequel appeler.</li>
+                    <li><strong>Memory</strong> — garder le fil d'une conversation
+                        multi-tours sans tout renvoyer manuellement à chaque appel.</li>
+                    <li><strong>Intégrations</strong> — connecteurs prêts à l'emploi pour
+                        des centaines de services (Notion, GitHub, Slack, S3,
+                        PostgreSQL…).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">LangChain vs LlamaIndex ?</div>
+                    <p>
+                        Les deux frameworks dominent l'écosystème, mais avec des angles
+                        différents. <strong>LangChain</strong> est généraliste : RAG +
+                        agents + chains + dizaines d'intégrations. Plus large, plus
+                        puissant, plus complexe. <strong><a href="llamaindex.html">LlamaIndex</a></strong>
+                        est focalisé sur le RAG : indexer et requêter des documents, c'est
+                        sa raison d'être. Plus simple à démarrer si c'est ton seul besoin.
+                        Pour un pur RAG, prends LlamaIndex. Pour des agents, des pipelines
+                        multi-étapes ou plusieurs sources mélangées, prends LangChain.
+                        Et les deux peuvent cohabiter — beaucoup d'applis utilisent
+                        LlamaIndex pour le RAG dans une chaîne LangChain plus large.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Construire un mini-RAG sur quelques fichiers texte : charger les
+                    documents, indexer, poser une question, obtenir une réponse avec les
+                    sources. Avec <a href="ollama.html">Ollama</a> en local (pas besoin
+                    de clé OpenAI) :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> langchain_community.document_loaders <span class="tk-keyword">import</span> DirectoryLoader
+<span class="tk-keyword">from</span> langchain_text_splitters <span class="tk-keyword">import</span> RecursiveCharacterTextSplitter
+<span class="tk-keyword">from</span> langchain_community.vectorstores <span class="tk-keyword">import</span> FAISS
+<span class="tk-keyword">from</span> langchain_ollama <span class="tk-keyword">import</span> OllamaEmbeddings, ChatOllama
+<span class="tk-keyword">from</span> langchain.chains <span class="tk-keyword">import</span> create_retrieval_chain
+<span class="tk-keyword">from</span> langchain.chains.combine_documents <span class="tk-keyword">import</span> create_stuff_documents_chain
+<span class="tk-keyword">from</span> langchain_core.prompts <span class="tk-keyword">import</span> ChatPromptTemplate
+
+<span class="tk-comment"># 1. Charger des fichiers .txt depuis un dossier</span>
+docs = <span class="tk-fn">DirectoryLoader</span>(<span class="tk-string">"./notes"</span>, glob=<span class="tk-string">"*.txt"</span>).<span class="tk-fn">load</span>()
+
+<span class="tk-comment"># 2. Découper en chunks (les LLMs ont une fenêtre limitée)</span>
+splitter = <span class="tk-fn">RecursiveCharacterTextSplitter</span>(chunk_size=<span class="tk-num">500</span>, chunk_overlap=<span class="tk-num">50</span>)
+chunks = splitter.<span class="tk-fn">split_documents</span>(docs)
+
+<span class="tk-comment"># 3. Embeddings + vector store en mémoire</span>
+embeddings = <span class="tk-fn">OllamaEmbeddings</span>(model=<span class="tk-string">"nomic-embed-text"</span>)
+store = FAISS.<span class="tk-fn">from_documents</span>(chunks, embeddings)
+
+<span class="tk-comment"># 4. Prompt + LLM + chaîne RAG</span>
+prompt = ChatPromptTemplate.<span class="tk-fn">from_template</span>(
+    <span class="tk-string">"Réponds à la question en t'appuyant sur le contexte.\n"</span>
+    <span class="tk-string">"Contexte: {context}\nQuestion: {input}"</span>
+)
+llm = <span class="tk-fn">ChatOllama</span>(model=<span class="tk-string">"llama3.2"</span>)
+chain = <span class="tk-fn">create_retrieval_chain</span>(
+    store.<span class="tk-fn">as_retriever</span>(),
+    <span class="tk-fn">create_stuff_documents_chain</span>(llm, prompt),
+)
+
+<span class="tk-comment"># 5. Question → réponse contextuelle</span>
+result = chain.<span class="tk-fn">invoke</span>({<span class="tk-string">"input"</span>: <span class="tk-string">"Quelle est la date du dernier sprint ?"</span>})
+<span class="tk-fn">print</span>(result[<span class="tk-string">"answer"</span>])</code></pre>
+                </div>
+                <p>
+                    En ~25 lignes, un RAG complet : ingestion → indexation → recherche
+                    → réponse contextualisée. Changer Ollama pour OpenAI = 2 imports à
+                    modifier. Changer le format des documents (PDF, HTML, Notion…) =
+                    changer le loader, tout le reste reste identique.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser LangChain</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer le bon set de paquets</h4>
+                        <p>
+                            LangChain est modulaire : un paquet « core » + un paquet par
+                            intégration. On installe au minimum :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add langchain langchain-community
+
+<span class="tk-comment"># + au moins un fournisseur de LLM :</span>
+<span class="tk-cmd">uv</span> add langchain-ollama        <span class="tk-comment"># local (recommandé pour démarrer)</span>
+<span class="tk-cmd">uv</span> add langchain-openai        <span class="tk-comment"># API OpenAI</span>
+<span class="tk-cmd">uv</span> add langchain-anthropic     <span class="tk-comment"># API Claude</span>
+
+<span class="tk-comment"># + utilitaires courants</span>
+<span class="tk-cmd">uv</span> add langchain-text-splitters faiss-cpu</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Pourquoi autant de paquets&nbsp;?</div>
+                            <p>
+                                LangChain a éclaté son monorepo en 2024 pour découpler les
+                                releases. Du coup, tu n'installes que les intégrations dont
+                                tu as besoin. Le revers : faut savoir où trouver quoi —
+                                la doc indique pour chaque import le paquet à installer.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Connecter un LLM</h4>
+                        <p>
+                            Tous les LLMs ont la même interface : <code>.invoke()</code>
+                            pour une requête simple, <code>.stream()</code> pour le mot
+                            par mot, <code>.batch()</code> pour plusieurs en parallèle.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain_ollama <span class="tk-keyword">import</span> ChatOllama
+llm = <span class="tk-fn">ChatOllama</span>(model=<span class="tk-string">"llama3.2"</span>, temperature=<span class="tk-num">0.7</span>)
+
+<span class="tk-fn">print</span>(llm.<span class="tk-fn">invoke</span>(<span class="tk-string">"Capitale du Pérou ?"</span>).content)
+<span class="tk-comment"># &gt; "La capitale du Pérou est Lima."</span>
+
+<span class="tk-keyword">for</span> chunk <span class="tk-keyword">in</span> llm.<span class="tk-fn">stream</span>(<span class="tk-string">"Liste 5 fruits."</span>):
+    <span class="tk-fn">print</span>(chunk.content, end=<span class="tk-string">""</span>, flush=<span class="tk-keyword">True</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Composer une chaîne avec LCEL</h4>
+                        <p>
+                            LCEL (LangChain Expression Language) compose les étapes avec
+                            l'opérateur <code>|</code> à la manière d'un pipe Unix :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain_core.prompts <span class="tk-keyword">import</span> ChatPromptTemplate
+<span class="tk-keyword">from</span> langchain_core.output_parsers <span class="tk-keyword">import</span> StrOutputParser
+
+prompt = ChatPromptTemplate.<span class="tk-fn">from_messages</span>([
+    (<span class="tk-string">"system"</span>, <span class="tk-string">"Tu es un assistant concis."</span>),
+    (<span class="tk-string">"user"</span>, <span class="tk-string">"Explique {sujet} en 2 phrases."</span>),
+])
+
+chain = prompt | llm | <span class="tk-fn">StrOutputParser</span>()
+<span class="tk-fn">print</span>(chain.<span class="tk-fn">invoke</span>({<span class="tk-string">"sujet"</span>: <span class="tk-string">"l'overfitting"</span>}))</code></pre>
+                        </div>
+                        <p>
+                            Cette chaîne se lit : un prompt structuré, envoyé au LLM, dont
+                            la sortie est parsée en string brute. Chaque étape est
+                            interchangeable.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Charger et découper des documents</h4>
+                        <p>
+                            Pour le RAG, on commence toujours par charger des sources :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain_community.document_loaders <span class="tk-keyword">import</span> (
+    PyPDFLoader, WebBaseLoader, TextLoader, DirectoryLoader,
+)
+<span class="tk-keyword">from</span> langchain_text_splitters <span class="tk-keyword">import</span> RecursiveCharacterTextSplitter
+
+docs = <span class="tk-fn">PyPDFLoader</span>(<span class="tk-string">"manuel.pdf"</span>).<span class="tk-fn">load</span>()
+docs += <span class="tk-fn">WebBaseLoader</span>([<span class="tk-string">"https://example.com/doc"</span>]).<span class="tk-fn">load</span>()
+
+splitter = <span class="tk-fn">RecursiveCharacterTextSplitter</span>(
+    chunk_size=<span class="tk-num">1000</span>,
+    chunk_overlap=<span class="tk-num">100</span>,
+)
+chunks = splitter.<span class="tk-fn">split_documents</span>(docs)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Le bon chunk_size&nbsp;?</div>
+                            <p>
+                                Règle empirique : 500-1500 tokens (≈ 300-1000 mots).
+                                Trop petit, on perd le contexte ; trop grand, le LLM se
+                                noie ou dépasse sa fenêtre. <code>chunk_overlap</code>
+                                évite de couper une phrase en deux entre deux chunks.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Vector store et retriever</h4>
+                        <p>
+                            Le vector store stocke les embeddings des chunks et sait
+                            retrouver les plus proches d'une question :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain_community.vectorstores <span class="tk-keyword">import</span> FAISS
+<span class="tk-keyword">from</span> langchain_ollama <span class="tk-keyword">import</span> OllamaEmbeddings
+
+embeddings = <span class="tk-fn">OllamaEmbeddings</span>(model=<span class="tk-string">"nomic-embed-text"</span>)
+store = FAISS.<span class="tk-fn">from_documents</span>(chunks, embeddings)
+
+<span class="tk-comment"># Sauver / recharger</span>
+store.<span class="tk-fn">save_local</span>(<span class="tk-string">"./faiss_index"</span>)
+store = FAISS.<span class="tk-fn">load_local</span>(<span class="tk-string">"./faiss_index"</span>, embeddings,
+                          allow_dangerous_deserialization=<span class="tk-keyword">True</span>)
+
+retriever = store.<span class="tk-fn">as_retriever</span>(search_kwargs={<span class="tk-string">"k"</span>: <span class="tk-num">4</span>})
+docs_pertinents = retriever.<span class="tk-fn">invoke</span>(<span class="tk-string">"Sujet de ma question"</span>)</code></pre>
+                        </div>
+                        <p>
+                            FAISS est l'option locale la plus simple. En production on
+                            utilise plutôt Qdrant, Chroma, Weaviate ou Postgres + pgvector
+                            (cf. <a href="postgresql.html">PostgreSQL</a>).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Chaîne RAG complète</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain.chains <span class="tk-keyword">import</span> create_retrieval_chain
+<span class="tk-keyword">from</span> langchain.chains.combine_documents <span class="tk-keyword">import</span> create_stuff_documents_chain
+
+prompt = ChatPromptTemplate.<span class="tk-fn">from_template</span>(
+    <span class="tk-string">"Contexte : {context}\n\nQuestion : {input}\n\n"</span>
+    <span class="tk-string">"Si l'info n'est pas dans le contexte, dis-le."</span>
+)
+doc_chain = <span class="tk-fn">create_stuff_documents_chain</span>(llm, prompt)
+rag_chain = <span class="tk-fn">create_retrieval_chain</span>(retriever, doc_chain)
+
+ans = rag_chain.<span class="tk-fn">invoke</span>({<span class="tk-string">"input"</span>: <span class="tk-string">"Quelle est la procédure pour …"</span>})
+<span class="tk-fn">print</span>(ans[<span class="tk-string">"answer"</span>])
+<span class="tk-fn">print</span>([d.metadata <span class="tk-keyword">for</span> d <span class="tk-keyword">in</span> ans[<span class="tk-string">"context"</span>]])     <span class="tk-comment"># sources</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Tools et agents (aperçu)</h4>
+                        <p>
+                            Un <em>tool</em> est une fonction Python qu'on expose au LLM.
+                            Un <em>agent</em> décide lui-même quel tool appeler.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain_core.tools <span class="tk-keyword">import</span> tool
+<span class="tk-keyword">from</span> langgraph.prebuilt <span class="tk-keyword">import</span> create_react_agent
+
+<span class="tk-decorator">@tool</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">meteo</span>(ville: <span class="tk-built">str</span>) -&gt; <span class="tk-built">str</span>:
+    <span class="tk-string">"""Renvoie la météo d'une ville."""</span>
+    <span class="tk-keyword">return</span> <span class="tk-string">f"À </span><span class="tk-string">{</span>ville<span class="tk-string">}</span><span class="tk-string"> il fait 18°C."</span>
+
+agent = <span class="tk-fn">create_react_agent</span>(llm, tools=[meteo])
+result = agent.<span class="tk-fn">invoke</span>({<span class="tk-string">"messages"</span>: [(<span class="tk-string">"user"</span>, <span class="tk-string">"Quel temps à Liège ?"</span>)]})
+<span class="tk-fn">print</span>(result[<span class="tk-string">"messages"</span>][<span class="tk-num">-1</span>].content)</code></pre>
+                        </div>
+                        <p>
+                            Le LLM lit la docstring du tool, décide qu'il en a besoin,
+                            l'appelle avec les bons paramètres, intègre le résultat dans
+                            sa réponse finale. Sous-projet <strong>LangGraph</strong> du
+                            même éditeur pour les agents complexes.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Debugger avec LangSmith ou des callbacks</h4>
+                        <p>
+                            Une chaîne LangChain de 5 étapes devient opaque à debugger.
+                            Activer les logs verbose ou brancher LangSmith (service
+                            payant de l'éditeur) donne la trace complète.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> langchain
+langchain.debug = <span class="tk-keyword">True</span>                        <span class="tk-comment"># logs locaux</span>
+
+<span class="tk-comment"># LangSmith via variable d'environnement</span>
+<span class="tk-comment"># LANGCHAIN_TRACING_V2=true</span>
+<span class="tk-comment"># LANGCHAIN_API_KEY=…</span></code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (LLM de base)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> langchain_ollama <span class="tk-keyword">import</span> ChatOllama
+llm = <span class="tk-fn">ChatOllama</span>(model=<span class="tk-string">"llama3.2"</span>)
+llm.<span class="tk-fn">invoke</span>(<span class="tk-string">"…"</span>); llm.<span class="tk-fn">stream</span>(<span class="tk-string">"…"</span>); llm.<span class="tk-fn">batch</span>([<span class="tk-string">"…"</span>, <span class="tk-string">"…"</span>])</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (chaîne LCEL)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>chain = prompt | llm | <span class="tk-fn">StrOutputParser</span>()
+chain.<span class="tk-fn">invoke</span>({<span class="tk-string">"var"</span>: <span class="tk-string">"…"</span>})</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (RAG minimal)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>docs = <span class="tk-fn">PyPDFLoader</span>(<span class="tk-string">"…"</span>).<span class="tk-fn">load</span>()
+chunks = <span class="tk-fn">RecursiveCharacterTextSplitter</span>(...).<span class="tk-fn">split_documents</span>(docs)
+store = FAISS.<span class="tk-fn">from_documents</span>(chunks, embeddings)
+chain = <span class="tk-fn">create_retrieval_chain</span>(store.<span class="tk-fn">as_retriever</span>(), doc_chain)
+chain.<span class="tk-fn">invoke</span>({<span class="tk-string">"input"</span>: <span class="tk-string">"…"</span>})</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (tools / agent)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-decorator">@tool</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">my_tool</span>(x: <span class="tk-built">str</span>) -&gt; <span class="tk-built">str</span>: <span class="tk-string">"""docstring vue par le LLM"""</span>; <span class="tk-keyword">return</span> ...
+agent = <span class="tk-fn">create_react_agent</span>(llm, tools=[my_tool])
+agent.<span class="tk-fn">invoke</span>({<span class="tk-string">"messages"</span>: [(<span class="tk-string">"user"</span>, <span class="tk-string">"…"</span>)]})</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>LangChain et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="llamaindex.html">LlamaIndex</a></strong> —
+                        l'autre framework majeur. Plus simple pour un pur cas RAG.
+                        LangChain est plus complet (agents, tools, multi-step). Les deux
+                        peuvent coexister.
+                    </li>
+                    <li>
+                        <strong><a href="ollama.html">Ollama</a></strong> /
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> —
+                        fournisseurs de LLMs locaux. <code>langchain-ollama</code> et
+                        <code>langchain-huggingface</code> exposent la même API que les
+                        intégrations cloud.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pattern
+                        classique : ton API FastAPI expose un endpoint
+                        <code>/chat</code> qui appelle une chaîne LangChain. LangChain
+                        gère même nativement le streaming pour FastAPI.
+                    </li>
+                    <li>
+                        <strong><a href="pydantic.html">Pydantic</a></strong> — LangChain
+                        utilise Pydantic en interne pour valider les inputs/outputs des
+                        chaînes. Tu déclares un <code>BaseModel</code> et un parser le
+                        force comme structure de sortie du LLM.
+                    </li>
+                    <li>
+                        <strong><a href="postgresql.html">PostgreSQL</a></strong> — avec
+                        l'extension pgvector, Postgres devient un vector store production
+                        intégrable à LangChain via <code>langchain-postgres</code>.
+                        Alternative aux vector stores spécialisés (FAISS, Qdrant…).
+                    </li>
+                    <li>
+                        <strong><a href="streamlit.html">Streamlit</a></strong> — prototyper
+                        un chatbot LangChain en quelques dizaines de lignes :
+                        <code>st.chat_input</code> + appel à la chaîne +
+                        <code>st.write_stream</code>.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — sait logger
+                        et servir une chaîne LangChain comme un modèle classique
+                        (<code>mlflow.langchain.log_model</code>), ce qui permet de
+                        versionner tes RAG comme tu versionnes tes modèles ML.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Le piège LangChain : surdimensionner</div>
+                    <p>
+                        LangChain encourage la composition de chaînes complexes. Pour un
+                        besoin simple (« appelle Ollama avec ce prompt »), un simple
+                        <code>httpx.post(...)</code> sur l'API Ollama suffit. Avant
+                        d'ajouter LangChain, demande-toi si tu as <strong>vraiment</strong>
+                        besoin de RAG, d'agents ou de multi-LLM. Si non, reste sur
+                        <a href="httpx.html">httpx</a> direct — moins de magie, moins de
+                        dépendances, plus facile à debugger.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.langchain.com/" target="_blank" rel="noopener noreferrer">langchain.com</a></li>
+                    <li>Documentation Python : <a href="https://python.langchain.com/" target="_blank" rel="noopener noreferrer">python.langchain.com</a></li>
+                    <li>Tutoriels « build a RAG » : <a href="https://python.langchain.com/docs/tutorials/rag/" target="_blank" rel="noopener noreferrer">python.langchain.com/docs/tutorials/rag</a></li>
+                    <li>LangGraph (agents) : <a href="https://langchain-ai.github.io/langgraph/" target="_blank" rel="noopener noreferrer">langchain-ai.github.io/langgraph</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

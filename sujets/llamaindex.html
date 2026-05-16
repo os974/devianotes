@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>LlamaIndex — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / LlamaIndex</div>
+                <h1>LlamaIndex</h1>
+                <p class="subtitle">
+                    Le framework Python <strong>focalisé sur le RAG</strong> : indexer
+                    des documents et interroger un LLM avec un contexte pertinent. Là où
+                    LangChain est généraliste, LlamaIndex se concentre sur une seule
+                    chose et la fait extrêmement bien — un RAG fonctionnel en 5 lignes.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Un <strong>RAG</strong> (Retrieval-Augmented Generation) résout un
+                    problème simple : un LLM ne connaît pas <em>tes</em> documents
+                    (PDFs internes, base de connaissance, code source…). Plutôt que de
+                    fine-tuner un modèle, on va <em>chercher</em> les passages
+                    pertinents avant de poser la question, et on les colle dans le prompt
+                    comme contexte.
+                </p>
+                <p>
+                    LlamaIndex automatise cette chaîne :
+                </p>
+                <ul>
+                    <li><strong>Ingestion</strong> — charger des documents depuis 200+
+                        sources (fichiers locaux, Notion, Slack, Confluence, base SQL,
+                        APIs…).</li>
+                    <li><strong>Indexation</strong> — découper en chunks (« Nodes »),
+                        calculer les embeddings, stocker dans un vector store.</li>
+                    <li><strong>Retrieval</strong> — pour une question, retrouver les
+                        N chunks les plus pertinents.</li>
+                    <li><strong>Réponse</strong> — passer la question + le contexte au
+                        LLM via un <em>query engine</em>, récupérer la réponse avec
+                        ses sources.</li>
+                    <li><strong>Chat</strong> — version multi-turn qui garde la mémoire
+                        de la conversation.</li>
+                    <li><strong>Évaluation</strong> — outils pour mesurer la qualité
+                        d'un RAG (faithfulness, relevance) sans le faire à l'œil.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">LlamaIndex vs LangChain ?</div>
+                    <p>
+                        <strong>LlamaIndex</strong> est spécialisé RAG : son API est
+                        optimisée pour ingester → indexer → requêter des documents. Plus
+                        rapide à mettre en place sur ce cas précis.
+                        <strong><a href="langchain.html">LangChain</a></strong> est un
+                        framework généraliste : RAG, agents, chains, outils — plus large,
+                        plus flexible, plus complexe. <strong>Règle pratique</strong> :
+                        si tu fais un chatbot sur tes documents, prends LlamaIndex. Si tu
+                        as besoin d'agents qui appellent des outils ou de pipelines
+                        multi-LLM, prends LangChain. Les deux peuvent cohabiter — LlamaIndex
+                        s'utilise même en interne dans certaines chaînes LangChain.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    RAG complet en 5 lignes utiles, sur un dossier de fichiers texte,
+                    avec <a href="ollama.html">Ollama</a> en local — pas de clé API à
+                    gérer :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> VectorStoreIndex, SimpleDirectoryReader, Settings
+<span class="tk-keyword">from</span> llama_index.llms.ollama <span class="tk-keyword">import</span> Ollama
+<span class="tk-keyword">from</span> llama_index.embeddings.ollama <span class="tk-keyword">import</span> OllamaEmbedding
+
+<span class="tk-comment"># Config globale : quel LLM, quels embeddings on utilise partout</span>
+Settings.llm = <span class="tk-fn">Ollama</span>(model=<span class="tk-string">"llama3.2"</span>)
+Settings.embed_model = <span class="tk-fn">OllamaEmbedding</span>(model_name=<span class="tk-string">"nomic-embed-text"</span>)
+
+<span class="tk-comment"># Charger + indexer tout un dossier en 2 lignes</span>
+docs = <span class="tk-fn">SimpleDirectoryReader</span>(<span class="tk-string">"./notes"</span>).<span class="tk-fn">load_data</span>()
+index = VectorStoreIndex.<span class="tk-fn">from_documents</span>(docs)
+
+<span class="tk-comment"># Poser une question</span>
+qe = index.<span class="tk-fn">as_query_engine</span>()
+<span class="tk-fn">print</span>(qe.<span class="tk-fn">query</span>(<span class="tk-string">"Quelle est la procédure pour déployer en staging ?"</span>))</code></pre>
+                </div>
+                <p>
+                    <code>SimpleDirectoryReader</code> détecte automatiquement le format
+                    (PDF, .txt, .md, .docx…) et appelle le bon loader.
+                    <code>VectorStoreIndex.from_documents</code> découpe, embed et indexe
+                    en une opération. <code>as_query_engine()</code> renvoie un objet
+                    callable qui fait le retrieve + le RAG. C'est cette compacité qui
+                    fait la force de LlamaIndex pour le pur cas RAG.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser LlamaIndex</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer les paquets</h4>
+                        <p>
+                            Comme LangChain, LlamaIndex est modulaire : un core + une lib
+                            par intégration. Avec <a href="uv.html">UV</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add llama-index
+
+<span class="tk-comment"># Au moins un fournisseur de LLM :</span>
+<span class="tk-cmd">uv</span> add llama-index-llms-ollama
+<span class="tk-cmd">uv</span> add llama-index-embeddings-ollama
+
+<span class="tk-comment"># (ou OpenAI / Anthropic / HuggingFace selon)</span>
+<span class="tk-cmd">uv</span> add llama-index-llms-openai
+<span class="tk-cmd">uv</span> add llama-index-embeddings-openai</code></pre>
+                        </div>
+                        <p>
+                            <code>llama-index</code> tout court inclut le core + OpenAI
+                            par défaut (héritage historique). Si tu n'utilises pas OpenAI,
+                            tu peux installer <code>llama-index-core</code> tout seul.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Configurer le LLM par défaut</h4>
+                        <p>
+                            <code>Settings</code> est l'objet global qui dit à LlamaIndex
+                            quels LLM et embeddings utiliser. On le configure une fois en
+                            début de programme :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> Settings
+<span class="tk-keyword">from</span> llama_index.llms.ollama <span class="tk-keyword">import</span> Ollama
+<span class="tk-keyword">from</span> llama_index.embeddings.ollama <span class="tk-keyword">import</span> OllamaEmbedding
+
+Settings.llm = <span class="tk-fn">Ollama</span>(model=<span class="tk-string">"llama3.2"</span>, request_timeout=<span class="tk-num">120</span>)
+Settings.embed_model = <span class="tk-fn">OllamaEmbedding</span>(model_name=<span class="tk-string">"nomic-embed-text"</span>)
+Settings.chunk_size = <span class="tk-num">512</span>
+Settings.chunk_overlap = <span class="tk-num">50</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Settings vs paramètre explicite</div>
+                            <p>
+                                On peut aussi passer <code>llm=</code> et
+                                <code>embed_model=</code> à chaque objet — utile pour
+                                tester deux LLMs en parallèle. Mais pour 99% des cas,
+                                <code>Settings</code> en début de fichier est plus propre.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Charger des documents</h4>
+                        <p>
+                            <code>SimpleDirectoryReader</code> couvre les besoins
+                            courants. Pour des sources plus spécifiques, LlamaIndex
+                            propose une centaine de <em>readers</em> via le « Llama Hub ».
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> SimpleDirectoryReader
+
+<span class="tk-comment"># Tout un dossier (auto-détection des formats)</span>
+docs = <span class="tk-fn">SimpleDirectoryReader</span>(<span class="tk-string">"./data"</span>).<span class="tk-fn">load_data</span>()
+
+<span class="tk-comment"># Filtrer par extension</span>
+docs = <span class="tk-fn">SimpleDirectoryReader</span>(
+    <span class="tk-string">"./data"</span>,
+    required_exts=[<span class="tk-string">".pdf"</span>, <span class="tk-string">".md"</span>],
+    recursive=<span class="tk-keyword">True</span>,
+).<span class="tk-fn">load_data</span>()
+
+<span class="tk-comment"># Fichiers précis</span>
+docs = <span class="tk-fn">SimpleDirectoryReader</span>(input_files=[<span class="tk-string">"manuel.pdf"</span>]).<span class="tk-fn">load_data</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Construire un index</h4>
+                        <p>
+                            <code>VectorStoreIndex</code> est l'index par défaut (vectoriel,
+                            recherche par similarité cosine). Il existe d'autres index
+                            (<code>SummaryIndex</code>, <code>KeywordTableIndex</code>,
+                            <code>KnowledgeGraphIndex</code>) pour des stratégies
+                            différentes.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> VectorStoreIndex
+
+index = VectorStoreIndex.<span class="tk-fn">from_documents</span>(docs)
+
+<span class="tk-comment"># Persister sur disque pour ne pas tout réindexer à chaque run</span>
+index.storage_context.<span class="tk-fn">persist</span>(persist_dir=<span class="tk-string">"./index_store"</span>)
+
+<span class="tk-comment"># Recharger plus tard</span>
+<span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> StorageContext, load_index_from_storage
+storage = StorageContext.<span class="tk-fn">from_defaults</span>(persist_dir=<span class="tk-string">"./index_store"</span>)
+index = <span class="tk-fn">load_index_from_storage</span>(storage)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Query engine (one-shot)</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>qe = index.<span class="tk-fn">as_query_engine</span>(similarity_top_k=<span class="tk-num">4</span>)
+response = qe.<span class="tk-fn">query</span>(<span class="tk-string">"Quelle est la garantie produit ?"</span>)
+
+<span class="tk-fn">print</span>(response)
+<span class="tk-fn">print</span>(response.source_nodes)        <span class="tk-comment"># les chunks utilisés</span>
+<span class="tk-fn">print</span>(response.source_nodes[<span class="tk-num">0</span>].metadata)   <span class="tk-comment"># source de chacun</span></code></pre>
+                        </div>
+                        <p>
+                            <code>similarity_top_k</code> contrôle combien de chunks on
+                            envoie au LLM. Trop peu = info manquante. Trop = on dépasse
+                            la fenêtre. 3-5 est un bon défaut.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Chat engine (multi-turn)</h4>
+                        <p>
+                            Le <em>query engine</em> oublie tout entre deux questions. Le
+                            <em>chat engine</em> garde l'historique pour les
+                            conversations :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>chat = index.<span class="tk-fn">as_chat_engine</span>(chat_mode=<span class="tk-string">"context"</span>)
+<span class="tk-fn">print</span>(chat.<span class="tk-fn">chat</span>(<span class="tk-string">"Quels sont les délais de garantie ?"</span>))
+<span class="tk-fn">print</span>(chat.<span class="tk-fn">chat</span>(<span class="tk-string">"Et pour les pièces détachées ?"</span>))   <span class="tk-comment"># se souvient du contexte</span>
+chat.<span class="tk-fn">reset</span>()                                   <span class="tk-comment"># vide l'historique</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Customiser le retrieval</h4>
+                        <p>
+                            Pour aller au-delà du retrieval naïf : reranking, filtres
+                            sur les métadonnées, recherche hybride (vectoriel + mots-clés).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> llama_index.core.vector_stores <span class="tk-keyword">import</span> MetadataFilters, ExactMatchFilter
+
+<span class="tk-comment"># Filtrer sur une métadonnée (ex: ne chercher que dans la doc v2)</span>
+filters = <span class="tk-fn">MetadataFilters</span>(filters=[
+    <span class="tk-fn">ExactMatchFilter</span>(key=<span class="tk-string">"version"</span>, value=<span class="tk-string">"v2"</span>),
+])
+qe = index.<span class="tk-fn">as_query_engine</span>(filters=filters, similarity_top_k=<span class="tk-num">5</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Vector store externe (production)</h4>
+                        <p>
+                            Par défaut LlamaIndex stocke tout en mémoire. Pour la
+                            production, on branche un vrai vector store
+                            (<a href="postgresql.html">PostgreSQL</a> + pgvector,
+                            Qdrant, Chroma…) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> llama_index.vector_stores.postgres <span class="tk-keyword">import</span> PGVectorStore
+<span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> StorageContext, VectorStoreIndex
+
+vs = PGVectorStore.<span class="tk-fn">from_params</span>(
+    database=<span class="tk-string">"rag"</span>, host=<span class="tk-string">"localhost"</span>, password=<span class="tk-string">"…"</span>,
+    port=<span class="tk-num">5432</span>, user=<span class="tk-string">"app"</span>, table_name=<span class="tk-string">"chunks"</span>,
+    embed_dim=<span class="tk-num">768</span>,
+)
+storage = StorageContext.<span class="tk-fn">from_defaults</span>(vector_store=vs)
+index = VectorStoreIndex.<span class="tk-fn">from_documents</span>(docs, storage_context=storage)</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (config globale)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> Settings
+Settings.llm = <span class="tk-fn">Ollama</span>(model=<span class="tk-string">"llama3.2"</span>)
+Settings.embed_model = <span class="tk-fn">OllamaEmbedding</span>(model_name=<span class="tk-string">"nomic-embed-text"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (RAG minimal)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> llama_index.core <span class="tk-keyword">import</span> VectorStoreIndex, SimpleDirectoryReader
+docs = <span class="tk-fn">SimpleDirectoryReader</span>(<span class="tk-string">"./data"</span>).<span class="tk-fn">load_data</span>()
+index = VectorStoreIndex.<span class="tk-fn">from_documents</span>(docs)
+<span class="tk-fn">print</span>(index.<span class="tk-fn">as_query_engine</span>().<span class="tk-fn">query</span>(<span class="tk-string">"…"</span>))</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (persistance)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>index.storage_context.<span class="tk-fn">persist</span>(<span class="tk-string">"./store"</span>)
+storage = StorageContext.<span class="tk-fn">from_defaults</span>(persist_dir=<span class="tk-string">"./store"</span>)
+index = <span class="tk-fn">load_index_from_storage</span>(storage)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (chat multi-turn)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>chat = index.<span class="tk-fn">as_chat_engine</span>(chat_mode=<span class="tk-string">"context"</span>)
+chat.<span class="tk-fn">chat</span>(<span class="tk-string">"…"</span>); chat.<span class="tk-fn">chat</span>(<span class="tk-string">"…"</span>); chat.<span class="tk-fn">reset</span>()</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>LlamaIndex et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="langchain.html">LangChain</a></strong> —
+                        l'alternative généraliste. LlamaIndex est plus simple pour le
+                        RAG pur ; LangChain s'impose dès qu'on a besoin d'agents, de
+                        tools ou de chaînes multi-étapes complexes. Voir l'encadré
+                        comparatif plus haut.
+                    </li>
+                    <li>
+                        <strong><a href="ollama.html">Ollama</a></strong> /
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> —
+                        fournisseurs de LLMs et d'embeddings locaux. Packages dédiés
+                        <code>llama-index-llms-ollama</code> et
+                        <code>llama-index-embeddings-huggingface</code>.
+                    </li>
+                    <li>
+                        <strong><a href="postgresql.html">PostgreSQL</a></strong> — avec
+                        l'extension pgvector, devient un vector store production prêt
+                        pour LlamaIndex via <code>llama-index-vector-stores-postgres</code>.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — exposer un
+                        endpoint <code>/ask</code> qui appelle le query engine. Charger
+                        l'index au démarrage via le <em>lifespan</em>, le requêter à
+                        chaque requête HTTP.
+                    </li>
+                    <li>
+                        <strong><a href="streamlit.html">Streamlit</a></strong> — démos
+                        RAG en quelques dizaines de lignes : un input texte, un appel
+                        <code>query_engine.query()</code>, l'affichage de la réponse et
+                        des sources.
+                    </li>
+                    <li>
+                        <strong><a href="pydantic.html">Pydantic</a></strong> — pour
+                        forcer une structure de sortie au LLM
+                        (<code>StructuredLLM</code>, sortie typée). Indispensable dès
+                        qu'on veut consommer la réponse par programme plutôt que
+                        l'afficher brut.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — tracker des
+                        expériences RAG (variations de chunk_size, embed_model, top_k)
+                        et comparer les métriques d'évaluation produites par les
+                        <em>evaluators</em> LlamaIndex.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Le piège : embeddings et chunks figés</div>
+                    <p>
+                        Si tu changes de modèle d'embeddings ou de
+                        <code>chunk_size</code> après avoir indexé, <strong>il faut tout
+                        réindexer</strong>. Les vecteurs existants ne sont plus dans le
+                        même espace. À garder à l'esprit en prod : versionne le couple
+                        (embed_model, chunk_size) avec l'index lui-même, par exemple via
+                        <a href="dvc.html">DVC</a>.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.llamaindex.ai/" target="_blank" rel="noopener noreferrer">llamaindex.ai</a></li>
+                    <li>Documentation Python : <a href="https://docs.llamaindex.ai/" target="_blank" rel="noopener noreferrer">docs.llamaindex.ai</a></li>
+                    <li>Tutoriels « Starter » : <a href="https://docs.llamaindex.ai/en/stable/getting_started/starter_example/" target="_blank" rel="noopener noreferrer">docs.llamaindex.ai/en/stable/getting_started/starter_example</a></li>
+                    <li>LlamaHub (loaders & tools) : <a href="https://llamahub.ai/" target="_blank" rel="noopener noreferrer">llamahub.ai</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

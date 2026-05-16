@@ -142,6 +142,8 @@
                             <a href="${S}ollama.html">Ollama</a>
                             <a href="${S}pillow.html">Pillow</a>
                             <a href="${S}opencv.html">OpenCV</a>
+                            <a href="${S}langchain.html">LangChain</a>
+                            <a href="${S}llamaindex.html">LlamaIndex</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>
