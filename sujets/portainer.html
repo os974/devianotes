@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Portainer — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Portainer</div>
+                <h1>Portainer</h1>
+                <p class="subtitle">
+                    L'interface web qui rend Docker (et Kubernetes) accessibles à la
+                    souris : visualiser les conteneurs, démarrer une stack, consulter
+                    les logs, gérer les volumes — tout ce qu'on fait habituellement en
+                    CLI, mais dans un navigateur. Léger, auto-hébergé, et lui-même un
+                    simple conteneur Docker.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Quand on gère un seul conteneur, la CLI Docker (<code>docker ps</code>,
+                    <code>docker logs</code>) suffit largement. Mais dès qu'on en a une
+                    dizaine répartis sur plusieurs machines, retenir tous les noms et
+                    enchaîner les commandes devient fastidieux. Portainer apporte une
+                    couche visuelle au-dessus :
+                </p>
+                <ul>
+                    <li><strong>Vue d'ensemble</strong> — voir tous les conteneurs, leur
+                        état, l'usage CPU/RAM, en un coup d'œil.</li>
+                    <li><strong>Lecture rapide des logs</strong> — clic sur un conteneur,
+                        ses logs s'affichent en temps réel, sans <code>docker logs -f</code>.</li>
+                    <li><strong>Déploiement de stacks</strong> — uploader un
+                        <code>docker-compose.yml</code> via l'UI, Portainer le déploie et
+                        suit son état.</li>
+                    <li><strong>Gestion multi-environnements</strong> — un seul Portainer
+                        pour piloter plusieurs hôtes Docker, voire plusieurs clusters
+                        Kubernetes, depuis la même UI.</li>
+                    <li><strong>Console dans le navigateur</strong> — équivalent
+                        <code>docker exec -it</code> mais accessible à un coéquipier qui
+                        n'a pas SSH sur le serveur.</li>
+                    <li><strong>Templates et App Store</strong> — déployer un Postgres,
+                        un Grafana ou un MinIO en quelques clics depuis une bibliothèque
+                        intégrée.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Portainer CE vs Business ?</div>
+                    <p>
+                        <strong>Portainer Community Edition</strong> est gratuit et
+                        open-source — c'est ce qui est couvert dans cette fiche, et
+                        c'est largement suffisant pour la majorité des usages.
+                        <strong>Portainer Business Edition</strong> ajoute la gestion fine
+                        des rôles, l'authentification SSO, la gestion centralisée à très
+                        grande échelle (centaines de clusters). Gratuit jusqu'à 3 nœuds,
+                        puis payant. Sauf besoin d'entreprise spécifique, reste sur la CE.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Tu as un serveur où tournent plusieurs services
+                    (<a href="fastapi.html">FastAPI</a>, <a href="postgresql.html">PostgreSQL</a>,
+                    <a href="grafana.html">Grafana</a>…) en conteneurs Docker. Tu veux pouvoir
+                    les visualiser et donner accès en lecture à un coéquipier sans lui
+                    filer un compte SSH. Lancer Portainer prend une commande :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> volume create portainer_data
+
+<span class="tk-cmd">docker</span> run -d \
+  --name portainer \
+  --restart=always \
+  -p 9443:9443 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v portainer_data:/data \
+  portainer/portainer-ce:latest</code></pre>
+                </div>
+                <p>
+                    Portainer est lancé sur <code>https://localhost:9443</code>. Au
+                    premier accès, tu crées le compte admin. Portainer voit
+                    automatiquement <strong>tous les conteneurs Docker</strong> de la
+                    machine via le socket monté, et tu navigues sans plus rien à
+                    configurer.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Portainer</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Pré-requis : Docker installé</h4>
+                        <p>
+                            Portainer tourne dans Docker (cf. <a href="docker.html">Docker</a>)
+                            et a besoin d'accéder au démon de l'hôte via le socket
+                            <code>/var/run/docker.sock</code>. Aucune autre installation
+                            n'est nécessaire.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Lancer Portainer Community Edition</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Créer un volume persistant pour les données de Portainer</span>
+<span class="tk-cmd">docker</span> volume create portainer_data
+
+<span class="tk-comment"># Lancer le conteneur</span>
+<span class="tk-cmd">docker</span> run -d \
+  --name portainer \
+  --restart=always \
+  -p 9443:9443 \
+  -p 9000:9000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v portainer_data:/data \
+  portainer/portainer-ce:latest</code></pre>
+                        </div>
+                        <p>
+                            <code>9443</code> = UI en HTTPS (auto-signé par défaut),
+                            <code>9000</code> = UI en HTTP (à éviter en prod).
+                            <code>--restart=always</code> assure que Portainer redémarre
+                            avec la machine.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Le piège docker.sock</div>
+                            <p>
+                                Monter <code>/var/run/docker.sock</code> dans un conteneur
+                                lui donne <strong>les pleins pouvoirs sur le démon Docker
+                                hôte</strong> — équivalent root sur la machine. C'est
+                                voulu pour Portainer (il doit gérer Docker) mais ne fais
+                                jamais ça pour des conteneurs applicatifs ordinaires.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Première connexion</h4>
+                        <p>
+                            Ouvre <code>https://&lt;ton-host&gt;:9443</code> dans un
+                            navigateur. Le certificat est auto-signé → ton navigateur va
+                            râler, c'est normal. Au premier accès :
+                        </p>
+                        <ul>
+                            <li>Création du compte <strong>admin</strong> (à faire dans
+                                les 5 minutes après le démarrage, sinon Portainer se
+                                verrouille pour des raisons de sécurité — il faut alors
+                                redémarrer le conteneur).</li>
+                            <li>Sélection de l'environnement à manager → choisir
+                                <strong>« local »</strong> pour gérer le Docker de la
+                                même machine (le plus courant).</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Naviguer dans l'UI</h4>
+                        <p>
+                            Une fois connecté, les sections clés (menu de gauche) :
+                        </p>
+                        <ul>
+                            <li><strong>Containers</strong> — liste, démarrer/arrêter,
+                                logs, console, inspect (équivalent
+                                <code>docker inspect</code>).</li>
+                            <li><strong>Images</strong> — voir, télécharger
+                                (<code>pull</code>), supprimer les images locales.</li>
+                            <li><strong>Volumes</strong> — gérer les volumes nommés, voir
+                                lesquels sont orphelins (à nettoyer).</li>
+                            <li><strong>Networks</strong> — voir et créer des réseaux
+                                Docker.</li>
+                            <li><strong>Stacks</strong> — l'équivalent
+                                <code>docker compose up</code> mais dans l'UI (voir
+                                étape suivante).</li>
+                            <li><strong>App Templates</strong> — bibliothèque de stacks
+                                pré-définies (Postgres, WordPress, Nginx…) à déployer
+                                en un clic.</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Déployer une stack via l'UI</h4>
+                        <p>
+                            Le pattern le plus utile : tu as un
+                            <code>docker-compose.yml</code> que tu veux déployer sans
+                            SSH ni CLI.
+                        </p>
+                        <ol>
+                            <li><strong>Stacks → Add stack</strong></li>
+                            <li>Coller le contenu de ton <code>docker-compose.yml</code>
+                                dans l'éditeur, OU pointer un repo Git
+                                (Portainer pull automatiquement le compose, et peut même
+                                redéployer à chaque push avec un webhook).</li>
+                            <li><strong>Deploy the stack</strong> → Portainer fait
+                                l'équivalent de <code>docker compose up -d</code>.</li>
+                            <li>Suivre les logs en temps réel depuis l'onglet
+                                Containers de la stack.</li>
+                        </ol>
+                        <div class="info-box tip">
+                            <div class="info-title">Stack depuis Git, mode automatique</div>
+                            <p>
+                                Pointer un repo Git permet le pattern « GitOps » du
+                                pauvre : un push sur main = redéploiement auto sur le
+                                serveur. Sans Argo CD ni Flux. Pratique pour un projet
+                                personnel ou une petite équipe.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Donner accès à un coéquipier</h4>
+                        <p>
+                            Plutôt que partager le compte admin :
+                        </p>
+                        <ol>
+                            <li><strong>Users → Add user</strong> — créer un utilisateur
+                                standard avec mot de passe.</li>
+                            <li><strong>Endpoints</strong> ou <strong>Environments →
+                                Access</strong> → assigner cet utilisateur à un ou
+                                plusieurs environnements.</li>
+                            <li>En CE, deux rôles : <strong>standard user</strong>
+                                (peut tout faire sur les environnements autorisés) ou
+                                <strong>read-only</strong> (voit mais ne touche pas).
+                                Les rôles fins sont en Business.</li>
+                        </ol>
+                    </li>
+
+                    <li>
+                        <h4>Gérer plusieurs serveurs Docker</h4>
+                        <p>
+                            Portainer peut piloter plusieurs hôtes depuis la même UI via
+                            son <strong>Agent</strong> à déployer sur les autres machines :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash (sur la machine distante)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d \
+  --name portainer_agent \
+  --restart=always \
+  -p 9001:9001 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
+  portainer/agent:latest</code></pre>
+                        </div>
+                        <p>
+                            Côté Portainer : <strong>Environments → Add environment →
+                            Docker → Agent</strong> et indiquer
+                            <code>&lt;ip-distante&gt;:9001</code>. La nouvelle machine
+                            apparaît dans le sélecteur d'environnement.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Sécuriser pour la prod</h4>
+                        <ul>
+                            <li><strong>Mettre Portainer derrière un reverse-proxy</strong>
+                                (cf. <a href="traefik.html">Traefik</a>) avec un vrai
+                                certificat Let's Encrypt, plutôt que d'exposer le port
+                                9443 avec son cert auto-signé.</li>
+                            <li><strong>Ne jamais exposer le port 9000</strong> (HTTP)
+                                en prod — utiliser uniquement 9443.</li>
+                            <li><strong>Activer l'auth 2FA</strong> pour les comptes
+                                (depuis Settings → Authentication).</li>
+                            <li><strong>Ne pas binder Portainer sur 0.0.0.0</strong>
+                                si tu peux le restreindre au réseau interne (VPN, IP
+                                allowlist via le reverse-proxy).</li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <h4>Mise à jour</h4>
+                        <p>
+                            Portainer se met à jour en remplaçant le conteneur — le
+                            volume <code>portainer_data</code> conserve toute la config.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> pull portainer/portainer-ce:latest
+<span class="tk-cmd">docker</span> stop portainer &amp;&amp; <span class="tk-cmd">docker</span> rm portainer
+<span class="tk-comment"># Re-lancer avec la commande docker run de l'étape 2</span></code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (install)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> volume create portainer_data
+<span class="tk-cmd">docker</span> run -d --name portainer --restart=always \
+  -p 9443:9443 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v portainer_data:/data \
+  portainer/portainer-ce:latest</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (agent distant)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d --name portainer_agent --restart=always \
+  -p 9001:9001 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
+  portainer/agent:latest</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (maintenance)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> logs -f portainer            <span class="tk-comment"># debug du lancement</span>
+<span class="tk-cmd">docker</span> restart portainer             <span class="tk-comment"># déverrouiller setup</span>
+<span class="tk-cmd">docker</span> pull portainer/portainer-ce:latest  <span class="tk-comment"># MAJ image</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Portainer et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — Portainer
+                        <em>est</em> une UI au-dessus de Docker. Il ne remplace pas la CLI
+                        mais la complète : la CLI reste plus rapide pour des actions
+                        ponctuelles, Portainer est plus confortable pour la supervision
+                        et le travail en équipe.
+                    </li>
+                    <li>
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> —
+                        Portainer sait aussi gérer des clusters Kubernetes (déploiement,
+                        services, pods…). Plus simple que <code>kubectl</code> au début,
+                        mais moins puissant qu'un vrai outil comme Lens ou k9s pour les
+                        usages avancés.
+                    </li>
+                    <li>
+                        <strong><a href="traefik.html">Traefik</a></strong> — couple
+                        naturel : Portainer pour visualiser/déployer, Traefik pour
+                        router le trafic vers les conteneurs avec des certificats
+                        Let's Encrypt automatiques. Met Portainer lui-même derrière
+                        Traefik en prod.
+                    </li>
+                    <li>
+                        <strong><a href="uptime-kuma.html">Uptime Kuma</a></strong> —
+                        Portainer voit l'état <em>technique</em> des conteneurs (running,
+                        healthcheck) ; Uptime Kuma voit le service
+                        <em>du point de vue utilisateur</em> (réponse HTTP, latence).
+                        Les deux ensemble couvrent bien la supervision d'un petit parc.
+                    </li>
+                    <li>
+                        <strong><a href="grafana.html">Grafana</a></strong> /
+                        <strong><a href="prometheus.html">Prometheus</a></strong> —
+                        pour des métriques fines (CPU/RAM par conteneur sur le temps,
+                        alerting), passer à Prometheus + cAdvisor + Grafana. Portainer
+                        donne une vue instantanée, pas un historique long.
+                    </li>
+                    <li>
+                        <strong><a href="minio.html">MinIO</a></strong> /
+                        <strong><a href="postgresql.html">PostgreSQL</a></strong> /
+                        <strong><a href="mlflow.html">MLflow</a></strong> — tous ces
+                        services tournent souvent en conteneurs Docker dans un projet
+                        MLOps. Portainer devient le tableau de bord unique pour les
+                        suivre, plutôt que jongler entre les UIs de chacun.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Portainer ou docker-compose en CLI&nbsp;?</div>
+                    <p>
+                        Sur ton poste de dev, <code>docker compose up</code> en CLI est
+                        plus rapide. Portainer prend tout son sens quand tu as
+                        <strong>un serveur distant</strong> avec plusieurs services à
+                        surveiller, ou quand tu veux donner accès à quelqu'un qui n'est
+                        pas à l'aise en CLI. Les deux ne s'excluent pas : les stacks
+                        Portainer sont juste des compose files déployés via l'UI.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.portainer.io/" target="_blank" rel="noopener noreferrer">portainer.io</a></li>
+                    <li>Documentation CE : <a href="https://docs.portainer.io/" target="_blank" rel="noopener noreferrer">docs.portainer.io</a></li>
+                    <li>Démo publique : <a href="https://demo.portainer.io/" target="_blank" rel="noopener noreferrer">demo.portainer.io</a></li>
+                    <li>Image Docker officielle : <a href="https://hub.docker.com/r/portainer/portainer-ce" target="_blank" rel="noopener noreferrer">hub.docker.com/r/portainer/portainer-ce</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

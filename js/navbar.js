@@ -63,6 +63,7 @@
                             <a href="${S}docker.html">Docker</a>
                             <a href="${S}kubernetes.html">Kubernetes</a>
                             <a href="${S}traefik.html">Traefik</a>
+                            <a href="${S}portainer.html">Portainer</a>
                             <a href="${S}jupyter.html">Jupyter</a>
                         </div>
                         <div class="dropdown-section">
