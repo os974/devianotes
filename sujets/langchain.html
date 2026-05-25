@@ -65,7 +65,7 @@
                     <li><strong>Memory</strong> — garder le fil d'une conversation
                         multi-tours sans tout renvoyer manuellement à chaque appel.</li>
                     <li><strong>Intégrations</strong> — connecteurs prêts à l'emploi pour
-                        des centaines de services (Notion, GitHub, Slack, S3,
+                        des centaines de services (Notion, <a href="github.html">GitHub</a>, Slack, S3,
                         PostgreSQL…).</li>
                 </ul>
 
@@ -343,7 +343,7 @@ result = agent.<span class="tk-fn">invoke</span>({<span class="tk-string">"messa
 <span class="tk-fn">print</span>(result[<span class="tk-string">"messages"</span>][<span class="tk-num">-1</span>].content)</code></pre>
                         </div>
                         <p>
-                            Le LLM lit la docstring du tool, décide qu'il en a besoin,
+                            Le LLM lit la <a href="docstring.html">docstring</a> du tool, décide qu'il en a besoin,
                             l'appelle avec les bons paramètres, intègre le résultat dans
                             sa réponse finale. Sous-projet <strong>LangGraph</strong> du
                             même éditeur pour les agents complexes.

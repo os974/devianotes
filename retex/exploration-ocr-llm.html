@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Retex OCR + LLM (POC KYC) — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Retours d'expérience / Exploration OCR + LLM</div>
+                <h1>Retex — Explorer les OCR et LLM pour un POC KYC</h1>
+                <p class="subtitle">
+                    Comment quatre moteurs d'OCR ont été comparés sur des cartes
+                    d'identité, des passeports et des KBIS, avec un LLM en aval pour
+                    structurer le résultat. Ce qui marche, ce qui rate, et pourquoi
+                    aucun moteur seul ne suffit en production.
+                </p>
+            </header>
+
+            <div class="info-box tip">
+                <div class="info-title">Ce qu'on cherche dans ce retex</div>
+                <p>
+                    Non pas <em>quel OCR utiliser</em> dans l'absolu — la réponse
+                    dépend trop du contexte. Plutôt : <em>quelles questions se poser</em>
+                    avant de choisir, quelles erreurs éviter, et comment structurer
+                    l'expérimentation pour aboutir à une décision défendable. Les
+                    leçons sont volontairement génériques pour servir hors du KYC.
+                </p>
+            </div>
+
+            <section class="section">
+                <h2>1. Le contexte</h2>
+                <p>
+                    Objectif : un POC capable de transformer une photo de
+                    <strong>carte nationale d'identité</strong>, de
+                    <strong>passeport</strong> ou un PDF de <strong>KBIS</strong> en JSON
+                    structuré (nom, prénoms, numéro, dates, SIREN, adresse, etc.).
+                    Cible : un usage KYC (<em>Know Your Customer</em>) où l'extraction
+                    doit être fiable, auditable, et conforme RGPD.
+                </p>
+                <p>Les deux briques techniques :</p>
+                <ul>
+                    <li>Un <strong>moteur OCR</strong> pour transformer pixels en
+                        texte brut.</li>
+                    <li>Un <strong>LLM</strong> pour structurer le texte brut en JSON
+                        respectant un schéma fixe.</li>
+                </ul>
+                <p>
+                    Au démarrage : un seul OCR (<code>PaddleOCR</code>) et un seul LLM
+                    (<code>mistral-small-latest</code>). À la fin : quatre OCR
+                    branchables via un flag <code>--engine</code>, et un prompt LLM
+                    durci pour empêcher les hallucinations. La trajectoire est plus
+                    intéressante que la destination.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>2. Ce qu'on voulait</h2>
+                <ul>
+                    <li><strong>Qualité prod</strong> : viser &gt; 95 % de champs corrects
+                        sur les documents réels (cible KYC industrielle).</li>
+                    <li><strong>Conformité RGPD</strong> : minimiser les données
+                        envoyées à des tiers (les CNI contiennent visage, signature,
+                        hologrammes — données sensibles).</li>
+                    <li><strong>Latence acceptable</strong> : on est sur des flux KYC
+                        asynchrones, mais &lt; 30 s par document reste un seuil
+                        psychologique.</li>
+                    <li><strong>Comparaison équitable</strong> : pouvoir benchmarker
+                        plusieurs moteurs sur les mêmes échantillons, sans qu'un run
+                        en écrase un autre.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>3. La structure d'archi qu'on a fini par adopter</h2>
+                <p>
+                    L'OCR est devenu une <em>interface</em> dans le code, avec une
+                    signature unique <code>extract_text(file_path) → str</code>.
+                    Chaque moteur est un module Python autonome, importé à la volée
+                    pour ne pas payer le coût de chargement d'un moteur qu'on
+                    n'utilise pas.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python — sélecteur de moteur OCR</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>OCR_ENGINES = (<span class="tk-string">"paddleocr"</span>, <span class="tk-string">"mistral"</span>, <span class="tk-string">"doctr"</span>, <span class="tk-string">"paddleocr-vl"</span>)
+
+<span class="tk-keyword">def</span> _load_ocr_engine(engine):
+    <span class="tk-keyword">if</span> engine == <span class="tk-string">"paddleocr"</span>:
+        <span class="tk-keyword">from</span> ocr <span class="tk-keyword">import</span> extract_text
+        <span class="tk-keyword">return</span> extract_text
+    <span class="tk-keyword">if</span> engine == <span class="tk-string">"mistral"</span>:
+        <span class="tk-keyword">from</span> ocr_mistral <span class="tk-keyword">import</span> extract_text
+        <span class="tk-keyword">return</span> extract_text
+    <span class="tk-comment"># … doctr, paddleocr-vl</span></code></pre>
+                </div>
+                <p>
+                    Sortie rangée dans <code>outputs/&lt;engine&gt;/</code> pour permettre
+                    le diff côte à côte sans écrasement. Le pipeline aval (MRZ-first
+                    + structuration LLM) est <em>indépendant</em> du moteur OCR
+                    choisi : seule la première étape change. C'est ce découplage qui
+                    a rendu le benchmark possible.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>4. Les leçons (par ordre d'apparition)</h2>
+
+                <div class="info-box warn">
+                    <div class="info-title">Leçon 1 — Les bibliothèques OCR cassent leur API en mineure</div>
+                    <p>
+                        <strong>Symptôme :</strong> la sortie OCR contient
+                        <code>n / a / o / t / o / e / e / e / e</code>… (une lettre par
+                        ligne).
+                    </p>
+                    <p>
+                        <strong>Cause :</strong> PaddleOCR 3.5 a changé silencieusement
+                        son format de retour. <code>.ocr()</code> rend maintenant un
+                        <code>OCRResult</code> (dict) avec une clé
+                        <code>rec_texts</code>, alors qu'avant c'était une liste
+                        <code>[bbox, (text, score)]</code>. L'ancien code
+                        <code>[line[1][0] for line in result[0]]</code> itérait
+                        désormais sur les <em>clés</em> du dict
+                        (<code>input_path</code>, <code>page_index</code>,
+                        <code>doc_preprocessor_res</code>…) et prenait leur 2ᵉ
+                        caractère. D'où <code>n</code>, <code>a</code>, <code>o</code>…
+                    </p>
+                    <p>
+                        <strong>Leçon générique :</strong> verrouiller la version
+                        d'une bibliothèque OCR (ou de toute lib ML) dans
+                        <code>pyproject.toml</code> n'est pas du zèle — c'est une
+                        protection contre des bris d'API qui ne lèvent même pas
+                        d'exception. Si une lib renvoie soudain des données absurdes
+                        mais ne plante pas, regarde d'abord ses notes de release.
+                    </p>
+                </div>
+
+                <div class="info-box warn">
+                    <div class="info-title">Leçon 2 — Les paramètres par défaut d'un OCR sont rarement adaptés à ton cas</div>
+                    <p>
+                        <strong>Symptôme :</strong> sur une CNI française au format
+                        nouveau, PaddleOCR avec ses paramètres par défaut sort
+                        <code>nom: SERAN</code> au lieu de <code>MARTIN</code> et
+                        <code>prenom: Pa rl</code> au lieu de
+                        <code>Maëlis-Gaëlle, Marie</code>. Le sexe n'est même pas
+                        détecté.
+                    </p>
+                    <p>
+                        <strong>Cause :</strong> deux paramètres internes ont un
+                        impact massif et restent largement ignorés :
+                    </p>
+                    <ul>
+                        <li><code>text_det_limit_side_len</code> (défaut <strong>960</strong>) :
+                            la résolution interne utilisée pour la détection. À 960 px,
+                            une A4 scannée à 300 DPI (~2480 px) est <em>downscalée</em>
+                            avant la détection. Les petits caractères des CNI
+                            deviennent illisibles.</li>
+                        <li><code>text_det_unclip_ratio</code> (défaut <strong>1.5</strong>) :
+                            le facteur d'expansion des boîtes de détection. Sur les
+                            polices stylisées de sécurité, les ascendantes et
+                            descendantes sont coupées si le ratio est trop serré.</li>
+                    </ul>
+                    <p>
+                        Avec <code>limit_side_len=1920</code>, <code>unclip_ratio=2.0</code>,
+                        plus un pré-traitement OpenCV (CLAHE + denoising léger), la
+                        même CNI rend <code>MARTIN / Maëlis-Gaëlle, Marie / F</code>
+                        sans erreur. <strong>4 paramètres ont déplacé l'extraction de
+                        0 % à 100 %</strong> sur le sample le plus dur.
+                    </p>
+                    <p>
+                        <strong>Leçon générique :</strong> avant de conclure « cette
+                        bibliothèque ne marche pas pour mon cas », passe une demi-heure
+                        dans sa doc des paramètres. Les défauts sont souvent calibrés
+                        pour des benchmarks anglais ou chinois, pas pour ton domaine
+                        spécifique.
+                    </p>
+                </div>
+
+                <div class="info-box warn">
+                    <div class="info-title">Leçon 3 — Choisir « plus puissant » sans réfléchir peut empirer les choses</div>
+                    <p>
+                        <strong>Symptôme :</strong> en bascule de
+                        <code>latin_PP-OCRv5_mobile_rec</code> vers
+                        <code>PP-OCRv5_server_rec</code> (le modèle multilingue
+                        « server »), la sortie devient
+                        <code>HIAARANRANREEINASIERTE</code>,
+                        <code>NALAE</code>, <code>SEIEREERAE</code>… des séquences de
+                        caractères aléatoires.
+                    </p>
+                    <p>
+                        <strong>Cause :</strong> le modèle « server » est multilingue
+                        (latin + CJK + arabe + cyrillique). Sur un fond holographique
+                        bruité, il <em>invente</em> des patterns en piochant dans son
+                        vocabulaire entier. Le modèle latin spécialisé, plus contraint,
+                        échouait de manière reconnaissable (« SERAN » au lieu de
+                        « MARTIN ») ; le modèle plus puissant échoue de manière
+                        <em>incompréhensible</em>.
+                    </p>
+                    <p>
+                        <strong>Leçon générique :</strong> un modèle plus gros ou plus
+                        polyvalent n'est pas forcément meilleur pour ton cas.
+                        Spécialiser (alphabet latin, langue cible) restreint l'espace
+                        de sortie et rend les erreurs interprétables. Tu peux corriger
+                        une erreur cohérente, pas une hallucination.
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Leçon 4 — Quand un document a une zone machine-readable, c'est l'or pur</div>
+                    <p>
+                        Les CNI françaises nouveau format (≥ août 2021) et les
+                        passeports ont une <strong>MRZ</strong> (Machine-Readable Zone) :
+                        une ou plusieurs lignes de texte à police standardisée (OCR-B),
+                        avec des positions fixes et des <em>checksums intégrés</em>.
+                    </p>
+                    <p>
+                        On a basculé l'architecture sur le pattern <strong>MRZ-first</strong> :
+                    </p>
+                    <ul>
+                        <li>Si une MRZ est détectée et son score de validation
+                            est bon → ses champs structurés (numéro, dates, sexe,
+                            nationalité) sont la <em>vérité</em>. Le LLM n'intervient
+                            plus que pour récupérer la graphie accentuée des noms
+                            (la MRZ est ASCII pur — <code>MAELIS&lt;GAELLE</code>).</li>
+                        <li>Si la MRZ n'est pas exploitable → fallback sur le
+                            pipeline OCR + LLM standard.</li>
+                    </ul>
+                    <p>
+                        <strong>Leçon générique :</strong> avant d'attaquer un document
+                        avec de l'OCR généraliste, demande-toi s'il existe une
+                        sous-zone <em>conçue pour être lue par machine</em> :
+                        codes-barres, QR, MRZ, RIB structuré, tableaux à colonnes
+                        fixes. Une lecture déterministe sur une zone structurée
+                        bat presque toujours un OCR généraliste sur la zone visuelle,
+                        et est plus défendable en audit.
+                    </p>
+                </div>
+
+                <div class="info-box warn">
+                    <div class="info-title">Leçon 5 — Aucune source n'est fiable à 100 %, même la MRZ</div>
+                    <p>
+                        <strong>Symptôme :</strong> sur un passeport, la MRZ extrait
+                        <code>9ORFO2331</code> au lieu de <code>90RF02331</code>.
+                    </p>
+                    <p>
+                        <strong>Cause :</strong> le moteur OCR sous-jacent à
+                        <code>passporteye</code> (Tesseract) confond <code>O</code>
+                        et <code>0</code>. Le checksum ICAO compense partiellement
+                        mais pas toujours.
+                    </p>
+                    <p>
+                        <strong>Surprise :</strong> les autres OCR (PaddleOCR-VL
+                        notamment) lisent <em>correctement</em> ce numéro
+                        <code>90RF02331</code> dans la zone visuelle. La MRZ
+                        (déterministe a priori) est ici <em>moins fiable</em>
+                        que l'OCR de la zone visuelle.
+                    </p>
+                    <p>
+                        <strong>Leçon générique :</strong> traite chaque source
+                        comme une <em>opinion</em>, pas une vérité. Si tu as
+                        plusieurs sources sur le même champ (MRZ + visuel),
+                        croise-les et signale les divergences. Le « champion
+                        unique » est un mythe industriel — on est en train
+                        d'implémenter une cross-validation par champ pour Phase 3.
+                    </p>
+                </div>
+
+                <div class="info-box warn">
+                    <div class="info-title">Leçon 6 — Le LLM aval hallucine quand l'OCR est ambigu</div>
+                    <p>
+                        <strong>Symptômes observés :</strong>
+                    </p>
+                    <ul>
+                        <li>OCR rend <code>SL avenue</code> → LLM extrait
+                            <code>51 avenue</code> (le LLM <em>devine</em> que
+                            « SL » est probablement un code postal mal lu).</li>
+                        <li>OCR rend <code>42 a Duris</code> → LLM extrait
+                            <code>42 avenue Duris</code> (le LLM
+                            <em>reconstruit</em> un mot manquant).</li>
+                        <li>OCR rend un texte riche → LLM rend
+                            <code>representant_legal</code> comme un
+                            <em>objet imbriqué</em> au lieu d'une string, alors que
+                            le schéma demande une string.</li>
+                    </ul>
+                    <p>
+                        <strong>Cause :</strong> un LLM, instruit de structurer du
+                        texte en JSON, est entraîné à produire des réponses
+                        cohérentes et complètes. En l'absence d'instruction explicite,
+                        il <em>complète</em> les trous plutôt que de mettre
+                        <code>null</code>.
+                    </p>
+                    <p>
+                        <strong>Solution :</strong> durcir le prompt avec des règles
+                        explicites :
+                    </p>
+                    <div class="code-block">
+                        <div class="code-block-header">
+                            <span class="code-block-lang">extrait du prompt durci</span>
+                            <button class="copy-btn">Copier</button>
+                        </div>
+                        <pre><code>RÈGLES STRICTES :
+- Chaque champ DOIT être une chaîne de caractères (string) ou null.
+  INTERDICTION de retourner un objet imbriqué.
+- NE COMPLÈTE PAS un champ partiel : si l'OCR montre "X4RTBPFW"
+  tronqué, retourne ce que tu vois sans inventer la suite.
+- NE RECONSTRUIS PAS de mots manquants par déduction : si l'OCR
+  dit "a Duris" sans "rue/avenue", retourne "a Duris" tel quel
+  ou null — pas "rue Duris" ni "avenue Duris".
+- N'INVENTE PAS de chiffres : si l'OCR dit "SL avenue", garde tel
+  quel ou null — ne suppose pas que "SL" est "51".</code></pre>
+                    </div>
+                    <p>
+                        <strong>Effet de bord à anticiper :</strong> le prompt durci
+                        élimine les hallucinations dangereuses mais introduit aussi
+                        une <em>over-prudence</em> sur les nettoyages légitimes (le
+                        LLM ne nettoie plus le bruit terminal d'une MRZ mal lue,
+                        ne corrige plus un macron OCR en tréma). Le bon réflexe :
+                        déplacer ces nettoyages <strong>côté code déterministe</strong>
+                        (regex, post-traitement) plutôt que de compter sur le LLM
+                        pour ce travail.
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Leçon 7 — Aucun moteur OCR n'est universel sur des documents variés</div>
+                    <p>
+                        Quatre moteurs testés sur 5 échantillons (CNI, passeport,
+                        KBIS) — 29 champs au total :
+                    </p>
+                    <ul>
+                        <li>docTR (Mindee, local) : 90 % de champs corrects</li>
+                        <li>PaddleOCR tuné (local) : 86 %</li>
+                        <li>PaddleOCR-VL-1.5 (VLM local 0.9 B) : 83 %</li>
+                        <li>Mistral vision (API multimodale) : 79 %</li>
+                    </ul>
+                    <p>
+                        Mais surtout : <strong>ils ne ratent jamais les mêmes
+                        champs</strong>. Sur un sample où PaddleOCR confond un label
+                        avec une valeur (<code>nom: Sumame</code>), docTR sort le
+                        bon nom (<code>MARTIN</code>) et le bon numéro. Sur un autre
+                        où Mistral hallucine un <code>NATANA</code> au lieu de
+                        <code>NATACHA</code>, PaddleOCR le lit correctement.
+                    </p>
+                    <p>
+                        <strong>Conclusion industrielle :</strong> ne pas
+                        chercher le moteur miracle. Construire une
+                        <strong>architecture multi-moteurs avec vote ou fallback
+                        par champ</strong>. Avec un agrégateur simple (vote
+                        majoritaire + score de confiance), on peut viser 95 %+
+                        de précision sans toucher aux moteurs individuels.
+                    </p>
+                    <p>
+                        <strong>Leçon générique :</strong> quand aucun candidat n'atteint
+                        seul le seuil cible, l'ensemble peut le faire — à condition
+                        que les erreurs des candidats soient <em>décorrélées</em>.
+                        C'est exactement le pari du multi-moteurs ici.
+                    </p>
+                </div>
+
+                <div class="info-box tip">
+                    <div class="info-title">Leçon 8 — Le verrou n'est pas le moteur, c'est les données et l'évaluation</div>
+                    <p>
+                        Après quatre moteurs benchmarkés, l'instinct est de continuer
+                        à en tester un cinquième, un sixième. Mauvais réflexe.
+                    </p>
+                    <p>
+                        Sur 5 échantillons (dont 3 spécimens marqués SPÉCIMEN,
+                        1 synthétique de 1.5 KB), les écarts entre moteurs
+                        reposent sur <strong>1-3 différences sur 29 champs</strong>.
+                        Statistiquement, c'est dans le bruit. Le ranking actuel
+                        pourrait s'inverser sur les 10 documents suivants.
+                    </p>
+                    <p>
+                        Les vrais verrous identifiés :
+                    </p>
+                    <ul>
+                        <li><strong>Volume de données :</strong> sans 30-50 vrais
+                            documents anonymisés, aucune conclusion statistique
+                            n'est défendable.</li>
+                        <li><strong>Automatisation de l'évaluation :</strong>
+                            comparer JSON par JSON à la main ne scale pas
+                            au-delà de 10 samples. Il faut un
+                            <code>eval.py</code> avec golden JSON + calcul
+                            d'accuracy par champ.</li>
+                        <li><strong>Qualité d'image en entrée :</strong> sur un PNG
+                            haute résolution, tous les moteurs convergent.
+                            Sur un JPG fortement compressé, les écarts apparaissent.
+                            Le levier opérationnel le plus puissant n'est pas
+                            technique, c'est la <em>consigne UX au moment de la
+                            capture</em>.</li>
+                    </ul>
+                    <p>
+                        <strong>Leçon générique :</strong> avant d'ajouter un
+                        candidat de plus à un benchmark, demande-toi si tu as
+                        assez de données pour distinguer les candidats déjà
+                        présents. Quand le ROI sur « tester un de plus » devient
+                        plat, le ROI sur « avoir plus de données » et
+                        « automatiser le scoring » devient lui exponentiel.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>5. Le résultat final</h2>
+                <p>
+                    Le pipeline finalisé est interchangeable au niveau du moteur
+                    OCR, garde une étape MRZ-first quand c'est applicable, et passe
+                    par un LLM durci pour la structuration :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">schéma du pipeline</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>Document (image / PDF)
+        ↓
+[Moteur OCR sélectionnable : paddleocr | doctr | mistral | paddleocr-vl]
+        ↓
+Texte brut → outputs/&lt;engine&gt;/&lt;sample&gt;_ocr.txt
+        ↓
+[Pour CI / passeport : tentative MRZ via passporteye + Tesseract]
+        │                       │
+   pas de MRZ              MRZ exploitable
+        │                       │
+   prompt complet         prompt « accents-only » (LLM ne touche qu'aux diacritiques)
+        ↓                       ↓
+[LLM Mistral Small en mode JSON natif, prompt durci anti-hallucination]
+        ↓
+[Validation schéma + normalisation : SIREN, sexe, nationalité]
+        ↓
+JSON final → outputs/&lt;engine&gt;/&lt;sample&gt;_&lt;doc_type&gt;.json</code></pre>
+                </div>
+                <p>
+                    L'organisation des sorties par moteur (un sous-dossier
+                    chacun) rend la comparaison triviale : il suffit de comparer
+                    <code>outputs/paddleocr/martin_ci.json</code> avec
+                    <code>outputs/doctr/martin_ci.json</code> pour voir où chaque
+                    moteur trébuche.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>6. Ce qu'il reste à faire (Phase 3 et au-delà)</h2>
+                <ul>
+                    <li><strong>Cross-validation MRZ ↔ OCR visuel</strong> : utiliser
+                        un pattern alphanumérique attendu (regex) pour départager
+                        quand les deux sources divergent sur le numéro de
+                        document.</li>
+                    <li><strong>Pydantic strict</strong> sur les schémas : fermer
+                        définitivement le risque de dict imbriqué qui se faufile
+                        malgré le prompt durci.</li>
+                    <li><strong>Eval automatisée</strong> : <code>eval.py</code>
+                        avec golden JSON par sample, calcul d'accuracy par
+                        champ. Indispensable avant d'élargir à 30+ documents.</li>
+                    <li><strong>Ensemble multi-moteurs</strong> : agrégateur
+                        de vote majoritaire ou de score de confiance par
+                        champ. Conclusion logique de la Leçon 7 mais pas
+                        encore implémentée.</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Liens vers les fiches concernées</h2>
+                <ul>
+                    <li><a href="../sujets/huggingface.html">Hugging Face</a> —
+                        c'est l'hôte de plusieurs modèles testés (PaddleOCR-VL-1.5
+                        notamment) et le canal de distribution standard.</li>
+                    <li><a href="../sujets/opencv.html">OpenCV</a> — utilisé pour
+                        le pré-traitement d'image (CLAHE, denoising) en amont
+                        de PaddleOCR.</li>
+                    <li><a href="../sujets/pillow.html">Pillow</a> — manipulation
+                        d'image basique, conversion PDF → PNG (avec
+                        <code>pdf2image</code> en coulisses).</li>
+                    <li><a href="../sujets/pydantic.html">Pydantic</a> — prévu
+                        en Phase 3 pour fermer le contrat de sortie JSON.</li>
+                    <li><a href="../sujets/ollama.html">Ollama</a> — option
+                        d'inférence locale pour un futur LLM aval sans dépendance
+                        cloud.</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

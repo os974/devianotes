@@ -164,6 +164,7 @@
                             <a href="${R}build-injection.html">Injection au build</a>
                             <a href="${R}git-setup.html">Mettre un projet sur GitHub</a>
                             <a href="${R}pre-commit-setup.html">pre-commit sur ce site</a>
+                            <a href="${R}exploration-ocr-llm.html">Explorer OCR + LLM (POC KYC)</a>
                         </div>
                     </div>
                 </li>
