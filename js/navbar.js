@@ -109,6 +109,7 @@
                             <a href="${S}prometheus.html">Prometheus</a>
                             <a href="${S}grafana.html">Grafana</a>
                             <a href="${S}uptime-kuma.html">Uptime Kuma</a>
+                            <a href="${S}opentelemetry.html">OpenTelemetry</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Scraping</div>
@@ -145,6 +146,7 @@
                             <a href="${S}opencv.html">OpenCV</a>
                             <a href="${S}langchain.html">LangChain</a>
                             <a href="${S}llamaindex.html">LlamaIndex</a>
+                            <a href="${S}tesseract.html">Tesseract</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Documentation</div>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Tesseract — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Tesseract</div>
+                <h1>Tesseract</h1>
+                <p class="subtitle">
+                    Le moteur OCR open-source de référence, maintenu par Google. Extrait
+                    du texte depuis n'importe quelle image (photo, scan, PDF rasterisé)
+                    en plus de 100 langues, gratuitement, sans connexion. Le point de
+                    départ obligé de tout projet de reconnaissance de texte.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    L'<strong>OCR</strong> (Optical Character Recognition) transforme une
+                    image contenant du texte en texte exploitable par une machine. Cas
+                    d'usage typiques :
+                </p>
+                <ul>
+                    <li><strong>Numériser des documents papier</strong> — factures,
+                        contrats, courriers scannés.</li>
+                    <li><strong>Extraire les champs d'une pièce d'identité</strong>
+                        (KYC, vérification client, onboarding).</li>
+                    <li><strong>Lire des panneaux ou plaques d'immatriculation</strong>
+                        depuis des caméras.</li>
+                    <li><strong>Indexer le contenu textuel</strong> de PDFs scannés pour
+                        les rendre recherchables.</li>
+                    <li><strong>Pré-traitement avant un LLM</strong> — sortir le texte
+                        brut d'un document, puis demander à un LLM de le structurer.</li>
+                </ul>
+                <p>
+                    Tesseract est l'outil de référence parce qu'il est :
+                </p>
+                <ul>
+                    <li><strong>Gratuit et open-source</strong> (Apache 2.0).</li>
+                    <li><strong>Local</strong> — pas d'envoi de tes documents à un service
+                        tiers, ce qui compte pour des données sensibles
+                        (santé, juridique, RGPD strict).</li>
+                    <li><strong>Multi-langues</strong> — 100+ langues officielles, dont
+                        français, arabe, chinois, alphabets non-latins.</li>
+                    <li><strong>Mature</strong> — première version en 1985, encore
+                        amélioré aujourd'hui (v5 utilise un réseau LSTM moderne).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Tesseract, EasyOCR, PaddleOCR, LLM vision… c'est quoi la différence&nbsp;?</div>
+                    <p>
+                        <strong>Tesseract</strong> = moteur classique, basé règles +
+                        LSTM. Très bon sur du texte propre, dégrade vite si l'image est
+                        bruitée. <strong>EasyOCR</strong> et <strong>PaddleOCR</strong>
+                        sont des moteurs deep learning modernes : meilleurs sur les
+                        images difficiles (photos floues, textes manuscrits), mais plus
+                        lents et plus gourmands en GPU. <strong>LLM vision</strong>
+                        (GPT-4 Vision, Claude vision, LLaVA) « lit » l'image directement
+                        et peut même la structurer en JSON — état de l'art en 2026, mais
+                        payant et non-local. En pratique : commencer par Tesseract pour
+                        un prototype, monter en gamme si la qualité de l'image l'exige.
+                        Cf. <a href="../retex/exploration-ocr-llm.html">retex POC KYC</a>
+                        pour une comparaison concrète.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Extraire le texte d'une facture scannée en quelques lignes :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pytesseract
+<span class="tk-keyword">from</span> PIL <span class="tk-keyword">import</span> Image
+
+img = Image.<span class="tk-fn">open</span>(<span class="tk-string">"facture.jpg"</span>)
+
+<span class="tk-comment"># Texte brut, langue française</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(img, lang=<span class="tk-string">"fra"</span>)
+<span class="tk-fn">print</span>(texte)
+
+<span class="tk-comment"># Avec position de chaque mot (utile pour rechercher des champs)</span>
+data = pytesseract.<span class="tk-fn">image_to_data</span>(img, lang=<span class="tk-string">"fra"</span>,
+                                   output_type=pytesseract.Output.DICT)
+<span class="tk-keyword">for</span> i, mot <span class="tk-keyword">in</span> <span class="tk-fn">enumerate</span>(data[<span class="tk-string">"text"</span>]):
+    <span class="tk-keyword">if</span> mot.<span class="tk-fn">strip</span>():
+        <span class="tk-fn">print</span>(<span class="tk-string">f"{</span>mot<span class="tk-string">}"</span>,
+              data[<span class="tk-string">"left"</span>][i], data[<span class="tk-string">"top"</span>][i],
+              data[<span class="tk-string">"width"</span>][i], data[<span class="tk-string">"height"</span>][i])</code></pre>
+                </div>
+                <p>
+                    <code>image_to_string</code> renvoie le texte concaténé.
+                    <code>image_to_data</code> renvoie en plus la <strong>position
+                    (bounding box) de chaque mot</strong>, ce qui permet par exemple de
+                    repérer le champ « Total TTC » ou un numéro de pièce dans la page.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Tesseract</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer Tesseract sur le système</h4>
+                        <p>
+                            Tesseract est un binaire système, pas un paquet Python. Sur
+                            Debian/Ubuntu :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">sudo</span> apt install tesseract-ocr
+
+<span class="tk-comment"># Paquets de langue (à ajouter selon tes besoins)</span>
+<span class="tk-cmd">sudo</span> apt install tesseract-ocr-fra tesseract-ocr-eng
+
+<span class="tk-comment"># Vérifier</span>
+<span class="tk-cmd">tesseract</span> --version
+<span class="tk-cmd">tesseract</span> --list-langs</code></pre>
+                        </div>
+                        <p>
+                            Sur macOS : <code>brew install tesseract tesseract-lang</code>.
+                            Sur Windows : installeur sur le site officiel.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Dans un Dockerfile</div>
+                            <p>
+                                Pour livrer ton app : <code>RUN apt-get update &amp;&amp;
+                                apt-get install -y tesseract-ocr tesseract-ocr-fra</code>
+                                dans un Dockerfile basé sur python:slim. Ça évite que les
+                                utilisateurs de ton image n'aient à installer Tesseract
+                                à la main.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Installer le binding Python</h4>
+                        <p>
+                            <code>pytesseract</code> appelle simplement le binaire
+                            Tesseract derrière. Avec <a href="uv.html">UV</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add pytesseract pillow</code></pre>
+                        </div>
+                        <p>
+                            <a href="pillow.html">Pillow</a> est requis pour ouvrir les
+                            images. <a href="opencv.html">OpenCV</a> peut aussi servir
+                            pour du pré-traitement plus poussé.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Extraction de base</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pytesseract
+<span class="tk-keyword">from</span> PIL <span class="tk-keyword">import</span> Image
+
+img = Image.<span class="tk-fn">open</span>(<span class="tk-string">"document.png"</span>)
+
+<span class="tk-comment"># Anglais (par défaut)</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(img)
+
+<span class="tk-comment"># Une autre langue, ou plusieurs en même temps</span>
+texte_fr = pytesseract.<span class="tk-fn">image_to_string</span>(img, lang=<span class="tk-string">"fra"</span>)
+texte_multi = pytesseract.<span class="tk-fn">image_to_string</span>(img, lang=<span class="tk-string">"fra+eng"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Pré-traitement de l'image (clé du succès)</h4>
+                        <p>
+                            Tesseract donne ses meilleurs résultats sur une image
+                            <strong>en noir sur blanc, sans bruit, droite</strong>.
+                            Quelques étapes de pré-traitement font souvent la différence
+                            entre 60% et 95% de précision :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> cv2
+<span class="tk-keyword">import</span> numpy <span class="tk-keyword">as</span> np
+<span class="tk-keyword">from</span> PIL <span class="tk-keyword">import</span> Image
+<span class="tk-keyword">import</span> pytesseract
+
+<span class="tk-comment"># 1. Lire en niveaux de gris</span>
+img = cv2.<span class="tk-fn">imread</span>(<span class="tk-string">"scan.jpg"</span>, cv2.IMREAD_GRAYSCALE)
+
+<span class="tk-comment"># 2. Binariser (seuillage adaptatif, robuste aux variations de lumière)</span>
+img = cv2.<span class="tk-fn">adaptiveThreshold</span>(
+    img, <span class="tk-num">255</span>, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+    cv2.THRESH_BINARY, <span class="tk-num">31</span>, <span class="tk-num">15</span>,
+)
+
+<span class="tk-comment"># 3. Léger débruitage</span>
+img = cv2.<span class="tk-fn">medianBlur</span>(img, <span class="tk-num">3</span>)
+
+<span class="tk-comment"># 4. Passer à Tesseract via une Image PIL</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(Image.<span class="tk-fn">fromarray</span>(img), lang=<span class="tk-string">"fra"</span>)</code></pre>
+                        </div>
+                        <p>
+                            Sur des photos prises au smartphone, ajouter
+                            <strong>déskew</strong> (redressement) et
+                            <strong>resize</strong> à 300 DPI minimum si l'image est
+                            petite.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Modes de segmentation de page (PSM)</h4>
+                        <p>
+                            Tesseract a besoin d'un <em>indice</em> sur la structure de
+                            la page. Le mode par défaut suppose une page entière de
+                            texte. Pour autre chose (un seul mot, un bloc isolé, une
+                            ligne), il faut le préciser :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># PSM 6 = bloc de texte uniforme (souvent meilleur que le défaut)</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(img, config=<span class="tk-string">"--psm 6"</span>)
+
+<span class="tk-comment"># PSM 7 = une seule ligne de texte (utile pour plaques d'immatriculation)</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(img, config=<span class="tk-string">"--psm 7"</span>)
+
+<span class="tk-comment"># PSM 8 = un seul mot</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(img, config=<span class="tk-string">"--psm 8"</span>)
+
+<span class="tk-comment"># PSM 11 = texte sparse, sans ordre particulier (étiquettes, captures…)</span>
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(img, config=<span class="tk-string">"--psm 11"</span>)</code></pre>
+                        </div>
+                        <p>
+                            Liste complète : <code>tesseract --help-psm</code>.
+                            Tester plusieurs PSM est souvent la première chose à faire
+                            si la sortie est mauvaise.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Restreindre les caractères acceptés (whitelist)</h4>
+                        <p>
+                            Quand tu sais que tu attends seulement des chiffres ou un
+                            alphabet précis, le dire à Tesseract réduit drastiquement
+                            les erreurs :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Une plaque d'immatriculation belge : lettres maj + chiffres</span>
+config = <span class="tk-string">"--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"</span>
+plaque = pytesseract.<span class="tk-fn">image_to_string</span>(img_plaque, config=config)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Récupérer la position des mots (bounding boxes)</h4>
+                        <p>
+                            Indispensable dès qu'on doit retrouver un champ précis dans
+                            un document :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>data = pytesseract.<span class="tk-fn">image_to_data</span>(
+    img, lang=<span class="tk-string">"fra"</span>,
+    output_type=pytesseract.Output.DATAFRAME,   <span class="tk-comment"># pandas !</span>
+)
+
+<span class="tk-comment"># DataFrame avec colonnes : text, conf, left, top, width, height…</span>
+mots_fiables = data[data[<span class="tk-string">"conf"</span>] &gt; <span class="tk-num">60</span>]
+<span class="tk-fn">print</span>(mots_fiables[[<span class="tk-string">"text"</span>, <span class="tk-string">"conf"</span>, <span class="tk-string">"left"</span>, <span class="tk-string">"top"</span>]])</code></pre>
+                        </div>
+                        <p>
+                            <code>conf</code> est la confiance de Tesseract (0–100).
+                            Filtrer sur <code>conf &gt; 60</code> élimine les pseudo-mots
+                            extraits du bruit de l'image.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>OCR + LLM : duo gagnant pour structurer</h4>
+                        <p>
+                            Tesseract sort du texte brut, pas du JSON structuré. Le
+                            pattern moderne : Tesseract pour l'extraction → un LLM (via
+                            <a href="ollama.html">Ollama</a> ou
+                            <a href="huggingface.html">Hugging Face</a>) pour la mise
+                            en forme.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pytesseract, httpx, json
+<span class="tk-keyword">from</span> PIL <span class="tk-keyword">import</span> Image
+
+texte = pytesseract.<span class="tk-fn">image_to_string</span>(Image.<span class="tk-fn">open</span>(<span class="tk-string">"facture.jpg"</span>), lang=<span class="tk-string">"fra"</span>)
+
+<span class="tk-comment"># Demander à un LLM local de structurer</span>
+prompt = <span class="tk-string">f"""Voici le texte d'une facture. Extrais en JSON :
+{texte}
+
+Réponds UNIQUEMENT avec un objet JSON avec ces champs :
+numero, date, total_ttc, fournisseur."""</span>
+
+r = httpx.<span class="tk-fn">post</span>(<span class="tk-string">"http://localhost:11434/api/chat"</span>, json={
+    <span class="tk-string">"model"</span>: <span class="tk-string">"llama3.2"</span>,
+    <span class="tk-string">"messages"</span>: [{<span class="tk-string">"role"</span>: <span class="tk-string">"user"</span>, <span class="tk-string">"content"</span>: prompt}],
+    <span class="tk-string">"format"</span>: <span class="tk-string">"json"</span>,
+    <span class="tk-string">"stream"</span>: <span class="tk-keyword">False</span>,
+}, timeout=<span class="tk-num">120</span>)
+
+facture = json.<span class="tk-fn">loads</span>(r.<span class="tk-fn">json</span>()[<span class="tk-string">"message"</span>][<span class="tk-string">"content"</span>])
+<span class="tk-fn">print</span>(facture)</code></pre>
+                        </div>
+                        <p>
+                            C'est exactement le pattern décrit dans le
+                            <a href="../retex/exploration-ocr-llm.html">retex POC KYC</a> :
+                            OCR pour extraire, LLM pour structurer. Tesseract donne le
+                            texte, le LLM lui donne du sens.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (système)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">sudo</span> apt install tesseract-ocr tesseract-ocr-fra
+<span class="tk-cmd">tesseract</span> --list-langs
+<span class="tk-cmd">tesseract</span> --help-psm
+<span class="tk-cmd">tesseract</span> img.png stdout -l fra      <span class="tk-comment"># CLI direct</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (extraction)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pytesseract
+<span class="tk-keyword">from</span> PIL <span class="tk-keyword">import</span> Image
+img = Image.<span class="tk-fn">open</span>(<span class="tk-string">"…"</span>)
+pytesseract.<span class="tk-fn">image_to_string</span>(img, lang=<span class="tk-string">"fra"</span>)
+pytesseract.<span class="tk-fn">image_to_data</span>(img, output_type=pytesseract.Output.DATAFRAME)
+pytesseract.<span class="tk-fn">image_to_boxes</span>(img)             <span class="tk-comment"># caractères</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (config)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>config = <span class="tk-string">"--psm 6 --oem 1"</span>
+config += <span class="tk-string">" -c tessedit_char_whitelist=0123456789"</span>
+pytesseract.<span class="tk-fn">image_to_string</span>(img, config=config)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (preprocessing typique)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> cv2
+g = cv2.<span class="tk-fn">imread</span>(<span class="tk-string">"…"</span>, cv2.IMREAD_GRAYSCALE)
+g = cv2.<span class="tk-fn">adaptiveThreshold</span>(g, <span class="tk-num">255</span>,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, <span class="tk-num">31</span>, <span class="tk-num">15</span>)
+g = cv2.<span class="tk-fn">medianBlur</span>(g, <span class="tk-num">3</span>)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Tesseract et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="pillow.html">Pillow</a></strong> — ouvre les
+                        images dans le format attendu par pytesseract. Pour des
+                        manipulations simples (resize, rotate, convert), Pillow suffit.
+                    </li>
+                    <li>
+                        <strong><a href="opencv.html">OpenCV</a></strong> — pré-traitement
+                        sérieux : binarisation adaptative, débruitage, déskew,
+                        normalisation de contraste. Quasiment indispensable sur des
+                        photos non-scannées.
+                    </li>
+                    <li>
+                        <strong><a href="ollama.html">Ollama</a></strong> /
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> —
+                        le combo « OCR + LLM » : Tesseract extrait le texte brut, un LLM
+                        le structure en JSON ou répond à des questions sur son contenu.
+                        Pattern documenté dans le
+                        <a href="../retex/exploration-ocr-llm.html">retex POC KYC</a>.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pour
+                        exposer Tesseract comme service web : un endpoint
+                        <code>POST /ocr</code> qui reçoit une image en upload, la passe
+                        à Tesseract, renvoie le texte.
+                    </li>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> —
+                        <code>image_to_data</code> sait sortir un DataFrame directement.
+                        Filtrer par <code>conf</code>, regrouper par ligne, c'est du
+                        pandas standard.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> — installer
+                        Tesseract dans le Dockerfile de ton app évite la galère
+                        « tesseract not found » au déploiement.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand passer à un autre OCR&nbsp;?</div>
+                    <p>
+                        Si Tesseract donne moins de 80% de précision après
+                        pré-traitement sérieux, c'est probablement l'image qui est le
+                        problème. Tente <strong>EasyOCR</strong> ou
+                        <strong>PaddleOCR</strong> (deep learning, plus robustes au
+                        bruit) avant d'envisager un LLM vision. Si le but est d'extraire
+                        des <strong>champs structurés</strong> d'un document complexe
+                        (formulaires, tableaux), regarde du côté des LLM vision (GPT-4V,
+                        Claude vision) — ils font OCR + structuration en un seul appel.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://tesseract-ocr.github.io/" target="_blank" rel="noopener noreferrer">tesseract-ocr.github.io</a></li>
+                    <li>Code source : <a href="https://github.com/tesseract-ocr/tesseract" target="_blank" rel="noopener noreferrer">github.com/tesseract-ocr/tesseract</a></li>
+                    <li>pytesseract (binding Python) : <a href="https://github.com/madmaze/pytesseract" target="_blank" rel="noopener noreferrer">github.com/madmaze/pytesseract</a></li>
+                    <li>Liste des paquets de langue : <a href="https://github.com/tesseract-ocr/tessdata" target="_blank" rel="noopener noreferrer">github.com/tesseract-ocr/tessdata</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

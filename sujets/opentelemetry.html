@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>OpenTelemetry — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / OpenTelemetry</div>
+                <h1>OpenTelemetry</h1>
+                <p class="subtitle">
+                    Le standard ouvert d'observabilité moderne, qui unifie
+                    <strong>traces, métriques et logs</strong> sous une même API. Permet
+                    de suivre une requête à travers plusieurs services et de comprendre
+                    où elle passe son temps. Le troisième pilier qui manque souvent quand
+                    on a déjà Prometheus + Grafana.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    En microservices, une requête utilisateur passe par plusieurs
+                    services : front → API → base de données → service de mail. Quand
+                    « le bouton est lent », tu veux savoir <strong>lequel</strong> est
+                    en cause. Avec seulement les logs de chaque service, c'est une
+                    enquête fastidieuse. Avec les <em>traces</em> distribuées : tu vois
+                    en un graphique la requête entière, le temps passé à chaque étape.
+                </p>
+                <p>
+                    OpenTelemetry (« OTel ») normalise trois <em>signaux</em> :
+                </p>
+                <ul>
+                    <li><strong>Traces</strong> — la requête qui traverse N services,
+                        découpée en <em>spans</em> (= unités de travail) reliés en arbre.
+                        Réponse à « où passe le temps ? ».</li>
+                    <li><strong>Métriques</strong> — comme Prometheus : compteurs,
+                        gauges, histogrammes. Réponse à « combien de fois ? combien de
+                        temps en moyenne ? ».</li>
+                    <li><strong>Logs</strong> — corrélés aux traces (chaque log porte le
+                        <code>trace_id</code>). Réponse à « qu'est-ce qui s'est passé
+                        précisément ? ».</li>
+                </ul>
+                <p>
+                    OTel se compose de :
+                </p>
+                <ul>
+                    <li><strong>SDK Python</strong> — l'instrumentation qui produit les
+                        signaux dans ton code.</li>
+                    <li><strong>OTLP</strong> — le protocole standard pour exporter les
+                        signaux (HTTP ou gRPC).</li>
+                    <li><strong>OTel Collector</strong> — agent qui reçoit les signaux,
+                        les transforme, les ré-exporte vers le backend de ton choix.</li>
+                    <li><strong>Backends</strong> — Jaeger, Grafana Tempo, Honeycomb,
+                        Datadog… OTel est <em>vendor-neutral</em>, tu changes de backend
+                        sans toucher au code.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Traces, métriques, logs : les 3 piliers</div>
+                    <p>
+                        <strong>Logs</strong> (cf. <a href="logging.html">logging</a>,
+                        <a href="loguru.html">Loguru</a>, <a href="loki.html">Loki</a>) :
+                        des événements ponctuels, riches en détail.
+                        <strong>Métriques</strong> (cf.
+                        <a href="prometheus.html">Prometheus</a>) : des valeurs
+                        agrégées dans le temps, bonnes pour le monitoring et les
+                        alertes. <strong>Traces</strong> : le parcours d'une requête à
+                        travers N services, indispensable en microservices. Les trois
+                        sont complémentaires — OpenTelemetry permet de les
+                        <strong>corréler entre eux</strong> via un identifiant commun
+                        (<code>trace_id</code>).
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Instrumenter une appli <a href="fastapi.html">FastAPI</a> pour
+                    tracer chaque requête sans modifier la moindre ligne de code métier
+                    (instrumentation <em>automatique</em>) :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">uv</span> add opentelemetry-distro opentelemetry-exporter-otlp \
+       opentelemetry-instrumentation-fastapi
+<span class="tk-cmd">uv</span> run opentelemetry-bootstrap -a install
+
+<span class="tk-comment"># Lancer l'app avec instrumentation auto</span>
+<span class="tk-cmd">uv</span> run opentelemetry-instrument \
+    --traces_exporter otlp \
+    --service_name mon-api \
+    --exporter_otlp_endpoint http://localhost:4317 \
+    uvicorn main:app</code></pre>
+                </div>
+                <p>
+                    Sans toucher au code <code>main.py</code>, chaque requête HTTP est
+                    désormais tracée : durée, méthode, statut, et tous les appels HTTP
+                    sortants ou requêtes SQL inclus. Les traces partent en OTLP vers
+                    l'endpoint (typiquement un Collector ou Jaeger en local), où tu peux
+                    les visualiser en arbre. Magique pour debugger une lenteur quand on
+                    ne sait pas par où commencer.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser OpenTelemetry</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer un backend de traces en local</h4>
+                        <p>
+                            Le plus simple : <strong>Jaeger all-in-one</strong> dans Docker
+                            (UI + collector + storage en un conteneur). Pour de la prod,
+                            on préfère <strong>Grafana Tempo</strong> qui s'intègre dans
+                            la même UI que <a href="prometheus.html">Prometheus</a> et
+                            <a href="loki.html">Loki</a>.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name jaeger \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  jaegertracing/all-in-one:latest</code></pre>
+                        </div>
+                        <p>
+                            UI accessible sur <code>http://localhost:16686</code>.
+                            <code>4317</code> = OTLP gRPC, <code>4318</code> = OTLP HTTP.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Installer le SDK Python</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a>, deux paquets clés et un par
+                            framework instrumenté :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add opentelemetry-distro                      <span class="tk-comment"># API + SDK + bootstrap</span>
+<span class="tk-cmd">uv</span> add opentelemetry-exporter-otlp              <span class="tk-comment"># exporter OTLP</span>
+
+<span class="tk-comment"># Instrumentations automatiques (selon ce que ton app utilise)</span>
+<span class="tk-cmd">uv</span> add opentelemetry-instrumentation-fastapi
+<span class="tk-cmd">uv</span> add opentelemetry-instrumentation-httpx
+<span class="tk-cmd">uv</span> add opentelemetry-instrumentation-sqlalchemy
+<span class="tk-cmd">uv</span> add opentelemetry-instrumentation-logging
+
+<span class="tk-comment"># OU : détection auto de toutes les libs installées</span>
+<span class="tk-cmd">uv</span> run opentelemetry-bootstrap -a install</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Instrumentation automatique (zéro code)</h4>
+                        <p>
+                            Le plus magique : tu lances ton app via
+                            <code>opentelemetry-instrument</code>, qui « monkey-patch »
+                            les libs courantes pour produire des spans à ta place.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">opentelemetry-instrument</span> \
+    --traces_exporter otlp \
+    --metrics_exporter none \
+    --service_name mon-api \
+    --exporter_otlp_endpoint http://localhost:4317 \
+    uvicorn main:app --host 0.0.0.0 --port 8000</code></pre>
+                        </div>
+                        <p>
+                            FastAPI, httpx, requests, SQLAlchemy, psycopg, pymongo et
+                            d'autres sont automatiquement instrumentés. Pour chaque
+                            requête HTTP, un span racine est créé et tous les appels
+                            internes y sont rattachés.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Configuration par variables d'environnement</div>
+                            <p>
+                                On peut aussi tout configurer via env vars (plus propre
+                                en Docker) :
+                                <code>OTEL_SERVICE_NAME</code>,
+                                <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>,
+                                <code>OTEL_TRACES_EXPORTER</code>,
+                                <code>OTEL_PROPAGATORS</code>… Documenté côté OTel et
+                                <a href="pydantic.html">Pydantic</a> Settings peut les
+                                charger dans ton app.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Instrumentation manuelle (spans custom)</h4>
+                        <p>
+                            Pour tracer une fonction métier précise, on crée un span à
+                            la main :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> opentelemetry <span class="tk-keyword">import</span> trace
+
+tracer = trace.<span class="tk-fn">get_tracer</span>(__name__)
+
+<span class="tk-keyword">def</span> <span class="tk-fn">traiter_commande</span>(commande_id: <span class="tk-built">str</span>) -&gt; <span class="tk-built">dict</span>:
+    <span class="tk-keyword">with</span> tracer.<span class="tk-fn">start_as_current_span</span>(<span class="tk-string">"traiter_commande"</span>) <span class="tk-keyword">as</span> span:
+        span.<span class="tk-fn">set_attribute</span>(<span class="tk-string">"commande.id"</span>, commande_id)
+
+        <span class="tk-keyword">with</span> tracer.<span class="tk-fn">start_as_current_span</span>(<span class="tk-string">"valider"</span>):
+            <span class="tk-fn">valider</span>(commande_id)
+
+        <span class="tk-keyword">with</span> tracer.<span class="tk-fn">start_as_current_span</span>(<span class="tk-string">"payer"</span>):
+            <span class="tk-fn">payer</span>(commande_id)
+
+        <span class="tk-keyword">return</span> {<span class="tk-string">"status"</span>: <span class="tk-string">"ok"</span>}</code></pre>
+                        </div>
+                        <p>
+                            Le span <em>traiter_commande</em> englobe deux spans enfants
+                            <em>valider</em> et <em>payer</em>. Dans l'UI Jaeger, tu vois
+                            l'arbre complet avec les durées de chaque étape. Les
+                            attributs (<code>set_attribute</code>) sont indexés et
+                            cherchables (« montre-moi toutes les commandes en erreur de
+                            l'utilisateur X »).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Corréler logs et traces</h4>
+                        <p>
+                            L'avantage tueur d'OTel : chaque log peut porter le
+                            <code>trace_id</code> de la requête en cours. Tu cliques sur
+                            un span lent dans Jaeger, tu sautes dans Loki sur les logs
+                            de cette trace exacte.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> opentelemetry.instrumentation.logging <span class="tk-keyword">import</span> LoggingInstrumentor
+LoggingInstrumentor().<span class="tk-fn">instrument</span>(set_logging_format=<span class="tk-keyword">True</span>)
+
+<span class="tk-keyword">import</span> logging
+logging.<span class="tk-fn">basicConfig</span>(level=logging.INFO)
+log = logging.<span class="tk-fn">getLogger</span>(__name__)
+
+log.<span class="tk-fn">info</span>(<span class="tk-string">"Traitement commencé"</span>)
+<span class="tk-comment"># sortie : "2026-05-16 ... [trace_id=abc123 span_id=def456] Traitement commencé"</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Propagation entre services</h4>
+                        <p>
+                            Quand le service A appelle le service B en HTTP, OTel injecte
+                            automatiquement le <code>trace_id</code> dans les en-têtes
+                            (<code>traceparent</code>). Le service B le récupère et
+                            continue la trace. Résultat : une <strong>vue unifiée</strong>
+                            de la requête traversant N services.
+                        </p>
+                        <p>
+                            Ça marche tout seul si les deux services utilisent
+                            <code>opentelemetry-instrumentation-httpx</code> (ou
+                            <code>-requests</code>, <code>-grpc</code>…) côté client, et
+                            <code>-fastapi</code> (ou <code>-flask</code>) côté serveur.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>OTel Collector (recommandé en prod)</h4>
+                        <p>
+                            En prod, on n'envoie pas les traces directement de l'app
+                            vers le backend. On les envoie à un <strong>Collector</strong>
+                            (sidecar ou daemon) qui s'occupe du buffering, du sampling,
+                            de l'enrichissement, puis ré-exporte vers le backend.
+                        </p>
+                        <p>
+                            Avantage : tu changes de backend (Jaeger → Tempo → Datadog)
+                            sans toucher au code des apps. Tu peux aussi décider à la
+                            volée d'envoyer 100% des erreurs et 10% des requêtes
+                            normales (sampling intelligent).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash (Docker)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name otelcol \
+  -p 4317:4317 -p 4318:4318 \
+  -v $(<span class="tk-cmd">pwd</span>)/otelcol-config.yaml:/etc/otelcol/config.yaml \
+  otel/opentelemetry-collector:latest \
+  --config=/etc/otelcol/config.yaml</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Visualiser dans Grafana (combo complet)</h4>
+                        <p>
+                            La stack moderne complète :
+                        </p>
+                        <ul>
+                            <li><strong>OTel SDK + Collector</strong> dans les apps
+                                envoient logs + métriques + traces.</li>
+                            <li><strong>Loki</strong> stocke les logs.</li>
+                            <li><strong>Prometheus</strong> (ou Mimir) stocke les
+                                métriques.</li>
+                            <li><strong>Tempo</strong> stocke les traces (OSS,
+                                équivalent Jaeger côté backend).</li>
+                            <li><strong><a href="grafana.html">Grafana</a></strong>
+                                affiche les trois sources et permet de naviguer de l'une
+                                à l'autre (cliquer sur un span lent → voir les logs
+                                associés).</li>
+                        </ul>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (install)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">uv</span> add opentelemetry-distro opentelemetry-exporter-otlp
+<span class="tk-cmd">uv</span> run opentelemetry-bootstrap -a install
+<span class="tk-cmd">opentelemetry-instrument</span> --service_name X uvicorn main:app</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (env vars)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">export</span> OTEL_SERVICE_NAME=mon-api
+<span class="tk-cmd">export</span> OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+<span class="tk-cmd">export</span> OTEL_TRACES_EXPORTER=otlp
+<span class="tk-cmd">export</span> OTEL_METRICS_EXPORTER=none</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (spans manuels)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> opentelemetry <span class="tk-keyword">import</span> trace
+tracer = trace.<span class="tk-fn">get_tracer</span>(__name__)
+
+<span class="tk-keyword">with</span> tracer.<span class="tk-fn">start_as_current_span</span>(<span class="tk-string">"nom"</span>) <span class="tk-keyword">as</span> s:
+    s.<span class="tk-fn">set_attribute</span>(<span class="tk-string">"clef"</span>, <span class="tk-string">"valeur"</span>)
+    s.<span class="tk-fn">add_event</span>(<span class="tk-string">"étape importante"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (Jaeger en local)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d -p 16686:16686 -p 4317:4317 -p 4318:4318 \
+  jaegertracing/all-in-one:latest
+<span class="tk-comment"># UI : http://localhost:16686</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>OpenTelemetry et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="prometheus.html">Prometheus</a></strong> — OTel
+                        peut exporter ses métriques directement au format Prometheus, ou
+                        passer par un Collector. Les deux mondes convergent.
+                    </li>
+                    <li>
+                        <strong><a href="grafana.html">Grafana</a></strong> — Grafana
+                        affiche traces (Tempo), logs (Loki) et métriques (Prometheus)
+                        dans la même UI, avec navigation croisée. Couplé à OTel, c'est
+                        l'observabilité moderne complète.
+                    </li>
+                    <li>
+                        <strong><a href="loki.html">Loki</a></strong> — quand on logge
+                        en JSON avec le <code>trace_id</code> dedans, on peut sauter d'un
+                        span Tempo vers les logs Loki correspondants en un clic.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> —
+                        <code>opentelemetry-instrumentation-fastapi</code> instrumente
+                        toutes les routes sans une ligne de code. Idem pour
+                        <code>-flask</code>, <code>-django</code>.
+                    </li>
+                    <li>
+                        <strong><a href="httpx.html">httpx</a></strong> /
+                        <strong><a href="sqlalchemy.html">SQLAlchemy</a></strong> /
+                        <strong><a href="redis.html">Redis</a></strong> — instrumentations
+                        disponibles. Tous les appels sortants se rattachent
+                        automatiquement au span courant — propagation distribuée
+                        gratuite.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> /
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> — le
+                        Collector se déploie comme un service Docker ou un DaemonSet
+                        Kubernetes (un par nœud), avec toutes les apps qui pushent vers
+                        lui.
+                    </li>
+                    <li>
+                        <strong><a href="logging.html">logging</a></strong> /
+                        <strong><a href="loguru.html">Loguru</a></strong> — la
+                        corrélation log ↔ trace via <code>trace_id</code> est ce qui
+                        rend OTel vraiment puissant. Sans elle, tu retombes dans le
+                        debug en regardant les logs un par un.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand OTel devient indispensable</div>
+                    <p>
+                        Sur une appli monolithique, OTel apporte un confort marginal —
+                        les logs suffisent souvent. <strong>Dès qu'il y a plus de 2
+                        services qui s'appellent</strong>, OTel devient le seul moyen
+                        sain de comprendre où passe le temps. C'est exactement le
+                        problème typique d'une archi microservices comme
+                        <em>boxmicroservices</em>.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://opentelemetry.io/" target="_blank" rel="noopener noreferrer">opentelemetry.io</a></li>
+                    <li>Documentation Python : <a href="https://opentelemetry.io/docs/languages/python/" target="_blank" rel="noopener noreferrer">opentelemetry.io/docs/languages/python</a></li>
+                    <li>Liste des instrumentations Python : <a href="https://opentelemetry-python-contrib.readthedocs.io/" target="_blank" rel="noopener noreferrer">opentelemetry-python-contrib.readthedocs.io</a></li>
+                    <li>Grafana Tempo : <a href="https://grafana.com/oss/tempo/" target="_blank" rel="noopener noreferrer">grafana.com/oss/tempo</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
