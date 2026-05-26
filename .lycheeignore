@@ -82,3 +82,13 @@
 # requêtes des runners GitHub (réponses 403 ou timeouts). Lien valide
 # depuis un navigateur.
 ^https://pytorch\.org
+
+# Site officiel Kubernetes — connection failed depuis les runners GitHub
+# (le CDN Google Cloud filtre les plages d'IPs cloud). Liens valides
+# depuis un navigateur.
+^https://kubernetes\.io/
+
+# Page Grafana Tempo — répond 502 Bad Gateway de façon intermittente aux
+# runners GitHub. Les autres pages de grafana.com passent normalement,
+# c'est spécifique à /oss/tempo/.
+^https://grafana\.com/oss/tempo
