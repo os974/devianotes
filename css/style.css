@@ -592,6 +592,7 @@ body::before {
 
 .section-intro {
     color: var(--text-secondary);
+    font-size: 0.95rem;
     margin-bottom: 1rem;
 }
 
