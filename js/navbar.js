@@ -129,6 +129,7 @@
                             <a href="${S}pyspark.html">PySpark</a>
                             <a href="${S}polars.html">Polars</a>
                             <a href="${S}matplotlib.html">matplotlib</a>
+                            <a href="${S}seaborn.html">seaborn</a>
                             <a href="${S}numpy.html">NumPy</a>
                             <a href="${S}duckdb.html">DuckDB</a>
                             <a href="${S}mongodb.html">MongoDB</a>
@@ -143,6 +144,7 @@
                             <a href="${S}yolo.html">YOLO</a>
                             <a href="${S}scikit-learn.html">scikit-learn</a>
                             <a href="${S}pytorch.html">PyTorch</a>
+                            <a href="${S}tensorflow.html">TensorFlow</a>
                             <a href="${S}huggingface.html">Hugging Face</a>
                             <a href="${S}ollama.html">Ollama</a>
                             <a href="${S}pillow.html">Pillow</a>

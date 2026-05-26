@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>seaborn — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / seaborn</div>
+                <h1>seaborn</h1>
+                <p class="subtitle">
+                    Une surcouche statistique à <a href="matplotlib.html">matplotlib</a> qui
+                    produit des graphiques jolis par défaut en une seule ligne. Idéal pour
+                    l'exploration de données dans <a href="jupyter.html">Jupyter</a> :
+                    distributions, corrélations, régressions, heatmaps — tout ce qui demanderait
+                    dix lignes en matplotlib en demande une en seaborn.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    seaborn sert à <strong>tracer rapidement des graphiques statistiques
+                    propres</strong> à partir d'un DataFrame <a href="pandas.html">pandas</a>.
+                    L'idée centrale : on passe le DataFrame entier et on précise quelles
+                    colonnes vont en X, en Y, en couleur — seaborn fait le reste (légende,
+                    axes, palette, agrégations).
+                </p>
+                <p>
+                    Quelques cas typiques :
+                </p>
+                <ul>
+                    <li><strong>Distribution</strong> — <code>histplot</code>,
+                        <code>kdeplot</code>, <code>boxplot</code>, <code>violinplot</code>
+                        pour visualiser la forme d'une variable.</li>
+                    <li><strong>Relation entre deux variables</strong> —
+                        <code>scatterplot</code>, <code>lineplot</code>,
+                        <code>regplot</code> (avec droite de régression).</li>
+                    <li><strong>Comparaison entre groupes</strong> — <code>barplot</code>,
+                        <code>boxplot</code> avec un argument <code>hue</code> pour
+                        séparer par catégorie.</li>
+                    <li><strong>Matrice de corrélation</strong> — <code>heatmap</code> sur le
+                        <code>df.corr()</code> de pandas, le réflexe d'exploration n°1.</li>
+                    <li><strong>Vue d'ensemble multi-variables</strong> —
+                        <code>pairplot</code> qui croise toutes les colonnes deux à deux.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">seaborn ou matplotlib&nbsp;?</div>
+                    <p>
+                        seaborn est <strong>construit au-dessus</strong> de matplotlib : tout
+                        graphique seaborn est un graphique matplotlib qu'on peut customiser
+                        après coup avec l'API <code>ax</code> habituelle. Règle simple :
+                        <strong>seaborn pour avoir vite quelque chose de propre</strong>
+                        (exploration, rapports), <strong>matplotlib pur dès qu'on veut
+                        contrôler chaque détail</strong> (publication, intégration dans une
+                        appli). En pratique, on passe souvent par les deux dans le même
+                        notebook.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Reprenons le DataFrame de ventes : on veut visualiser la distribution
+                    du montant par produit, avec un boxplot, en une ligne.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> seaborn <span class="tk-keyword">as</span> sns
+<span class="tk-keyword">import</span> matplotlib.pyplot <span class="tk-keyword">as</span> plt
+<span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+
+df = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"ventes.csv"</span>)
+
+<span class="tk-comment"># Un boxplot par produit, coloré par région</span>
+sns.<span class="tk-fn">boxplot</span>(data=df, x=<span class="tk-string">"produit"</span>, y=<span class="tk-string">"montant"</span>, hue=<span class="tk-string">"region"</span>)
+plt.<span class="tk-fn">title</span>(<span class="tk-string">"Distribution des ventes par produit et région"</span>)
+plt.<span class="tk-fn">xticks</span>(rotation=<span class="tk-num">45</span>)
+plt.<span class="tk-fn">tight_layout</span>()
+plt.<span class="tk-fn">savefig</span>(<span class="tk-string">"ventes_box.png"</span>, dpi=<span class="tk-num">150</span>)
+plt.<span class="tk-fn">show</span>()</code></pre>
+                </div>
+                <p>
+                    Le pattern à retenir : <code>sns.&lt;type_de_plot&gt;(data=df, x=..., y=..., hue=...)</code>.
+                    L'argument <code>hue</code> ajoute une dimension par couleur, l'argument
+                    <code>col</code> (sur les variantes <code>*plot</code> de haut niveau) crée
+                    une grille de sous-graphes. La sauvegarde et l'affichage restent gérés par
+                    matplotlib (<code>plt.savefig</code>, <code>plt.show</code>).
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser seaborn</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer seaborn</h4>
+                        <p>
+                            Dépendance simple (cf. <a href="uv.html">UV</a>). seaborn installe
+                            automatiquement matplotlib et <a href="pandas.html">pandas</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add seaborn</code></pre>
+                        </div>
+                        <p>
+                            Convention d'import : <code>import seaborn as sns</code>. On
+                            importe presque toujours matplotlib en même temps pour ajuster
+                            titres, tailles ou sauvegarder.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Partir d'un DataFrame « long »</h4>
+                        <p>
+                            seaborn raisonne en données <strong>« tidy »</strong> (format
+                            long) : une ligne = une observation, une colonne par variable.
+                            Si tes données sont en format large (un produit par colonne),
+                            convertis-les d'abord :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Large → long avec pandas</span>
+df_long = df.<span class="tk-fn">melt</span>(
+    id_vars=<span class="tk-string">"date"</span>,
+    value_vars=[<span class="tk-string">"produit_A"</span>, <span class="tk-string">"produit_B"</span>],
+    var_name=<span class="tk-string">"produit"</span>,
+    value_name=<span class="tk-string">"ventes"</span>,
+)
+
+sns.<span class="tk-fn">lineplot</span>(data=df_long, x=<span class="tk-string">"date"</span>, y=<span class="tk-string">"ventes"</span>, hue=<span class="tk-string">"produit"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Les graphiques les plus utiles en exploration</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Distribution d'une variable</span>
+sns.<span class="tk-fn">histplot</span>(data=df, x=<span class="tk-string">"montant"</span>, kde=<span class="tk-keyword">True</span>)
+sns.<span class="tk-fn">kdeplot</span>(data=df, x=<span class="tk-string">"montant"</span>, hue=<span class="tk-string">"region"</span>)
+
+<span class="tk-comment"># Comparaison par groupe</span>
+sns.<span class="tk-fn">boxplot</span>(data=df, x=<span class="tk-string">"produit"</span>, y=<span class="tk-string">"montant"</span>)
+sns.<span class="tk-fn">violinplot</span>(data=df, x=<span class="tk-string">"produit"</span>, y=<span class="tk-string">"montant"</span>)
+sns.<span class="tk-fn">barplot</span>(data=df, x=<span class="tk-string">"produit"</span>, y=<span class="tk-string">"montant"</span>)  <span class="tk-comment"># moyenne + IC</span>
+
+<span class="tk-comment"># Relation entre deux variables</span>
+sns.<span class="tk-fn">scatterplot</span>(data=df, x=<span class="tk-string">"poids"</span>, y=<span class="tk-string">"prix"</span>, hue=<span class="tk-string">"categorie"</span>)
+sns.<span class="tk-fn">regplot</span>(data=df, x=<span class="tk-string">"poids"</span>, y=<span class="tk-string">"prix"</span>)        <span class="tk-comment"># + droite de régression</span>
+sns.<span class="tk-fn">lineplot</span>(data=df, x=<span class="tk-string">"date"</span>, y=<span class="tk-string">"ventes"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Matrice de corrélation en heatmap</h4>
+                        <p>
+                            Le réflexe pour repérer rapidement les liens entre variables
+                            numériques avant d'attaquer un modèle <a href="scikit-learn.html">scikit-learn</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>corr = df.<span class="tk-fn">select_dtypes</span>(<span class="tk-string">"number"</span>).<span class="tk-fn">corr</span>()
+
+sns.<span class="tk-fn">heatmap</span>(corr,
+            annot=<span class="tk-keyword">True</span>,             <span class="tk-comment"># afficher les valeurs</span>
+            fmt=<span class="tk-string">".2f"</span>,
+            cmap=<span class="tk-string">"coolwarm"</span>,
+            center=<span class="tk-num">0</span>,
+            vmin=<span class="tk-num">-1</span>, vmax=<span class="tk-num">1</span>)
+plt.<span class="tk-fn">title</span>(<span class="tk-string">"Matrice de corrélation"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Pairplot pour une vue d'ensemble</h4>
+                        <p>
+                            En une commande, on obtient toutes les paires (scatter) et toutes
+                            les distributions (histogramme sur la diagonale). Très utile en
+                            début d'EDA :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>sns.<span class="tk-fn">pairplot</span>(df, hue=<span class="tk-string">"espece"</span>, diag_kind=<span class="tk-string">"kde"</span>)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Attention au coût</div>
+                            <p>
+                                <code>pairplot</code> trace N×N graphes. Avec un DataFrame qui
+                                a 20 colonnes numériques, c'est 400 sous-graphiques — lent et
+                                illisible. Filtre avec l'argument <code>vars=[...]</code> ou
+                                applique <code>pairplot</code> sur un échantillon.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Customiser après coup avec matplotlib</h4>
+                        <p>
+                            Toute fonction seaborn retourne un objet matplotlib
+                            (<code>Axes</code> ou <code>FacetGrid</code>). On peut donc
+                            chaîner avec l'API matplotlib habituelle pour ajuster :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>ax = sns.<span class="tk-fn">boxplot</span>(data=df, x=<span class="tk-string">"produit"</span>, y=<span class="tk-string">"montant"</span>)
+ax.<span class="tk-fn">set_title</span>(<span class="tk-string">"Ventes par produit"</span>)
+ax.<span class="tk-fn">set_ylabel</span>(<span class="tk-string">"Montant (€)"</span>)
+ax.<span class="tk-fn">tick_params</span>(axis=<span class="tk-string">"x"</span>, rotation=<span class="tk-num">45</span>)
+plt.<span class="tk-fn">tight_layout</span>()
+plt.<span class="tk-fn">savefig</span>(<span class="tk-string">"out.png"</span>, dpi=<span class="tk-num">150</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Thèmes et palettes</h4>
+                        <p>
+                            Une ligne change l'allure de tous les graphiques du notebook :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Style global (whitegrid, darkgrid, white, dark, ticks)</span>
+sns.<span class="tk-fn">set_theme</span>(style=<span class="tk-string">"whitegrid"</span>, context=<span class="tk-string">"notebook"</span>)
+
+<span class="tk-comment"># Palette pour les couleurs catégorielles</span>
+sns.<span class="tk-fn">set_palette</span>(<span class="tk-string">"Set2"</span>)        <span class="tk-comment"># pastel, deep, muted, colorblind...</span>
+
+<span class="tk-comment"># Palette ponctuelle sur un seul plot</span>
+sns.<span class="tk-fn">barplot</span>(data=df, x=<span class="tk-string">"produit"</span>, y=<span class="tk-string">"montant"</span>, palette=<span class="tk-string">"viridis"</span>)</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Le réflexe accessibilité</div>
+                            <p>
+                                La palette <code>"colorblind"</code> est lisible par la
+                                majorité des daltoniens. Pour des données continues, préfère
+                                <code>"viridis"</code> ou <code>"magma"</code> aux arcs-en-ciel
+                                (jet) qui déforment la perception des écarts.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Grilles de sous-graphes avec FacetGrid / catplot</h4>
+                        <p>
+                            Les fonctions de haut niveau (<code>relplot</code>,
+                            <code>displot</code>, <code>catplot</code>) acceptent
+                            <code>col</code> et <code>row</code> pour découper les données :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Un scatter par région, deux colonnes</span>
+sns.<span class="tk-fn">relplot</span>(data=df,
+            x=<span class="tk-string">"poids"</span>, y=<span class="tk-string">"prix"</span>,
+            hue=<span class="tk-string">"categorie"</span>,
+            col=<span class="tk-string">"region"</span>, col_wrap=<span class="tk-num">2</span>,
+            height=<span class="tk-num">4</span>)</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (import &amp; thème)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> seaborn <span class="tk-keyword">as</span> sns
+<span class="tk-keyword">import</span> matplotlib.pyplot <span class="tk-keyword">as</span> plt
+sns.<span class="tk-fn">set_theme</span>(style=<span class="tk-string">"whitegrid"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (distributions)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>sns.<span class="tk-fn">histplot</span>(data=df, x=<span class="tk-string">"col"</span>, kde=<span class="tk-keyword">True</span>)
+sns.<span class="tk-fn">kdeplot</span>(data=df, x=<span class="tk-string">"col"</span>, hue=<span class="tk-string">"cat"</span>)
+sns.<span class="tk-fn">boxplot</span>(data=df, x=<span class="tk-string">"cat"</span>, y=<span class="tk-string">"val"</span>)
+sns.<span class="tk-fn">violinplot</span>(data=df, x=<span class="tk-string">"cat"</span>, y=<span class="tk-string">"val"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (relations)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>sns.<span class="tk-fn">scatterplot</span>(data=df, x=<span class="tk-string">"a"</span>, y=<span class="tk-string">"b"</span>, hue=<span class="tk-string">"c"</span>)
+sns.<span class="tk-fn">regplot</span>(data=df, x=<span class="tk-string">"a"</span>, y=<span class="tk-string">"b"</span>)
+sns.<span class="tk-fn">lineplot</span>(data=df, x=<span class="tk-string">"date"</span>, y=<span class="tk-string">"val"</span>)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (vues globales)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>sns.<span class="tk-fn">heatmap</span>(df.<span class="tk-fn">corr</span>(), annot=<span class="tk-keyword">True</span>, cmap=<span class="tk-string">"coolwarm"</span>)
+sns.<span class="tk-fn">pairplot</span>(df, hue=<span class="tk-string">"cible"</span>)
+sns.<span class="tk-fn">relplot</span>(data=df, x=<span class="tk-string">"a"</span>, y=<span class="tk-string">"b"</span>, col=<span class="tk-string">"groupe"</span>)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>seaborn et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="matplotlib.html">matplotlib</a></strong> — la couche
+                        qui dessine vraiment. Tout objet seaborn est manipulable avec l'API
+                        matplotlib (<code>ax.set_title</code>, <code>plt.savefig</code>…).
+                        Connaître matplotlib reste indispensable pour personnaliser.
+                    </li>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> — la source de
+                        données quasi-universelle pour seaborn. L'argument <code>data=df</code>
+                        accepte directement un DataFrame, et beaucoup de plots font des
+                        agrégations en interne (moyenne, IC) avec <code>groupby</code>.
+                    </li>
+                    <li>
+                        <strong><a href="jupyter.html">Jupyter</a></strong> — l'environnement
+                        naturel pour itérer sur un graphique. Les figures seaborn s'affichent
+                        sous la cellule comme n'importe quel <code>fig</code> matplotlib.
+                    </li>
+                    <li>
+                        <strong><a href="scikit-learn.html">scikit-learn</a></strong> — la
+                        heatmap de corrélation et le pairplot sont les deux outils standards
+                        pour explorer un dataset avant un modèle. <code>sns.heatmap</code> sur
+                        une matrice de confusion <code>confusion_matrix(...)</code> est aussi
+                        le réflexe d'évaluation.
+                    </li>
+                    <li>
+                        <strong><a href="streamlit.html">Streamlit</a></strong> — affiche
+                        une figure seaborn via <code>st.pyplot(fig)</code> (puisque c'est
+                        une figure matplotlib en dessous). Pratique pour livrer un mini-EDA
+                        à un métier.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand seaborn ne suffit plus</div>
+                    <p>
+                        seaborn brille pour l'<strong>exploration</strong> et les
+                        <strong>visualisations statistiques standards</strong>. Dès qu'on a
+                        besoin de graphiques très spécifiques (annotations complexes, axes
+                        secondaires, animations) ou interactifs (zoom, survol), on passe à
+                        matplotlib pur ou à <strong>plotly</strong>. Et pour un dashboard
+                        métier en production, on n'utilise pas seaborn — on rend du HTML
+                        avec Streamlit ou un outil dédié.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://seaborn.pydata.org/" target="_blank" rel="noopener noreferrer">seaborn.pydata.org</a></li>
+                    <li>Galerie d'exemples (le meilleur point d'entrée) : <a href="https://seaborn.pydata.org/examples/index.html" target="_blank" rel="noopener noreferrer">seaborn.pydata.org/examples</a></li>
+                    <li>Tutoriel officiel : <a href="https://seaborn.pydata.org/tutorial.html" target="_blank" rel="noopener noreferrer">seaborn.pydata.org/tutorial</a></li>
+                    <li>API reference : <a href="https://seaborn.pydata.org/api.html" target="_blank" rel="noopener noreferrer">seaborn.pydata.org/api</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

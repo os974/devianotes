@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>TensorFlow — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / TensorFlow</div>
+                <h1>TensorFlow</h1>
+                <p class="subtitle">
+                    Le framework de deep learning de Google, et son API haut niveau
+                    <strong>Keras</strong>. Concurrent direct de <a href="pytorch.html">PyTorch</a>,
+                    moins dominant aujourd'hui côté recherche mais toujours présent en
+                    production, en mobile (TF Lite) et dans tout l'écosystème Google.
+                    À connaître pour lire le code des modèles plus anciens et savoir choisir
+                    entre les deux.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    TensorFlow sert à <strong>entraîner et déployer des réseaux de
+                    neurones</strong> en Python (et au-delà). Comme PyTorch, il propose des
+                    tenseurs accélérés GPU/TPU, du calcul automatique des gradients et une
+                    bibliothèque de couches prêtes à l'emploi. Sa particularité historique :
+                    un graphe de calcul optimisé pour le déploiement.
+                </p>
+                <p>
+                    En pratique, on l'utilise presque toujours via <strong>Keras</strong>,
+                    l'API haut niveau intégrée depuis TF 2.0 :
+                </p>
+                <ul>
+                    <li><strong>tf.Tensor</strong> — le tableau multi-dim équivalent du
+                        tensor PyTorch et du <a href="numpy.html">NumPy</a> ndarray.</li>
+                    <li><strong>tf.keras.Sequential / Model</strong> — la façon de définir
+                        un modèle : on empile des couches, on appelle <code>compile()</code>
+                        puis <code>fit()</code>.</li>
+                    <li><strong>tf.data.Dataset</strong> — un pipeline de données
+                        performant pour streamer, mélanger, batcher des données vers le
+                        modèle.</li>
+                    <li><strong>SavedModel</strong> — le format d'export universel pour
+                        servir le modèle (TF Serving, TF Lite, TensorFlow.js).</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">TensorFlow vs PyTorch : lequel choisir en 2026&nbsp;?</div>
+                    <p>
+                        En 2026, <strong><a href="pytorch.html">PyTorch</a> domine</strong>
+                        largement la recherche (la quasi-totalité des papiers récents) et de
+                        plus en plus l'industrie. TensorFlow reste pertinent dans trois cas :
+                        <strong>code legacy</strong> (beaucoup de pipelines Google et grands
+                        groupes), <strong>mobile / embarqué</strong> (TF Lite est plus mature
+                        que les alternatives PyTorch), et <strong>écosystème Google</strong>
+                        (TPU, Vertex AI). Si tu démarres un projet sans contrainte
+                        particulière, PyTorch est généralement le meilleur choix. Si tu
+                        rejoins une équipe TF existante, sa stack est très solide aussi.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Le « hello world » deep learning : un classifieur sur MNIST en
+                    quelques lignes avec Keras.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> tensorflow <span class="tk-keyword">as</span> tf
+<span class="tk-keyword">from</span> tensorflow <span class="tk-keyword">import</span> keras
+
+<span class="tk-comment"># 1) Charger les données (intégré dans Keras)</span>
+(X_train, y_train), (X_test, y_test) = keras.datasets.mnist.<span class="tk-fn">load_data</span>()
+X_train, X_test = X_train / <span class="tk-num">255.0</span>, X_test / <span class="tk-num">255.0</span>
+
+<span class="tk-comment"># 2) Définir le modèle (séquence de couches)</span>
+model = keras.<span class="tk-fn">Sequential</span>([
+    keras.layers.<span class="tk-fn">Flatten</span>(input_shape=(<span class="tk-num">28</span>, <span class="tk-num">28</span>)),
+    keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">128</span>, activation=<span class="tk-string">"relu"</span>),
+    keras.layers.<span class="tk-fn">Dropout</span>(<span class="tk-num">0.2</span>),
+    keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">10</span>, activation=<span class="tk-string">"softmax"</span>),
+])
+
+<span class="tk-comment"># 3) Compiler (loss + optimiseur + métriques)</span>
+model.<span class="tk-fn">compile</span>(optimizer=<span class="tk-string">"adam"</span>,
+              loss=<span class="tk-string">"sparse_categorical_crossentropy"</span>,
+              metrics=[<span class="tk-string">"accuracy"</span>])
+
+<span class="tk-comment"># 4) Entraîner</span>
+model.<span class="tk-fn">fit</span>(X_train, y_train, epochs=<span class="tk-num">5</span>, validation_split=<span class="tk-num">0.1</span>)
+
+<span class="tk-comment"># 5) Évaluer</span>
+loss, acc = model.<span class="tk-fn">evaluate</span>(X_test, y_test)
+<span class="tk-fn">print</span>(<span class="tk-string">f"accuracy test : </span><span class="tk-string">{</span>acc<span class="tk-string">:.2%}"</span>)</code></pre>
+                </div>
+                <p>
+                    Le pattern à retenir : <strong>Sequential → compile → fit →
+                    evaluate</strong>. C'est ce qui différencie le plus TensorFlow/Keras de
+                    PyTorch : la boucle d'entraînement est <em>cachée</em> dans
+                    <code>fit()</code>, là où PyTorch te demande d'écrire la boucle à la
+                    main. Plus rapide à démarrer, moins flexible quand on veut customiser.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser TensorFlow</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer TensorFlow</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a>, version CPU (suffisante pour
+                            apprendre) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add tensorflow</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">GPU NVIDIA, Apple Silicon, autres</div>
+                            <p>
+                                Sur Linux avec une carte NVIDIA, le package
+                                <code>tensorflow</code> inclut le support CUDA depuis TF 2.14.
+                                Sur Apple Silicon (M1/M2/M3), installer
+                                <code>tensorflow-macos</code> +
+                                <code>tensorflow-metal</code> pour l'accélération GPU. Sur
+                                Windows natif, TensorFlow n'a plus de support GPU depuis 2.10
+                                — il faut passer par WSL2.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Manipuler des tenseurs</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> tensorflow <span class="tk-keyword">as</span> tf
+
+<span class="tk-comment"># Créer des tenseurs</span>
+t = tf.<span class="tk-fn">constant</span>([[<span class="tk-num">1.</span>, <span class="tk-num">2.</span>], [<span class="tk-num">3.</span>, <span class="tk-num">4.</span>]])
+tf.<span class="tk-fn">zeros</span>((<span class="tk-num">3</span>, <span class="tk-num">4</span>)); tf.<span class="tk-fn">ones</span>(<span class="tk-num">10</span>); tf.random.<span class="tk-fn">normal</span>((<span class="tk-num">3</span>, <span class="tk-num">4</span>))
+
+<span class="tk-comment"># Inspection</span>
+t.shape, t.dtype, t.device
+
+<span class="tk-comment"># Opérations vectorisées (comme NumPy)</span>
+t + <span class="tk-num">1</span>; t * <span class="tk-num">2</span>; tf.<span class="tk-fn">matmul</span>(t, tf.<span class="tk-fn">transpose</span>(t))
+
+<span class="tk-comment"># Conversion NumPy ↔ TensorFlow</span>
+<span class="tk-keyword">import</span> numpy <span class="tk-keyword">as</span> np
+arr = t.<span class="tk-fn">numpy</span>()                       <span class="tk-comment"># tf → array</span>
+t2 = tf.<span class="tk-fn">convert_to_tensor</span>(arr)         <span class="tk-comment"># array → tf</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Construire un modèle Keras</h4>
+                        <p>
+                            Trois styles, du plus simple au plus flexible :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># 1) Sequential — empilement linéaire</span>
+model = keras.<span class="tk-fn">Sequential</span>([
+    keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">64</span>, activation=<span class="tk-string">"relu"</span>, input_shape=(<span class="tk-num">10</span>,)),
+    keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">3</span>, activation=<span class="tk-string">"softmax"</span>),
+])
+
+<span class="tk-comment"># 2) Functional API — graphe (multi-entrées, branches)</span>
+inputs = keras.<span class="tk-fn">Input</span>(shape=(<span class="tk-num">10</span>,))
+x = keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">64</span>, activation=<span class="tk-string">"relu"</span>)(inputs)
+outputs = keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">3</span>, activation=<span class="tk-string">"softmax"</span>)(x)
+model = keras.<span class="tk-fn">Model</span>(inputs, outputs)
+
+<span class="tk-comment"># 3) Subclassing — comme nn.Module en PyTorch</span>
+<span class="tk-keyword">class</span> <span class="tk-fn">MLP</span>(keras.Model):
+    <span class="tk-keyword">def</span> <span class="tk-fn">__init__</span>(<span class="tk-keyword">self</span>):
+        <span class="tk-fn">super</span>().<span class="tk-fn">__init__</span>()
+        <span class="tk-keyword">self</span>.d1 = keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">64</span>, activation=<span class="tk-string">"relu"</span>)
+        <span class="tk-keyword">self</span>.d2 = keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">3</span>, activation=<span class="tk-string">"softmax"</span>)
+
+    <span class="tk-keyword">def</span> <span class="tk-fn">call</span>(<span class="tk-keyword">self</span>, x):
+        <span class="tk-keyword">return</span> <span class="tk-keyword">self</span>.<span class="tk-fn">d2</span>(<span class="tk-keyword">self</span>.<span class="tk-fn">d1</span>(x))</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Compiler et entraîner</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>model.<span class="tk-fn">compile</span>(
+    optimizer=keras.optimizers.<span class="tk-fn">Adam</span>(learning_rate=<span class="tk-num">1e-3</span>),
+    loss=<span class="tk-string">"sparse_categorical_crossentropy"</span>,
+    metrics=[<span class="tk-string">"accuracy"</span>],
+)
+
+history = model.<span class="tk-fn">fit</span>(
+    X_train, y_train,
+    epochs=<span class="tk-num">20</span>,
+    batch_size=<span class="tk-num">32</span>,
+    validation_data=(X_val, y_val),
+    callbacks=[
+        keras.callbacks.<span class="tk-fn">EarlyStopping</span>(patience=<span class="tk-num">3</span>, restore_best_weights=<span class="tk-keyword">True</span>),
+    ],
+)</code></pre>
+                        </div>
+                        <p>
+                            L'objet <code>history</code> contient les courbes loss/metrics
+                            par epoch, faciles à tracer avec <a href="matplotlib.html">matplotlib</a>.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Pipeline de données avec tf.data</h4>
+                        <p>
+                            Pour des datasets qui ne tiennent pas en mémoire ou pour des
+                            transformations à la volée :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>ds = tf.data.Dataset.<span class="tk-fn">from_tensor_slices</span>((X_train, y_train))
+ds = (ds
+      .<span class="tk-fn">shuffle</span>(buffer_size=<span class="tk-num">10_000</span>)
+      .<span class="tk-fn">batch</span>(<span class="tk-num">32</span>)
+      .<span class="tk-fn">prefetch</span>(tf.data.AUTOTUNE))
+
+model.<span class="tk-fn">fit</span>(ds, epochs=<span class="tk-num">5</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Évaluer et prédire</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>loss, acc = model.<span class="tk-fn">evaluate</span>(X_test, y_test)
+
+probs = model.<span class="tk-fn">predict</span>(X_new)               <span class="tk-comment"># shape (N, n_classes)</span>
+preds = probs.<span class="tk-fn">argmax</span>(axis=<span class="tk-num">1</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Sauvegarder et recharger</h4>
+                        <p>
+                            Depuis Keras 3, le format recommandé est <code>.keras</code>
+                            (un zip contenant l'architecture, les poids et l'état de
+                            l'optimiseur) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Sauver tout le modèle</span>
+model.<span class="tk-fn">save</span>(<span class="tk-string">"model.keras"</span>)
+
+<span class="tk-comment"># Recharger</span>
+model = keras.models.<span class="tk-fn">load_model</span>(<span class="tk-string">"model.keras"</span>)
+
+<span class="tk-comment"># SavedModel (format pour TF Serving / déploiement)</span>
+model.<span class="tk-fn">export</span>(<span class="tk-string">"saved_model/"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Aller plus bas : GradientTape</h4>
+                        <p>
+                            Quand <code>fit()</code> ne suffit plus (custom training loop,
+                            GAN, RL), on écrit la boucle à la main avec
+                            <code>tf.GradientTape</code> — l'équivalent d'autograd en
+                            PyTorch :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>optimizer = keras.optimizers.<span class="tk-fn">Adam</span>(<span class="tk-num">1e-3</span>)
+loss_fn = keras.losses.<span class="tk-fn">SparseCategoricalCrossentropy</span>()
+
+<span class="tk-keyword">for</span> epoch <span class="tk-keyword">in</span> <span class="tk-fn">range</span>(<span class="tk-num">5</span>):
+    <span class="tk-keyword">for</span> xb, yb <span class="tk-keyword">in</span> train_ds:
+        <span class="tk-keyword">with</span> tf.<span class="tk-fn">GradientTape</span>() <span class="tk-keyword">as</span> tape:
+            pred = <span class="tk-fn">model</span>(xb, training=<span class="tk-keyword">True</span>)
+            loss = <span class="tk-fn">loss_fn</span>(yb, pred)
+        grads = tape.<span class="tk-fn">gradient</span>(loss, model.trainable_variables)
+        optimizer.<span class="tk-fn">apply_gradients</span>(<span class="tk-fn">zip</span>(grads, model.trainable_variables))</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (tenseurs)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>tf.<span class="tk-fn">constant</span>([<span class="tk-num">1</span>, <span class="tk-num">2</span>]); tf.<span class="tk-fn">zeros</span>((<span class="tk-num">3</span>, <span class="tk-num">4</span>)); tf.random.<span class="tk-fn">normal</span>((<span class="tk-num">2</span>, <span class="tk-num">3</span>))
+t.shape, t.dtype, t.device
+t.<span class="tk-fn">numpy</span>(); tf.<span class="tk-fn">convert_to_tensor</span>(arr)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (modèle Keras)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>model = keras.<span class="tk-fn">Sequential</span>([
+    keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">64</span>, activation=<span class="tk-string">"relu"</span>),
+    keras.layers.<span class="tk-fn">Dense</span>(<span class="tk-num">3</span>, activation=<span class="tk-string">"softmax"</span>),
+])
+model.<span class="tk-fn">compile</span>(optimizer=<span class="tk-string">"adam"</span>, loss=<span class="tk-string">"…"</span>, metrics=[<span class="tk-string">"accuracy"</span>])</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (entraînement)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>model.<span class="tk-fn">fit</span>(X, y, epochs=<span class="tk-num">10</span>, batch_size=<span class="tk-num">32</span>, validation_split=<span class="tk-num">0.2</span>)
+model.<span class="tk-fn">evaluate</span>(X_test, y_test)
+model.<span class="tk-fn">predict</span>(X_new)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (sauver / charger)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>model.<span class="tk-fn">save</span>(<span class="tk-string">"m.keras"</span>)
+keras.models.<span class="tk-fn">load_model</span>(<span class="tk-string">"m.keras"</span>)
+model.<span class="tk-fn">export</span>(<span class="tk-string">"saved_model/"</span>)   <span class="tk-comment"># pour TF Serving</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>TensorFlow et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="pytorch.html">PyTorch</a></strong> — le concurrent
+                        direct. Différence philosophique : Keras cache la boucle
+                        d'entraînement (<code>fit()</code>), PyTorch te la fait écrire à la
+                        main. Pour passer de l'un à l'autre, le concept (couches, loss,
+                        optimiseur, gradient) est identique, c'est le style d'API qui
+                        change.
+                    </li>
+                    <li>
+                        <strong><a href="numpy.html">NumPy</a></strong> — interopérable :
+                        <code>t.numpy()</code> et <code>tf.convert_to_tensor(arr)</code>
+                        partagent la même mémoire quand c'est possible.
+                    </li>
+                    <li>
+                        <strong><a href="scikit-learn.html">scikit-learn</a></strong> — pour
+                        les modèles classiques sur données tabulaires de taille modeste,
+                        sklearn reste plus simple et plus rapide. TensorFlow devient
+                        pertinent dès qu'on attaque le deep learning ou des datasets
+                        massifs.
+                    </li>
+                    <li>
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> —
+                        beaucoup de modèles Transformers ont une variante TF
+                        (<code>TFAutoModel</code>) en plus de la version PyTorch. Pour les
+                        modèles récents, la version PyTorch est généralement mieux
+                        maintenue.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> —
+                        <code>mlflow.tensorflow.log_model(model, "model")</code> sauvegarde
+                        un modèle Keras comme artifact de run, prêt à être servi.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pour exposer
+                        un modèle TF en API : on charge le modèle au démarrage, chaque
+                        requête fait <code>model.predict(input)</code>. Pour un débit plus
+                        élevé, TF Serving (gRPC + REST) est conçu pour ça.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">TF Lite, TF.js, TF Serving</div>
+                    <p>
+                        L'écosystème TensorFlow brille au déploiement :
+                        <strong>TF Lite</strong> pour mobile / embarqué (Android, iOS,
+                        Raspberry Pi), <strong>TensorFlow.js</strong> pour exécuter le
+                        modèle dans un navigateur, <strong>TF Serving</strong> pour servir
+                        des modèles à grand débit en production. C'est dans cet espace que
+                        TF garde une longueur d'avance sur PyTorch.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.tensorflow.org/" target="_blank" rel="noopener noreferrer">tensorflow.org</a></li>
+                    <li>Guide d'installation : <a href="https://www.tensorflow.org/install" target="_blank" rel="noopener noreferrer">tensorflow.org/install</a></li>
+                    <li>Tutoriel Keras officiel : <a href="https://www.tensorflow.org/tutorials/quickstart/beginner" target="_blank" rel="noopener noreferrer">tensorflow.org/tutorials/quickstart/beginner</a></li>
+                    <li>Documentation Keras 3 : <a href="https://keras.io/" target="_blank" rel="noopener noreferrer">keras.io</a></li>
+                    <li>TensorFlow Lite : <a href="https://www.tensorflow.org/lite" target="_blank" rel="noopener noreferrer">tensorflow.org/lite</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
