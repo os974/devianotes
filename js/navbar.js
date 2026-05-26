@@ -89,6 +89,8 @@
                             <a href="${S}mlflow.html">MLflow</a>
                             <a href="${S}prefect.html">Prefect</a>
                             <a href="${S}dvc.html">DVC</a>
+                            <a href="${S}evidently.html">Evidently</a>
+                            <a href="${S}feast.html">Feast</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Messagerie &amp; tâches</div>
@@ -130,6 +132,7 @@
                             <a href="${S}numpy.html">NumPy</a>
                             <a href="${S}duckdb.html">DuckDB</a>
                             <a href="${S}mongodb.html">MongoDB</a>
+                            <a href="${S}qdrant.html">Qdrant</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Stockage</div>

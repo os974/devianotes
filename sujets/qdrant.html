@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Qdrant — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Qdrant</div>
+                <h1>Qdrant</h1>
+                <p class="subtitle">
+                    Une base de données vectorielle open-source écrite en Rust :
+                    stocker des embeddings (vecteurs de nombres) et retrouver les plus
+                    proches d'une requête en quelques millisecondes. La brique
+                    centrale d'un RAG performant, plus puissante que FAISS et plus
+                    simple à déployer qu'un Postgres+pgvector.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Une <strong>base vectorielle</strong> stocke des points dans un
+                    espace à N dimensions (typiquement 384, 768 ou 1536) et sait
+                    répondre à la question « quels sont les 10 points les plus proches
+                    de ce vecteur ? » en quelques millisecondes, même sur des millions
+                    de points.
+                </p>
+                <p>
+                    Pourquoi on veut ça : les <strong>embeddings</strong> d'un modèle
+                    (cf. <a href="huggingface.html">Hugging Face</a> sentence-transformers,
+                    <a href="ollama.html">Ollama</a> nomic-embed-text…) transforment un
+                    texte/image en vecteur, où deux contenus sémantiquement proches
+                    ont des vecteurs proches. Du coup, retrouver « les documents qui
+                    parlent du même sujet » = recherche dans un espace vectoriel.
+                </p>
+                <ul>
+                    <li><strong>RAG</strong> (Retrieval-Augmented Generation) — pour
+                        chaque question d'un chatbot, on retrouve les passages
+                        pertinents et on les passe en contexte au LLM.</li>
+                    <li><strong>Recommandation</strong> — « produits similaires », « si
+                        tu as aimé X, regarde Y ».</li>
+                    <li><strong>Recherche sémantique</strong> — un moteur de recherche
+                        qui comprend le sens, pas juste les mots-clés.</li>
+                    <li><strong>Déduplication / clustering</strong> — regrouper des
+                        contenus presque identiques à grande échelle.</li>
+                </ul>
+                <p>
+                    Spécificités de Qdrant :
+                </p>
+                <ul>
+                    <li><strong>Recherche vectorielle + filtres</strong> sur les
+                        métadonnées (« les chunks du document X qui parlent de Y »).</li>
+                    <li><strong>Payload typé</strong> — chaque vecteur peut porter un
+                        dict JSON arbitraire (titre, source, date…).</li>
+                    <li><strong>Quantification</strong> — réduire l'usage mémoire d'un
+                        facteur 4-32× au prix d'une légère perte de précision.</li>
+                    <li><strong>Distribué</strong> — sharding et réplication intégrés
+                        pour les gros volumes.</li>
+                    <li><strong>API REST + gRPC + client Python</strong> typé avec
+                        Pydantic.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Qdrant, Chroma, Weaviate, pgvector, FAISS… c'est quoi la différence&nbsp;?</div>
+                    <p>
+                        <strong>FAISS</strong> = librairie en mémoire de Meta, idéal
+                        pour prototyper en local mais pas une vraie base.
+                        <strong>Chroma</strong> = très simple, Python-first, parfait
+                        pour les démos. <strong>Qdrant</strong> = serveur prod-ready,
+                        meilleur compromis perf/simplicité, écrit en Rust.
+                        <strong>Weaviate</strong> = équivalent Qdrant, avec plus de
+                        features intégrées (modules d'embedding internes).
+                        <strong>pgvector</strong> (extension <a href="postgresql.html">PostgreSQL</a>)
+                        = parfait si tu as déjà Postgres et n'as pas envie d'un service
+                        en plus, mais moins performant à grande échelle. Pour un
+                        nouveau projet RAG, Qdrant est un excellent défaut.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Lancer Qdrant en local, créer une collection, ajouter quelques
+                    textes embeddés via Ollama, faire une recherche sémantique :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d --name qdrant -p 6333:6333 -p 6334:6334 \
+  -v qdrant_storage:/qdrant/storage \
+  qdrant/qdrant</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> qdrant_client <span class="tk-keyword">import</span> QdrantClient
+<span class="tk-keyword">from</span> qdrant_client.models <span class="tk-keyword">import</span> Distance, VectorParams, PointStruct
+<span class="tk-keyword">import</span> httpx
+
+client = <span class="tk-fn">QdrantClient</span>(url=<span class="tk-string">"http://localhost:6333"</span>)
+
+<span class="tk-comment"># Créer une collection (768 dim pour nomic-embed-text)</span>
+client.<span class="tk-fn">create_collection</span>(
+    collection_name=<span class="tk-string">"docs"</span>,
+    vectors_config=<span class="tk-fn">VectorParams</span>(size=<span class="tk-num">768</span>, distance=Distance.COSINE),
+)
+
+<span class="tk-comment"># Calculer des embeddings via Ollama</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">embed</span>(text):
+    r = httpx.<span class="tk-fn">post</span>(<span class="tk-string">"http://localhost:11434/api/embeddings"</span>,
+                  json={<span class="tk-string">"model"</span>: <span class="tk-string">"nomic-embed-text"</span>, <span class="tk-string">"prompt"</span>: text})
+    <span class="tk-keyword">return</span> r.<span class="tk-fn">json</span>()[<span class="tk-string">"embedding"</span>]
+
+textes = [
+    <span class="tk-string">"Python est un langage de programmation interprété."</span>,
+    <span class="tk-string">"FastAPI permet de créer des APIs Python rapides."</span>,
+    <span class="tk-string">"La pâte à crêpes se fait avec farine, œufs et lait."</span>,
+]
+client.<span class="tk-fn">upsert</span>(
+    collection_name=<span class="tk-string">"docs"</span>,
+    points=[<span class="tk-fn">PointStruct</span>(id=i, vector=<span class="tk-fn">embed</span>(t), payload={<span class="tk-string">"text"</span>: t})
+            <span class="tk-keyword">for</span> i, t <span class="tk-keyword">in</span> <span class="tk-fn">enumerate</span>(textes)],
+)
+
+<span class="tk-comment"># Recherche sémantique</span>
+result = client.<span class="tk-fn">query_points</span>(
+    collection_name=<span class="tk-string">"docs"</span>,
+    query=<span class="tk-fn">embed</span>(<span class="tk-string">"comment faire une API en Python ?"</span>),
+    limit=<span class="tk-num">2</span>,
+)
+<span class="tk-keyword">for</span> point <span class="tk-keyword">in</span> result.points:
+    <span class="tk-fn">print</span>(point.score, point.payload[<span class="tk-string">"text"</span>])
+<span class="tk-comment"># &gt; 0.78 "FastAPI permet de créer des APIs Python rapides."</span>
+<span class="tk-comment"># &gt; 0.55 "Python est un langage de programmation interprété."</span></code></pre>
+                </div>
+                <p>
+                    Le résultat est ordonné par similarité décroissante. La phrase
+                    sur les crêpes a un score très bas, donc elle est exclue. Tout ça
+                    sans aucun mot-clé en commun avec la requête — Qdrant cherche par
+                    <em>sens</em>.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Qdrant</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Lancer le serveur Qdrant</h4>
+                        <p>
+                            Comme PostgreSQL/MongoDB, l'image Docker officielle est la
+                            voie royale (cf. <a href="docker.html">Docker</a>) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name qdrant \
+  -p 6333:6333 \
+  -p 6334:6334 \
+  -v qdrant_storage:/qdrant/storage \
+  qdrant/qdrant:latest</code></pre>
+                        </div>
+                        <p>
+                            <code>6333</code> = REST, <code>6334</code> = gRPC. Le
+                            dashboard web est sur
+                            <code>http://localhost:6333/dashboard</code>.
+                        </p>
+                        <div class="info-box tip">
+                            <div class="info-title">Mode embedded pour tester</div>
+                            <p>
+                                Le client Python sait aussi tourner « en mémoire » sans
+                                serveur :
+                                <code>QdrantClient(":memory:")</code> ou
+                                <code>QdrantClient(path="./qdrant_data")</code> pour
+                                persister sur disque. Pratique pour les tests
+                                <a href="pytest.html">pytest</a> ou les notebooks.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Installer le client Python</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add qdrant-client</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Créer une collection</h4>
+                        <p>
+                            Une collection est l'équivalent d'une table. Il faut
+                            décider à la création :
+                            <strong>la dimension des vecteurs</strong> (dépend du modèle
+                            d'embeddings utilisé) et <strong>la métrique de distance</strong>
+                            (Cosine pour du texte, Euclidienne pour des images, Dot
+                            product pour les modèles normalisés).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> qdrant_client <span class="tk-keyword">import</span> QdrantClient
+<span class="tk-keyword">from</span> qdrant_client.models <span class="tk-keyword">import</span> Distance, VectorParams
+
+client = <span class="tk-fn">QdrantClient</span>(url=<span class="tk-string">"http://localhost:6333"</span>)
+
+client.<span class="tk-fn">create_collection</span>(
+    collection_name=<span class="tk-string">"articles"</span>,
+    vectors_config=<span class="tk-fn">VectorParams</span>(
+        size=<span class="tk-num">768</span>,                <span class="tk-comment"># dim du modèle d'embeddings</span>
+        distance=Distance.COSINE,
+    ),
+)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter des points (upsert)</h4>
+                        <p>
+                            <strong>upsert</strong> = insert ou update si l'ID existe.
+                            Chaque point a un <code>id</code>, un <code>vector</code>,
+                            et optionnellement un <code>payload</code> (métadonnées).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> qdrant_client.models <span class="tk-keyword">import</span> PointStruct
+
+client.<span class="tk-fn">upsert</span>(
+    collection_name=<span class="tk-string">"articles"</span>,
+    points=[
+        <span class="tk-fn">PointStruct</span>(
+            id=<span class="tk-num">1</span>,
+            vector=[<span class="tk-num">0.1</span>, <span class="tk-num">0.2</span>, ...],     <span class="tk-comment"># 768 floats</span>
+            payload={<span class="tk-string">"title"</span>: <span class="tk-string">"Intro"</span>, <span class="tk-string">"author"</span>: <span class="tk-string">"Alice"</span>, <span class="tk-string">"year"</span>: <span class="tk-num">2026</span>},
+        ),
+        <span class="tk-fn">PointStruct</span>(id=<span class="tk-num">2</span>, vector=[...], payload={<span class="tk-string">"title"</span>: <span class="tk-string">"Suite"</span>, ...}),
+    ],
+)</code></pre>
+                        </div>
+                        <p>
+                            L'<code>id</code> peut être un int ou un UUID. Le
+                            <code>payload</code> est un dict JSON arbitraire, indexable
+                            pour les filtres.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Rechercher avec ou sans filtre</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Recherche simple</span>
+result = client.<span class="tk-fn">query_points</span>(
+    collection_name=<span class="tk-string">"articles"</span>,
+    query=query_vector,
+    limit=<span class="tk-num">5</span>,
+)
+
+<span class="tk-comment"># Recherche avec filtre sur le payload</span>
+<span class="tk-keyword">from</span> qdrant_client.models <span class="tk-keyword">import</span> Filter, FieldCondition, MatchValue
+
+result = client.<span class="tk-fn">query_points</span>(
+    collection_name=<span class="tk-string">"articles"</span>,
+    query=query_vector,
+    query_filter=<span class="tk-fn">Filter</span>(must=[
+        <span class="tk-fn">FieldCondition</span>(key=<span class="tk-string">"year"</span>, match=<span class="tk-fn">MatchValue</span>(value=<span class="tk-num">2026</span>)),
+        <span class="tk-fn">FieldCondition</span>(key=<span class="tk-string">"author"</span>, match=<span class="tk-fn">MatchValue</span>(value=<span class="tk-string">"Alice"</span>)),
+    ]),
+    limit=<span class="tk-num">5</span>,
+)
+
+<span class="tk-keyword">for</span> p <span class="tk-keyword">in</span> result.points:
+    <span class="tk-fn">print</span>(p.id, p.score, p.payload)</code></pre>
+                        </div>
+                        <p>
+                            Les filtres se combinent avec <code>must</code> (AND),
+                            <code>should</code> (OR), <code>must_not</code> (NOT).
+                            Qdrant applique les filtres efficacement en parallèle de la
+                            recherche vectorielle.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Mettre à jour ou supprimer</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Re-upsert avec le même ID = update</span>
+client.<span class="tk-fn">upsert</span>(collection_name=<span class="tk-string">"articles"</span>,
+              points=[<span class="tk-fn">PointStruct</span>(id=<span class="tk-num">1</span>, vector=new_vec, payload={...})])
+
+<span class="tk-comment"># Modifier juste le payload</span>
+client.<span class="tk-fn">set_payload</span>(collection_name=<span class="tk-string">"articles"</span>,
+                   payload={<span class="tk-string">"reviewed"</span>: <span class="tk-keyword">True</span>}, points=[<span class="tk-num">1</span>, <span class="tk-num">2</span>])
+
+<span class="tk-comment"># Supprimer</span>
+client.<span class="tk-fn">delete</span>(collection_name=<span class="tk-string">"articles"</span>, points_selector=[<span class="tk-num">1</span>, <span class="tk-num">2</span>])</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Indexer une colonne du payload (filtres rapides)</h4>
+                        <p>
+                            Si tu filtres souvent sur un champ, créer un index dessus
+                            accélère drastiquement :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> qdrant_client.models <span class="tk-keyword">import</span> PayloadSchemaType
+
+client.<span class="tk-fn">create_payload_index</span>(
+    collection_name=<span class="tk-string">"articles"</span>,
+    field_name=<span class="tk-string">"year"</span>,
+    field_schema=PayloadSchemaType.INTEGER,
+)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Branchement aux frameworks RAG</h4>
+                        <p>
+                            <a href="langchain.html">LangChain</a> et
+                            <a href="llamaindex.html">LlamaIndex</a> supportent Qdrant
+                            comme vector store en quelques lignes. Pas besoin d'écrire
+                            le code d'upsert/search à la main.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python (LangChain)</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> langchain_qdrant <span class="tk-keyword">import</span> QdrantVectorStore
+<span class="tk-keyword">from</span> langchain_ollama <span class="tk-keyword">import</span> OllamaEmbeddings
+
+embeddings = <span class="tk-fn">OllamaEmbeddings</span>(model=<span class="tk-string">"nomic-embed-text"</span>)
+store = QdrantVectorStore.<span class="tk-fn">from_documents</span>(
+    documents=docs,
+    embedding=embeddings,
+    url=<span class="tk-string">"http://localhost:6333"</span>,
+    collection_name=<span class="tk-string">"rag_docs"</span>,
+)
+retriever = store.<span class="tk-fn">as_retriever</span>(search_kwargs={<span class="tk-string">"k"</span>: <span class="tk-num">4</span>})</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (lancer le serveur)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">docker</span> run -d --name qdrant -p 6333:6333 -p 6334:6334 \
+  -v qdrant_storage:/qdrant/storage qdrant/qdrant</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (CRUD)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>client = <span class="tk-fn">QdrantClient</span>(url=<span class="tk-string">"http://localhost:6333"</span>)
+client.<span class="tk-fn">create_collection</span>(<span class="tk-string">"…"</span>, vectors_config=<span class="tk-fn">VectorParams</span>(size=N, distance=Distance.COSINE))
+client.<span class="tk-fn">upsert</span>(<span class="tk-string">"…"</span>, points=[<span class="tk-fn">PointStruct</span>(id=..., vector=..., payload=...)])
+client.<span class="tk-fn">query_points</span>(<span class="tk-string">"…"</span>, query=vec, limit=<span class="tk-num">5</span>, query_filter=...)
+client.<span class="tk-fn">delete</span>(<span class="tk-string">"…"</span>, points_selector=[...])</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (filtres)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> qdrant_client.models <span class="tk-keyword">import</span> Filter, FieldCondition, MatchValue, Range
+
+<span class="tk-fn">Filter</span>(must=[
+    <span class="tk-fn">FieldCondition</span>(key=<span class="tk-string">"year"</span>, match=<span class="tk-fn">MatchValue</span>(value=<span class="tk-num">2026</span>)),
+    <span class="tk-fn">FieldCondition</span>(key=<span class="tk-string">"score"</span>, range=<span class="tk-fn">Range</span>(gte=<span class="tk-num">0.8</span>)),
+])</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (tests en mémoire)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>client = <span class="tk-fn">QdrantClient</span>(<span class="tk-string">":memory:"</span>)             <span class="tk-comment"># pas de serveur</span>
+client = <span class="tk-fn">QdrantClient</span>(path=<span class="tk-string">"./data"</span>)         <span class="tk-comment"># local persistant</span></code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Qdrant et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="ollama.html">Ollama</a></strong> /
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> —
+                        producteurs des embeddings que Qdrant stocke. Le plus simple :
+                        Ollama + <code>nomic-embed-text</code> pour des embeddings
+                        locaux sans clé d'API.
+                    </li>
+                    <li>
+                        <strong><a href="langchain.html">LangChain</a></strong> /
+                        <strong><a href="llamaindex.html">LlamaIndex</a></strong> —
+                        consommateurs principaux. Les deux frameworks ont des
+                        intégrations Qdrant prêtes à l'emploi pour le RAG.
+                    </li>
+                    <li>
+                        <strong><a href="postgresql.html">PostgreSQL</a></strong> —
+                        alternative via l'extension pgvector. À choisir si tu as déjà
+                        Postgres et que tes besoins vectoriels sont modestes.
+                    </li>
+                    <li>
+                        <strong><a href="docker.html">Docker</a></strong> /
+                        <strong><a href="kubernetes.html">Kubernetes</a></strong> —
+                        Qdrant se déploie comme conteneur. Pour la haute dispo, sa
+                        version cloud ou un cluster Kubernetes avec son operator.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pattern
+                        type : endpoint <code>POST /search</code> qui embed la requête
+                        avec Ollama et interroge Qdrant. Latence totale 50-100 ms.
+                    </li>
+                    <li>
+                        <strong><a href="pydantic.html">Pydantic</a></strong> — le
+                        client Python <code>qdrant-client</code> utilise Pydantic en
+                        interne pour les modèles (PointStruct, Filter…). Tu profites
+                        de l'auto-complétion et de la validation.
+                    </li>
+                    <li>
+                        <strong><a href="dvc.html">DVC</a></strong> — pour versionner
+                        un dump Qdrant à un moment T. Utile quand l'état du vector
+                        store fait partie de ce qu'on doit pouvoir reproduire.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Dimension : à ne pas changer après coup</div>
+                    <p>
+                        La <code>size</code> du <code>VectorParams</code> est figée à
+                        la création de la collection. Si tu changes de modèle
+                        d'embeddings (768 → 1024 dim par exemple), il faut
+                        <strong>recréer la collection</strong> et re-embedder tous les
+                        documents. Cf. le piège équivalent dans la fiche
+                        <a href="llamaindex.html">LlamaIndex</a>.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://qdrant.tech/" target="_blank" rel="noopener noreferrer">qdrant.tech</a></li>
+                    <li>Documentation : <a href="https://qdrant.tech/documentation/" target="_blank" rel="noopener noreferrer">qdrant.tech/documentation</a></li>
+                    <li>Client Python : <a href="https://github.com/qdrant/qdrant-client" target="_blank" rel="noopener noreferrer">github.com/qdrant/qdrant-client</a></li>
+                    <li>Tutoriels : <a href="https://qdrant.tech/documentation/tutorials/" target="_blank" rel="noopener noreferrer">qdrant.tech/documentation/tutorials</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

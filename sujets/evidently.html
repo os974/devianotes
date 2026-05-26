@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Evidently — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Evidently</div>
+                <h1>Evidently</h1>
+                <p class="subtitle">
+                    La lib open-source pour <strong>surveiller la dérive (drift) d'un
+                    modèle ML en production</strong>. Compare les données qui arrivent
+                    aux données d'entraînement, mesure la dégradation des prédictions,
+                    génère des rapports lisibles. Le maillon entre « j'ai déployé un
+                    modèle » et « je sais quand il faut le ré-entraîner ».
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Un modèle entraîné sur les données de janvier ne reste pas
+                    indéfiniment performant : en juin, le profil des utilisateurs change,
+                    les saisons influent, le marché évolue. Sans surveillance, le modèle
+                    continue de prédire silencieusement avec une qualité qui dégrade.
+                    Evidently mesure cette dérive et te signale quand intervenir.
+                </p>
+                <p>
+                    Trois types de dérive à surveiller :
+                </p>
+                <ul>
+                    <li><strong>Data drift</strong> — la distribution des features
+                        change. Ex : l'âge moyen des utilisateurs passe de 35 à 45 ans.</li>
+                    <li><strong>Target drift</strong> — la distribution de la cible
+                        change. Ex : le taux de churn double.</li>
+                    <li><strong>Prediction drift</strong> — la distribution des sorties
+                        du modèle change. Ex : le modèle prédit de plus en plus de
+                        « refus ».</li>
+                </ul>
+                <p>
+                    Concrètement, Evidently te donne :
+                </p>
+                <ul>
+                    <li><strong>Reports HTML</strong> — un fichier
+                        <code>.html</code> auto-contenu, partageable, avec graphiques
+                        interactifs des distributions et des métriques de drift.</li>
+                    <li><strong>Tests</strong> — assertions pass/fail à intégrer en CI
+                        ou dans un pipeline Prefect (« drift &gt; 5% sur la feature X →
+                        alerte »).</li>
+                    <li><strong>Snapshots JSON</strong> — métriques structurées qu'on
+                        peut stocker, comparer dans le temps, ou pousser dans
+                        Prometheus/Grafana.</li>
+                    <li><strong>Cloud monitoring</strong> (optionnel, payant) — UI
+                        dédiée pour suivre plusieurs modèles en continu. La version
+                        OSS reste largement suffisante pour démarrer.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Drift monitoring vs simple métrique de performance ?</div>
+                    <p>
+                        Calculer juste l'accuracy en prod ne suffit pas : il faut les
+                        <strong>vraies étiquettes</strong>, qui arrivent souvent avec un
+                        délai (le ground truth d'un crédit accordé n'est connu que des
+                        mois plus tard). Le <strong>drift</strong> permet d'alerter
+                        <em>avant même</em> d'avoir les vraies étiquettes — si les
+                        données d'entrée diffèrent trop de celles vues à
+                        l'entraînement, on peut prédire la dégradation sans attendre
+                        les labels.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    Comparer un dataset de référence (les données d'entraînement) à un
+                    dataset courant (les données reçues en prod la semaine dernière),
+                    générer un rapport HTML interactif :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+<span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report
+<span class="tk-keyword">from</span> evidently.presets <span class="tk-keyword">import</span> DataDriftPreset
+
+reference = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"data_train.csv"</span>)         <span class="tk-comment"># données d'entraînement</span>
+current = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"data_prod_semaine.csv"</span>)   <span class="tk-comment"># données récentes</span>
+
+report = <span class="tk-fn">Report</span>(metrics=[<span class="tk-fn">DataDriftPreset</span>()])
+result = report.<span class="tk-fn">run</span>(reference_data=reference, current_data=current)
+
+<span class="tk-comment"># Sauver le rapport HTML interactif (à ouvrir dans un navigateur)</span>
+result.<span class="tk-fn">save_html</span>(<span class="tk-string">"drift_report.html"</span>)
+
+<span class="tk-comment"># Récupérer les métriques en JSON pour l'envoyer à un système d'alerting</span>
+<span class="tk-keyword">import</span> json
+metrics = json.<span class="tk-fn">loads</span>(result.<span class="tk-fn">json</span>())
+<span class="tk-fn">print</span>(metrics[<span class="tk-string">"metrics"</span>][<span class="tk-num">0</span>])</code></pre>
+                </div>
+                <p>
+                    Le HTML produit montre pour chaque feature : sa distribution
+                    référence vs courante, le score de drift (différence statistique),
+                    un verdict (drifté ou non). En 30 secondes tu sais quels champs
+                    ont bougé.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Evidently</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer Evidently</h4>
+                        <p>
+                            Dépendance principale (s'utilise dans le code de surveillance,
+                            cf. <a href="uv.html">UV</a>) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add evidently</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Préparer un dataset de référence</h4>
+                        <p>
+                            Tu as besoin de <strong>deux DataFrames pandas</strong> avec
+                            les mêmes colonnes : les données d'entraînement (référence)
+                            et les données récentes en prod (courant). La référence sert
+                            de baseline figée — la même pendant des mois.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+
+reference = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"data/train.csv"</span>)
+current = pd.<span class="tk-fn">read_csv</span>(<span class="tk-string">"data/prod_last_week.csv"</span>)
+
+<span class="tk-comment"># Très important : mêmes colonnes, mêmes types</span>
+<span class="tk-keyword">assert</span> <span class="tk-fn">set</span>(reference.columns) == <span class="tk-fn">set</span>(current.columns)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Le pattern Report + Preset</h4>
+                        <p>
+                            <code>Report</code> est l'objet principal. On le configure
+                            avec une liste de <em>metrics</em> ou de <em>presets</em>
+                            (groupes de métriques prêts à l'emploi).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report
+<span class="tk-keyword">from</span> evidently.presets <span class="tk-keyword">import</span> (
+    DataDriftPreset,         <span class="tk-comment"># dérive des features</span>
+    DataSummaryPreset,       <span class="tk-comment"># stats descriptives</span>
+    RegressionPreset,        <span class="tk-comment"># perf modèle régression</span>
+    ClassificationPreset,    <span class="tk-comment"># perf modèle classif</span>
+)
+
+report = <span class="tk-fn">Report</span>(metrics=[
+    <span class="tk-fn">DataDriftPreset</span>(),
+    <span class="tk-fn">DataSummaryPreset</span>(),
+])
+result = report.<span class="tk-fn">run</span>(reference_data=reference, current_data=current)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Métriques de dérive individuelles</h4>
+                        <p>
+                            Pour aller plus fin que les presets, on choisit des métriques
+                            précises :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report
+<span class="tk-keyword">from</span> evidently.metrics <span class="tk-keyword">import</span> (
+    ValueDrift, DriftedColumnsCount, MissingValueCount,
+)
+
+report = <span class="tk-fn">Report</span>(metrics=[
+    <span class="tk-fn">ValueDrift</span>(column=<span class="tk-string">"age"</span>),                  <span class="tk-comment"># drift sur 1 colonne</span>
+    <span class="tk-fn">DriftedColumnsCount</span>(),                       <span class="tk-comment"># nb total de colonnes en drift</span>
+    <span class="tk-fn">MissingValueCount</span>(column=<span class="tk-string">"revenue"</span>),         <span class="tk-comment"># valeurs manquantes</span>
+])
+result = report.<span class="tk-fn">run</span>(reference_data=reference, current_data=current)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Surveillance de la performance modèle</h4>
+                        <p>
+                            Si tu as les vraies étiquettes, tu peux aussi mesurer la
+                            performance courante vs référence :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report, DataDefinition
+<span class="tk-keyword">from</span> evidently.presets <span class="tk-keyword">import</span> ClassificationPreset
+
+<span class="tk-comment"># Indiquer à Evidently quelle colonne = prédiction, laquelle = vérité</span>
+schema = <span class="tk-fn">DataDefinition</span>(
+    classification=[{<span class="tk-string">"target"</span>: <span class="tk-string">"y_true"</span>, <span class="tk-string">"prediction"</span>: <span class="tk-string">"y_pred"</span>}]
+)
+
+report = <span class="tk-fn">Report</span>(metrics=[<span class="tk-fn">ClassificationPreset</span>()])
+result = report.<span class="tk-fn">run</span>(reference_data=ref, current_data=cur,
+                    data_definition=schema)
+result.<span class="tk-fn">save_html</span>(<span class="tk-string">"perf_report.html"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Tests : passer en mode pass/fail</h4>
+                        <p>
+                            Pour intégrer Evidently dans un pipeline (CI ou Prefect), on
+                            veut un verdict booléen plutôt qu'un rapport visuel :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report
+<span class="tk-keyword">from</span> evidently.metrics <span class="tk-keyword">import</span> DriftedColumnsCount
+<span class="tk-keyword">from</span> evidently.tests <span class="tk-keyword">import</span> lte
+
+report = <span class="tk-fn">Report</span>(
+    metrics=[<span class="tk-fn">DriftedColumnsCount</span>(tests=[<span class="tk-fn">lte</span>(<span class="tk-num">3</span>)])],   <span class="tk-comment"># ≤ 3 colonnes en drift</span>
+)
+result = report.<span class="tk-fn">run</span>(reference_data=ref, current_data=cur)
+
+<span class="tk-keyword">if</span> <span class="tk-keyword">not</span> result.<span class="tk-fn">passed</span>():
+    <span class="tk-keyword">raise</span> <span class="tk-fn">RuntimeError</span>(<span class="tk-string">"Drift critique détecté, ré-entraînement requis"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Automatiser : Prefect + Evidently</h4>
+                        <p>
+                            Le pattern type : un flow <a href="prefect.html">Prefect</a>
+                            qui tourne tous les jours, charge les données récentes,
+                            génère le rapport, alerte si drift critique.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> prefect <span class="tk-keyword">import</span> flow, task
+<span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report
+<span class="tk-keyword">from</span> evidently.presets <span class="tk-keyword">import</span> DataDriftPreset
+
+<span class="tk-decorator">@task</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">audit_drift</span>(ref, cur):
+    r = <span class="tk-fn">Report</span>(metrics=[<span class="tk-fn">DataDriftPreset</span>()])
+    res = r.<span class="tk-fn">run</span>(reference_data=ref, current_data=cur)
+    res.<span class="tk-fn">save_html</span>(<span class="tk-string">f"reports/drift_</span><span class="tk-string">{</span>datetime.<span class="tk-fn">now</span>():%Y-%m-%d<span class="tk-string">}.html"</span>)
+    <span class="tk-keyword">return</span> res
+
+<span class="tk-decorator">@flow</span>
+<span class="tk-keyword">def</span> <span class="tk-fn">weekly_monitoring</span>():
+    ref = <span class="tk-fn">load_reference</span>()
+    cur = <span class="tk-fn">load_last_week</span>()
+    res = <span class="tk-fn">audit_drift</span>(ref, cur)
+    <span class="tk-keyword">if</span> <span class="tk-keyword">not</span> res.<span class="tk-fn">passed</span>():
+        <span class="tk-fn">notify_slack</span>(<span class="tk-string">"⚠ Drift détecté, voir reports/"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Pousser les métriques vers Grafana</h4>
+                        <p>
+                            Pour visualiser l'évolution dans le temps (et pas seulement
+                            au moment T), on extrait les métriques en JSON et on les
+                            envoie à Prometheus ou un endpoint custom consommé par
+                            <a href="grafana.html">Grafana</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> json
+
+metrics = json.<span class="tk-fn">loads</span>(result.<span class="tk-fn">json</span>())[<span class="tk-string">"metrics"</span>]
+<span class="tk-keyword">for</span> m <span class="tk-keyword">in</span> metrics:
+    <span class="tk-fn">push_to_prometheus</span>(
+        metric_name=m[<span class="tk-string">"metric_id"</span>],
+        value=m[<span class="tk-string">"value"</span>],
+        labels={<span class="tk-string">"model"</span>: <span class="tk-string">"churn_v1"</span>},
+    )</code></pre>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (rapport simple)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> evidently <span class="tk-keyword">import</span> Report
+<span class="tk-keyword">from</span> evidently.presets <span class="tk-keyword">import</span> DataDriftPreset
+
+r = <span class="tk-fn">Report</span>(metrics=[<span class="tk-fn">DataDriftPreset</span>()])
+res = r.<span class="tk-fn">run</span>(reference_data=ref, current_data=cur)
+res.<span class="tk-fn">save_html</span>(<span class="tk-string">"drift.html"</span>)
+res.<span class="tk-fn">json</span>()                       <span class="tk-comment"># métriques en JSON</span>
+res.<span class="tk-fn">passed</span>()                     <span class="tk-comment"># True/False si tests configurés</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (presets utiles)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> evidently.presets <span class="tk-keyword">import</span> (
+    DataDriftPreset, DataSummaryPreset,
+    ClassificationPreset, RegressionPreset,
+)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (test pass/fail)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> evidently.metrics <span class="tk-keyword">import</span> DriftedColumnsCount
+<span class="tk-keyword">from</span> evidently.tests <span class="tk-keyword">import</span> lte, gte
+
+<span class="tk-fn">Report</span>(metrics=[<span class="tk-fn">DriftedColumnsCount</span>(tests=[<span class="tk-fn">lte</span>(<span class="tk-num">3</span>)])])</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Evidently et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — combo
+                        naturel : MLflow track l'entraînement, Evidently track la prod.
+                        On peut logger un rapport Evidently comme artifact d'un run
+                        MLflow pour garder la trace de l'état des données au moment du
+                        déploiement.
+                    </li>
+                    <li>
+                        <strong><a href="prefect.html">Prefect</a></strong> —
+                        l'orchestrateur qui lance Evidently sur un calendrier
+                        (quotidien, hebdo) et déclenche le ré-entraînement si le drift
+                        franchit un seuil. C'est le pattern « MLOps mature ».
+                    </li>
+                    <li>
+                        <strong><a href="grafana.html">Grafana</a></strong> /
+                        <strong><a href="prometheus.html">Prometheus</a></strong> —
+                        pour visualiser l'évolution des métriques de drift dans le
+                        temps (et pas juste un snapshot), on pousse les métriques
+                        Evidently dans Prometheus.
+                    </li>
+                    <li>
+                        <strong><a href="pandas.html">pandas</a></strong> /
+                        <strong><a href="polars.html">Polars</a></strong> — Evidently
+                        consomme et produit des DataFrames pandas. Polars est supporté
+                        en convertissant (<code>df.to_pandas()</code>).
+                    </li>
+                    <li>
+                        <strong><a href="dvc.html">DVC</a></strong> — versionner le
+                        dataset de référence avec DVC : tu peux toujours rejouer un
+                        rapport Evidently sur la version exacte des données qui a servi
+                        de baseline au moment du déploiement.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — exposer
+                        un endpoint <code>/health/drift</code> qui renvoie l'état drift
+                        courant, utilisable par un dashboard ou Uptime Kuma.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Le piège : choisir le bon dataset de référence</div>
+                    <p>
+                        La référence doit être un dataset <strong>représentatif</strong>
+                        des conditions d'entraînement. Pas tes données de validation
+                        (trop petites), pas le dataset le plus récent (trop proche du
+                        courant). Le bon choix : un échantillon stratifié du training
+                        set, versionné dans <a href="dvc.html">DVC</a>, jamais modifié.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.evidentlyai.com/" target="_blank" rel="noopener noreferrer">evidentlyai.com</a></li>
+                    <li>Documentation : <a href="https://docs.evidentlyai.com/" target="_blank" rel="noopener noreferrer">docs.evidentlyai.com</a></li>
+                    <li>« ML Observability » course gratuit : <a href="https://learn.evidentlyai.com/" target="_blank" rel="noopener noreferrer">learn.evidentlyai.com</a></li>
+                    <li>Liste des métriques : <a href="https://docs.evidentlyai.com/metrics/all_metrics" target="_blank" rel="noopener noreferrer">docs.evidentlyai.com/metrics/all_metrics</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

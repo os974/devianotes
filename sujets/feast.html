@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Feast — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Feast</div>
+                <h1>Feast</h1>
+                <p class="subtitle">
+                    Le feature store open-source de référence : une source de vérité
+                    unique pour les <em>features</em> de tes modèles ML, partagée entre
+                    l'entraînement et l'inference. Évite le bug classique « le modèle
+                    marchait en test, plus en prod » dû à des features calculées
+                    différemment des deux côtés.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Une <strong>feature</strong> = une variable d'entrée d'un modèle ML
+                    (« nombre de connexions sur 30 jours », « panier moyen »…). Le
+                    problème en MLOps : on calcule ces features deux fois.
+                </p>
+                <ul>
+                    <li><strong>À l'entraînement</strong> — sur l'historique des données,
+                        en SQL ou en pandas. On a tout le temps qu'on veut.</li>
+                    <li><strong>À l'inference</strong> — en quasi temps réel, par
+                        utilisateur, sans accès à l'historique complet.</li>
+                </ul>
+                <p>
+                    Si les deux calculs ne sont pas <strong>strictement identiques</strong>,
+                    on a un <em>training-serving skew</em> : le modèle prédit n'importe
+                    quoi en prod, et c'est très difficile à débugger.
+                </p>
+                <p>
+                    Feast résout ça en centralisant la définition des features :
+                </p>
+                <ul>
+                    <li><strong>Définition unique</strong> — chaque feature est déclarée
+                        dans du code Python versionné dans Git. Pas de copier-coller
+                        entre notebook d'entraînement et service d'inference.</li>
+                    <li><strong>Offline store</strong> — les valeurs historiques pour
+                        l'entraînement (Postgres, BigQuery, S3 Parquet…).</li>
+                    <li><strong>Online store</strong> — un cache à faible latence pour
+                        l'inference (Redis, DynamoDB, Postgres). Sub-milliseconde par
+                        feature.</li>
+                    <li><strong>Materialization</strong> — Feast pousse les valeurs
+                        calculées de l'offline vers l'online sur un calendrier.</li>
+                    <li><strong>Point-in-time joins</strong> — à l'entraînement,
+                        récupérer les valeurs des features <em>telles qu'elles étaient
+                        au moment de chaque exemple</em>. Évite la fuite de données.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Ai-je vraiment besoin d'un feature store ?</div>
+                    <p>
+                        <strong>Non, si</strong> tu as un seul modèle, tes features se
+                        calculent en quelques lignes pandas, et l'inference est en batch
+                        (pas en temps réel). <strong>Oui, si</strong> tu as plusieurs
+                        modèles qui partagent des features, ton inference est en
+                        production temps réel, ou ton équipe est plusieurs personnes
+                        à manipuler les mêmes features. Le coût d'apprentissage est
+                        réel, ne pas le sortir trop tôt.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    On déclare une feature « nb commandes 30j » à partir d'une table
+                    Postgres, on demande à Feast de calculer l'historique et de pousser
+                    les dernières valeurs vers un cache Redis pour l'inference :
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (features.py)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> datetime <span class="tk-keyword">import</span> timedelta
+<span class="tk-keyword">from</span> feast <span class="tk-keyword">import</span> Entity, FeatureView, Field, FileSource
+<span class="tk-keyword">from</span> feast.types <span class="tk-keyword">import</span> Int64, Float32
+
+user = <span class="tk-fn">Entity</span>(name=<span class="tk-string">"user_id"</span>, join_keys=[<span class="tk-string">"user_id"</span>])
+
+source = <span class="tk-fn">FileSource</span>(
+    path=<span class="tk-string">"data/user_stats.parquet"</span>,
+    timestamp_field=<span class="tk-string">"event_ts"</span>,
+)
+
+user_stats = <span class="tk-fn">FeatureView</span>(
+    name=<span class="tk-string">"user_stats"</span>,
+    entities=[user],
+    ttl=<span class="tk-fn">timedelta</span>(days=<span class="tk-num">7</span>),
+    schema=[
+        <span class="tk-fn">Field</span>(name=<span class="tk-string">"nb_commandes_30j"</span>, dtype=Int64),
+        <span class="tk-fn">Field</span>(name=<span class="tk-string">"panier_moyen"</span>, dtype=Float32),
+    ],
+    source=source,
+)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">feast</span> apply              <span class="tk-comment"># enregistre les définitions</span>
+<span class="tk-cmd">feast</span> materialize-incremental $(<span class="tk-cmd">date</span> -u +<span class="tk-string">"%Y-%m-%dT%H:%M:%S"</span>)
+                            <span class="tk-comment"># pousse vers l'online store</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (inference.py)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> feast <span class="tk-keyword">import</span> FeatureStore
+
+store = <span class="tk-fn">FeatureStore</span>(repo_path=<span class="tk-string">"."</span>)
+
+<span class="tk-comment"># Récupère les dernières valeurs pour 1 utilisateur, en sub-ms</span>
+features = store.<span class="tk-fn">get_online_features</span>(
+    features=[<span class="tk-string">"user_stats:nb_commandes_30j"</span>, <span class="tk-string">"user_stats:panier_moyen"</span>],
+    entity_rows=[{<span class="tk-string">"user_id"</span>: <span class="tk-string">"u_42"</span>}],
+).<span class="tk-fn">to_dict</span>()
+<span class="tk-fn">print</span>(features)
+<span class="tk-comment"># {'user_id': ['u_42'], 'nb_commandes_30j': [12], 'panier_moyen': [45.50]}</span></code></pre>
+                </div>
+                <p>
+                    Le code de définition (<code>features.py</code>) est versionné, et
+                    c'est le seul endroit où les features sont définies. L'entraînement
+                    et l'inference utilisent le même code → pas de skew possible.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Feast</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer Feast</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a>. Selon les stores qu'on
+                            utilise, on ajoute les extras correspondants :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add feast
+
+<span class="tk-comment"># Extras courants (selon les stores choisis)</span>
+<span class="tk-cmd">uv</span> add <span class="tk-string">"feast[postgres]"</span>      <span class="tk-comment"># online ou offline store Postgres</span>
+<span class="tk-cmd">uv</span> add <span class="tk-string">"feast[redis]"</span>         <span class="tk-comment"># online store Redis (faible latence)</span>
+<span class="tk-cmd">uv</span> add <span class="tk-string">"feast[snowflake]"</span>     <span class="tk-comment"># offline store Snowflake</span></code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Initialiser un repo Feast</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">feast</span> init mon_feature_store
+<span class="tk-cmd">cd</span> mon_feature_store
+<span class="tk-cmd">ls</span>
+<span class="tk-comment"># feature_store.yaml    feature_repo/    data/</span></code></pre>
+                        </div>
+                        <p>
+                            <code>feature_store.yaml</code> contient la config (quels
+                            stores utiliser). <code>feature_repo/</code> contient les
+                            définitions Python.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Configurer les stores (feature_store.yaml)</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">yaml</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>project: mon_projet
+provider: local
+
+registry: data/registry.db
+
+online_store:
+  type: redis
+  connection_string: <span class="tk-string">"localhost:6379"</span>
+
+offline_store:
+  type: postgres
+  host: localhost
+  port: <span class="tk-num">5432</span>
+  database: feast
+  db_schema: <span class="tk-keyword">public</span>
+  user: app
+  password: <span class="tk-string">"…"</span>
+
+entity_key_serialization_version: <span class="tk-num">2</span></code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Pour démarrer : tout en local</div>
+                            <p>
+                                Pour tester rapidement, l'<code>online_store</code>
+                                <code>sqlite</code> et l'<code>offline_store</code>
+                                <code>file</code> (Parquet local) suffisent. C'est ce
+                                que <code>feast init</code> configure par défaut. On
+                                passe à Redis/Postgres quand on déploie.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Déclarer Entity, Source et FeatureView</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> datetime <span class="tk-keyword">import</span> timedelta
+<span class="tk-keyword">from</span> feast <span class="tk-keyword">import</span> Entity, FeatureView, Field, FileSource
+<span class="tk-keyword">from</span> feast.types <span class="tk-keyword">import</span> Float32, Int64, String
+
+<span class="tk-comment"># Entity : la clé sur laquelle les features sont indexées</span>
+user = <span class="tk-fn">Entity</span>(name=<span class="tk-string">"user_id"</span>, join_keys=[<span class="tk-string">"user_id"</span>])
+
+<span class="tk-comment"># Source : d'où viennent les valeurs historiques</span>
+src = <span class="tk-fn">FileSource</span>(
+    path=<span class="tk-string">"data/user_stats.parquet"</span>,
+    timestamp_field=<span class="tk-string">"event_ts"</span>,
+    created_timestamp_column=<span class="tk-string">"created"</span>,
+)
+
+<span class="tk-comment"># FeatureView : un groupe de features qui partagent la même source</span>
+user_stats = <span class="tk-fn">FeatureView</span>(
+    name=<span class="tk-string">"user_stats"</span>,
+    entities=[user],
+    ttl=<span class="tk-fn">timedelta</span>(days=<span class="tk-num">7</span>),       <span class="tk-comment"># freshness max</span>
+    schema=[
+        <span class="tk-fn">Field</span>(name=<span class="tk-string">"nb_commandes_30j"</span>, dtype=Int64),
+        <span class="tk-fn">Field</span>(name=<span class="tk-string">"panier_moyen"</span>, dtype=Float32),
+        <span class="tk-fn">Field</span>(name=<span class="tk-string">"segment"</span>, dtype=String),
+    ],
+    source=src,
+)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Apply et materialize</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># Enregistre les définitions dans le registry</span>
+<span class="tk-cmd">feast</span> apply
+
+<span class="tk-comment"># Pousse les valeurs de l'offline store vers l'online store</span>
+<span class="tk-cmd">feast</span> materialize-incremental $(<span class="tk-cmd">date</span> -u +<span class="tk-string">"%Y-%m-%dT%H:%M:%S"</span>)</code></pre>
+                        </div>
+                        <p>
+                            <code>materialize-incremental</code> ne re-pousse que ce
+                            qui a changé depuis la dernière fois. À lancer
+                            régulièrement (toutes les heures par exemple) via
+                            <a href="prefect.html">Prefect</a> ou un cron.
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Récupérer pour l'entraînement (offline)</h4>
+                        <p>
+                            Le point clé du point-in-time join : pour chaque exemple,
+                            Feast prend les valeurs de feature <em>telles qu'elles
+                            étaient à ce moment précis</em>. Évite la fuite de données
+                            (qu'on aurait avec un simple <code>JOIN</code> SQL).
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> pandas <span class="tk-keyword">as</span> pd
+<span class="tk-keyword">from</span> feast <span class="tk-keyword">import</span> FeatureStore
+
+store = <span class="tk-fn">FeatureStore</span>(repo_path=<span class="tk-string">"."</span>)
+
+entity_df = pd.<span class="tk-fn">DataFrame</span>({
+    <span class="tk-string">"user_id"</span>: [<span class="tk-string">"u_1"</span>, <span class="tk-string">"u_2"</span>, <span class="tk-string">"u_3"</span>],
+    <span class="tk-string">"event_timestamp"</span>: pd.<span class="tk-fn">to_datetime</span>([
+        <span class="tk-string">"2026-01-10"</span>, <span class="tk-string">"2026-02-15"</span>, <span class="tk-string">"2026-03-22"</span>,
+    ]),
+})
+
+training_df = store.<span class="tk-fn">get_historical_features</span>(
+    entity_df=entity_df,
+    features=[<span class="tk-string">"user_stats:nb_commandes_30j"</span>, <span class="tk-string">"user_stats:panier_moyen"</span>],
+).<span class="tk-fn">to_df</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Récupérer pour l'inference (online)</h4>
+                        <p>
+                            En prod, on veut les dernières valeurs, en sub-ms :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>features = store.<span class="tk-fn">get_online_features</span>(
+    features=[<span class="tk-string">"user_stats:nb_commandes_30j"</span>, <span class="tk-string">"user_stats:panier_moyen"</span>],
+    entity_rows=[{<span class="tk-string">"user_id"</span>: <span class="tk-string">"u_42"</span>}],
+).<span class="tk-fn">to_dict</span>()
+
+<span class="tk-comment"># Puis on passe les features au modèle</span>
+prediction = model.<span class="tk-fn">predict</span>([[
+    features[<span class="tk-string">"nb_commandes_30j"</span>][<span class="tk-num">0</span>],
+    features[<span class="tk-string">"panier_moyen"</span>][<span class="tk-num">0</span>],
+]])</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer le serveur Feast (optionnel)</h4>
+                        <p>
+                            Pour exposer l'online store derrière une API REST/gRPC
+                            consommable par n'importe quel service (pas que Python) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">feast</span> serve --host 0.0.0.0 --port <span class="tk-num">6566</span></code></pre>
+                        </div>
+                        <p>
+                            Particulièrement utile dans un projet microservices où
+                            l'inference n'est pas forcément en Python.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash (CLI)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">feast</span> init mon_repo
+<span class="tk-cmd">feast</span> apply                       <span class="tk-comment"># enregistre les définitions</span>
+<span class="tk-cmd">feast</span> materialize-incremental $(<span class="tk-cmd">date</span> -u +%FT%T)
+<span class="tk-cmd">feast</span> entities list
+<span class="tk-cmd">feast</span> feature-views list
+<span class="tk-cmd">feast</span> serve                       <span class="tk-comment"># API REST/gRPC</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (définitions)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> feast <span class="tk-keyword">import</span> Entity, FeatureView, Field, FileSource
+<span class="tk-keyword">from</span> feast.types <span class="tk-keyword">import</span> Int64, Float32
+
+<span class="tk-fn">Entity</span>(name=<span class="tk-string">"id"</span>, join_keys=[<span class="tk-string">"id"</span>])
+<span class="tk-fn">FileSource</span>(path=<span class="tk-string">"…"</span>, timestamp_field=<span class="tk-string">"ts"</span>)
+<span class="tk-fn">FeatureView</span>(name=<span class="tk-string">"…"</span>, entities=[...], ttl=...,
+            schema=[<span class="tk-fn">Field</span>(...)], source=...)</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (récupération)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>store = <span class="tk-fn">FeatureStore</span>(repo_path=<span class="tk-string">"."</span>)
+
+<span class="tk-comment"># Pour entraînement (historique, point-in-time correct)</span>
+store.<span class="tk-fn">get_historical_features</span>(entity_df, features=[<span class="tk-string">"vue:feat"</span>]).<span class="tk-fn">to_df</span>()
+
+<span class="tk-comment"># Pour inference (dernières valeurs, sub-ms)</span>
+store.<span class="tk-fn">get_online_features</span>(features=[<span class="tk-string">"vue:feat"</span>],
+                          entity_rows=[{<span class="tk-string">"id"</span>: <span class="tk-string">"…"</span>}]).<span class="tk-fn">to_dict</span>()</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Feast et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="postgresql.html">PostgreSQL</a></strong> —
+                        Postgres est le choix par défaut comme offline store
+                        (analytique) et peut aussi servir d'online store si les
+                        latences sont OK. Très bonne combinaison pour un projet de
+                        taille moyenne.
+                    </li>
+                    <li>
+                        <strong><a href="redis.html">Redis</a></strong> — l'online store
+                        de choix en prod : sub-milliseconde par feature, gère des
+                        milliers de lookups/seconde sans broncher.
+                    </li>
+                    <li>
+                        <strong><a href="mlflow.html">MLflow</a></strong> — pattern
+                        typique : à l'entraînement, on récupère les features avec
+                        <code>get_historical_features</code>, on les passe au modèle,
+                        on log le tout dans MLflow. La feature view utilisée est
+                        loggée comme tag.
+                    </li>
+                    <li>
+                        <strong><a href="prefect.html">Prefect</a></strong> — orchestre
+                        la <code>materialize-incremental</code> sur un calendrier
+                        (typiquement toutes les heures). Sans orchestration, l'online
+                        store devient stale.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pattern
+                        d'inference : FastAPI reçoit une requête, fait un
+                        <code>get_online_features</code>, passe à un modèle scikit-learn
+                        ou PyTorch, renvoie la prédiction. Le tout sous 50 ms.
+                    </li>
+                    <li>
+                        <strong><a href="dvc.html">DVC</a></strong> — versionner le
+                        snapshot Parquet qui sert de source à Feast. Combo classique :
+                        DVC pour les datasets « bruts », Feast pour les features
+                        dérivées prêtes à l'emploi.
+                    </li>
+                    <li>
+                        <strong><a href="evidently.html">Evidently</a></strong> —
+                        surveiller la dérive des features stockées dans Feast. La
+                        feature store fournit le « dataset courant », Evidently le
+                        compare au dataset d'entraînement de référence.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Le piège : Feast avant qu'on en ait besoin</div>
+                    <p>
+                        Feast brille quand on a <strong>plusieurs modèles, plusieurs
+                        équipes, inference temps réel</strong>. Pour un projet
+                        pédagogique avec un modèle scikit-learn et de l'inference batch,
+                        c'est <em>over-engineering</em>. Garde-le en tête pour ton
+                        projet de fin de formation si tu veux montrer une vraie chaîne
+                        MLOps mature, mais ne le déploie pas avant que la douleur du
+                        training-serving skew se manifeste.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://feast.dev/" target="_blank" rel="noopener noreferrer">feast.dev</a></li>
+                    <li>Documentation : <a href="https://docs.feast.dev/" target="_blank" rel="noopener noreferrer">docs.feast.dev</a></li>
+                    <li>Tutoriel « Quickstart » : <a href="https://docs.feast.dev/getting-started/quickstart" target="_blank" rel="noopener noreferrer">docs.feast.dev/getting-started/quickstart</a></li>
+                    <li>Liste des connecteurs : <a href="https://docs.feast.dev/reference/data-sources" target="_blank" rel="noopener noreferrer">docs.feast.dev/reference/data-sources</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
