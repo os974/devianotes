@@ -134,6 +134,7 @@
                             <a href="${S}duckdb.html">DuckDB</a>
                             <a href="${S}mongodb.html">MongoDB</a>
                             <a href="${S}qdrant.html">Qdrant</a>
+                            <a href="${S}chroma.html">Chroma</a>
                         </div>
                         <div class="dropdown-section">
                             <div class="dropdown-title">Stockage</div>

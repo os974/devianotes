@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
+    <title>Chroma — DevIA Notes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/navbar.js"></script>
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem("theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+            } catch (e) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
+</head>
+<body>
+    <site-navbar></site-navbar>
+
+    <main>
+        <div class="container">
+            <header class="page-header">
+                <div class="breadcrumb"><a href="../index.html">Accueil</a> / Chroma</div>
+                <h1>Chroma</h1>
+                <p class="subtitle">
+                    La base de données vectorielle <strong>Python-first</strong> : un
+                    <code>pip install</code>, trois lignes, et tu as un index sémantique
+                    fonctionnel. Idéale pour prototyper un RAG, faire un POC ou démarrer
+                    avec <a href="langchain.html">LangChain</a> et <a href="llamaindex.html">LlamaIndex</a> —
+                    en pendant simple de <a href="qdrant.html">Qdrant</a> qu'on utilisera
+                    plutôt en production.
+                </p>
+            </header>
+
+            <section class="section">
+                <h2>À quoi ça sert</h2>
+                <p>
+                    Chroma sert à <strong>stocker des embeddings (vecteurs)</strong> et
+                    retrouver les plus proches d'une requête, comme toutes les bases
+                    vectorielles. Sa particularité : tout passe par <strong>une lib
+                    Python embarquée</strong>, sans serveur à lancer. On l'utilise comme
+                    on utilise <a href="sqlite.html">SQLite</a> pour les bases SQL — c'est
+                    le « SQLite des vector DBs ».
+                </p>
+                <p>
+                    Quelques cas typiques :
+                </p>
+                <ul>
+                    <li><strong>POC / prototype RAG</strong> — un notebook Jupyter,
+                        500 documents, on veut un index sémantique sans monter un
+                        service.</li>
+                    <li><strong>Mémoire d'agent LLM</strong> — stocker les conversations
+                        passées pour les retrouver par similarité plus tard.</li>
+                    <li><strong>Recherche dans une doc technique</strong> — indexer un
+                        site, un wiki interne, des PDFs, et brancher un LLM dessus.</li>
+                    <li><strong>Tests unitaires de pipeline RAG</strong> — en mode
+                        in-memory, Chroma se reset à chaque <a href="pytest.html">pytest</a>.</li>
+                </ul>
+
+                <div class="info-box">
+                    <div class="info-title">Chroma ou Qdrant&nbsp;?</div>
+                    <p>
+                        <strong>Chroma</strong> = embarqué, Python-only, ultra-simple à
+                        démarrer, écrit en Python (avec du SQLite/DuckDB en dessous pour
+                        le stockage). Parfait pour POCs, démos, petits projets RAG
+                        (jusqu'à ~10⁶ vecteurs).
+                        <strong><a href="qdrant.html">Qdrant</a></strong> = serveur
+                        dédié, écrit en Rust, scalable, distribué, REST + gRPC. À choisir
+                        dès qu'on vise la prod ou les gros volumes. Règle simple :
+                        <strong>Chroma pour démarrer, Qdrant quand ça grossit</strong>.
+                        Et bonne nouvelle : LangChain et LlamaIndex supportent les deux
+                        avec quasiment la même API — la migration coûte 3 lignes.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Un exemple d'usage</h2>
+                <p>
+                    On installe Chroma, on crée une collection, on y ajoute trois
+                    documents, et on cherche par similarité. Aucun serveur, aucun
+                    Docker.
+                </p>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">bash</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-cmd">uv</span> add chromadb</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> chromadb
+
+<span class="tk-comment"># Client embarqué, persistant sur disque</span>
+client = chromadb.<span class="tk-fn">PersistentClient</span>(path=<span class="tk-string">"./chroma_data"</span>)
+
+<span class="tk-comment"># Créer (ou récupérer) une collection</span>
+collection = client.<span class="tk-fn">get_or_create_collection</span>(name=<span class="tk-string">"docs"</span>)
+
+<span class="tk-comment"># Ajouter trois documents — Chroma calcule lui-même les embeddings</span>
+collection.<span class="tk-fn">add</span>(
+    ids=[<span class="tk-string">"d1"</span>, <span class="tk-string">"d2"</span>, <span class="tk-string">"d3"</span>],
+    documents=[
+        <span class="tk-string">"Python est un langage de programmation interprété."</span>,
+        <span class="tk-string">"FastAPI permet de créer des APIs Python rapides."</span>,
+        <span class="tk-string">"La pâte à crêpes se fait avec farine, œufs et lait."</span>,
+    ],
+    metadatas=[
+        {<span class="tk-string">"source"</span>: <span class="tk-string">"wiki"</span>, <span class="tk-string">"lang"</span>: <span class="tk-string">"fr"</span>},
+        {<span class="tk-string">"source"</span>: <span class="tk-string">"doc"</span>, <span class="tk-string">"lang"</span>: <span class="tk-string">"fr"</span>},
+        {<span class="tk-string">"source"</span>: <span class="tk-string">"recette"</span>, <span class="tk-string">"lang"</span>: <span class="tk-string">"fr"</span>},
+    ],
+)
+
+<span class="tk-comment"># Recherche sémantique</span>
+results = collection.<span class="tk-fn">query</span>(
+    query_texts=[<span class="tk-string">"comment faire une API en Python ?"</span>],
+    n_results=<span class="tk-num">2</span>,
+)
+
+<span class="tk-keyword">for</span> doc, dist <span class="tk-keyword">in</span> <span class="tk-fn">zip</span>(results[<span class="tk-string">"documents"</span>][<span class="tk-num">0</span>], results[<span class="tk-string">"distances"</span>][<span class="tk-num">0</span>]):
+    <span class="tk-fn">print</span>(<span class="tk-fn">round</span>(dist, <span class="tk-num">3</span>), doc)
+<span class="tk-comment"># &gt; 0.41 FastAPI permet de créer des APIs Python rapides.</span>
+<span class="tk-comment"># &gt; 0.62 Python est un langage de programmation interprété.</span></code></pre>
+                </div>
+                <p>
+                    À noter : Chroma renvoie des <strong>distances</strong> (plus petit =
+                    plus proche), là où Qdrant renvoie des <strong>scores</strong> (plus
+                    grand = plus proche). Petite habitude à prendre quand on jongle
+                    entre les deux. Le modèle d'embedding par défaut est
+                    <code>all-MiniLM-L6-v2</code> (sentence-transformers), téléchargé
+                    automatiquement au premier appel.
+                </p>
+            </section>
+
+            <section class="section">
+                <h2>How-to : installer et utiliser Chroma</h2>
+
+                <ol class="steps">
+                    <li>
+                        <h4>Installer chromadb</h4>
+                        <p>
+                            Avec <a href="uv.html">UV</a>. Aucun service à lancer, c'est
+                            une lib Python pure (avec du natif en dessous pour la perf) :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">uv</span> add chromadb</code></pre>
+                        </div>
+                        <div class="info-box tip">
+                            <div class="info-title">Premier import = téléchargement</div>
+                            <p>
+                                Au premier <code>import chromadb</code> qui calcule un
+                                embedding, sentence-transformers télécharge le modèle
+                                par défaut (~90 MB). Prévois la bande passante, ou
+                                pré-télécharge le modèle dans ton Dockerfile pour les
+                                builds reproductibles.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Choisir un client : in-memory, persistant, ou serveur</h4>
+                        <p>
+                            Trois modes selon ce que tu veux faire :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">import</span> chromadb
+
+<span class="tk-comment"># 1) En mémoire — tests, notebooks éphémères</span>
+client = chromadb.<span class="tk-fn">Client</span>()
+
+<span class="tk-comment"># 2) Persistant sur disque — apps locales, POCs, prod légère</span>
+client = chromadb.<span class="tk-fn">PersistentClient</span>(path=<span class="tk-string">"./chroma_data"</span>)
+
+<span class="tk-comment"># 3) Mode serveur (Chroma server lancé séparément)</span>
+client = chromadb.<span class="tk-fn">HttpClient</span>(host=<span class="tk-string">"localhost"</span>, port=<span class="tk-num">8000</span>)</code></pre>
+                        </div>
+                        <p>
+                            Le mode <strong>persistant</strong> est le défaut le plus
+                            utile : tu fermes ton process, tu le relances, ta base est
+                            toujours là (un dossier avec un SQLite + des fichiers
+                            d'index).
+                        </p>
+                    </li>
+
+                    <li>
+                        <h4>Créer ou récupérer une collection</h4>
+                        <p>
+                            Une <strong>collection</strong> est l'équivalent d'une table
+                            dans une base SQL : c'est là que vivent les documents et
+                            leurs embeddings.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># get_or_create_collection est idempotent (le plus utile)</span>
+collection = client.<span class="tk-fn">get_or_create_collection</span>(
+    name=<span class="tk-string">"docs"</span>,
+    metadata={<span class="tk-string">"hnsw:space"</span>: <span class="tk-string">"cosine"</span>},   <span class="tk-comment"># cosine, l2, ip</span>
+)
+
+<span class="tk-comment"># Lister les collections</span>
+client.<span class="tk-fn">list_collections</span>()
+
+<span class="tk-comment"># Supprimer</span>
+client.<span class="tk-fn">delete_collection</span>(name=<span class="tk-string">"docs"</span>)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter, modifier, supprimer des documents</h4>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-comment"># add — échoue si un id existe déjà</span>
+collection.<span class="tk-fn">add</span>(
+    ids=[<span class="tk-string">"d1"</span>, <span class="tk-string">"d2"</span>],
+    documents=[<span class="tk-string">"texte un"</span>, <span class="tk-string">"texte deux"</span>],
+    metadatas=[{<span class="tk-string">"source"</span>: <span class="tk-string">"wiki"</span>}, {<span class="tk-string">"source"</span>: <span class="tk-string">"doc"</span>}],
+)
+
+<span class="tk-comment"># upsert — insère ou met à jour selon l'id (le plus pratique)</span>
+collection.<span class="tk-fn">upsert</span>(
+    ids=[<span class="tk-string">"d1"</span>],
+    documents=[<span class="tk-string">"texte un mis à jour"</span>],
+)
+
+<span class="tk-comment"># delete par id</span>
+collection.<span class="tk-fn">delete</span>(ids=[<span class="tk-string">"d2"</span>])
+
+<span class="tk-comment"># Compter</span>
+collection.<span class="tk-fn">count</span>()</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Recherche sémantique avec filtres</h4>
+                        <p>
+                            Comme avec <a href="qdrant.html">Qdrant</a>, on peut filtrer
+                            sur les métadonnées en plus de la similarité — par exemple
+                            pour ne chercher que dans une langue ou une source précise :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>results = collection.<span class="tk-fn">query</span>(
+    query_texts=[<span class="tk-string">"comment faire une API ?"</span>],
+    n_results=<span class="tk-num">3</span>,
+    where={<span class="tk-string">"lang"</span>: <span class="tk-string">"fr"</span>},                          <span class="tk-comment"># filtre exact</span>
+    where_document={<span class="tk-string">"$contains"</span>: <span class="tk-string">"API"</span>},        <span class="tk-comment"># filtre full-text</span>
+)
+
+<span class="tk-comment"># Filtre composé</span>
+results = collection.<span class="tk-fn">query</span>(
+    query_texts=[<span class="tk-string">"recettes"</span>],
+    n_results=<span class="tk-num">5</span>,
+    where={<span class="tk-string">"$and"</span>: [
+        {<span class="tk-string">"lang"</span>: <span class="tk-string">"fr"</span>},
+        {<span class="tk-string">"source"</span>: {<span class="tk-string">"$ne"</span>: <span class="tk-string">"draft"</span>}},
+    ]},
+)
+
+<span class="tk-comment"># results contient : ids, documents, metadatas, distances, embeddings</span>
+<span class="tk-keyword">for</span> doc, meta, dist <span class="tk-keyword">in</span> <span class="tk-fn">zip</span>(
+    results[<span class="tk-string">"documents"</span>][<span class="tk-num">0</span>],
+    results[<span class="tk-string">"metadatas"</span>][<span class="tk-num">0</span>],
+    results[<span class="tk-string">"distances"</span>][<span class="tk-num">0</span>],
+):
+    <span class="tk-fn">print</span>(dist, meta[<span class="tk-string">"source"</span>], doc)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Utiliser ton propre embedding (Ollama, Hugging Face, OpenAI)</h4>
+                        <p>
+                            Par défaut, Chroma utilise sentence-transformers
+                            (<code>all-MiniLM-L6-v2</code>, 384 dimensions). On peut
+                            brancher n'importe quel modèle via une <em>embedding
+                            function</em>. Exemple avec <a href="ollama.html">Ollama</a>
+                            en local :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-keyword">from</span> chromadb.utils.embedding_functions <span class="tk-keyword">import</span> OllamaEmbeddingFunction
+
+ef = <span class="tk-fn">OllamaEmbeddingFunction</span>(
+    model_name=<span class="tk-string">"nomic-embed-text"</span>,
+    url=<span class="tk-string">"http://localhost:11434/api/embeddings"</span>,
+)
+
+collection = client.<span class="tk-fn">get_or_create_collection</span>(
+    name=<span class="tk-string">"docs"</span>,
+    embedding_function=ef,
+)
+
+<span class="tk-comment"># add/query utilisent maintenant Ollama au lieu de sentence-transformers</span>
+collection.<span class="tk-fn">add</span>(ids=[<span class="tk-string">"d1"</span>], documents=[<span class="tk-string">"…"</span>])</code></pre>
+                        </div>
+                        <div class="info-box warning">
+                            <div class="info-title">L'embedding function est figée par collection</div>
+                            <p>
+                                Une fois une collection créée avec un modèle d'embedding,
+                                il faut conserver le MÊME modèle pour les recherches —
+                                sinon les vecteurs vivent dans des espaces différents et
+                                la similarité n'a plus de sens. Si tu changes de modèle,
+                                recrée la collection.
+                            </p>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Ajouter ses propres vecteurs (skip l'embedding auto)</h4>
+                        <p>
+                            Pour des embeddings déjà calculés ailleurs, on passe
+                            <code>embeddings=</code> au lieu de <code>documents=</code> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">python</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code>collection.<span class="tk-fn">add</span>(
+    ids=[<span class="tk-string">"d1"</span>, <span class="tk-string">"d2"</span>],
+    embeddings=[[<span class="tk-num">0.1</span>, <span class="tk-num">0.2</span>, ...], [<span class="tk-num">0.3</span>, <span class="tk-num">0.4</span>, ...]],
+    documents=[<span class="tk-string">"texte un"</span>, <span class="tk-string">"texte deux"</span>],
+    metadatas=[{<span class="tk-string">"source"</span>: <span class="tk-string">"a"</span>}, {<span class="tk-string">"source"</span>: <span class="tk-string">"b"</span>}],
+)
+
+results = collection.<span class="tk-fn">query</span>(
+    query_embeddings=[[<span class="tk-num">0.15</span>, <span class="tk-num">0.25</span>, ...]],
+    n_results=<span class="tk-num">2</span>,
+)</code></pre>
+                        </div>
+                    </li>
+
+                    <li>
+                        <h4>Lancer Chroma en mode serveur (optionnel)</h4>
+                        <p>
+                            Si plusieurs services doivent partager la même base, on lance
+                            Chroma comme serveur. Avec <a href="docker.html">Docker</a> :
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-lang">bash</span>
+                                <button class="copy-btn">Copier</button>
+                            </div>
+                            <pre><code><span class="tk-cmd">docker</span> run -d --name chroma \
+  -p 8000:8000 \
+  -v chroma_data:/chroma/chroma \
+  chromadb/chroma:latest</code></pre>
+                        </div>
+                        <p>
+                            Côté client Python :
+                            <code>chromadb.HttpClient(host="localhost", port=8000)</code>.
+                            À ce stade on est sur le terrain de Qdrant — qui est
+                            généralement un meilleur choix pour ce cas.
+                        </p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="section">
+                <h2>Aide-mémoire</h2>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (clients)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">import</span> chromadb
+client = chromadb.<span class="tk-fn">Client</span>()                              <span class="tk-comment"># in-memory</span>
+client = chromadb.<span class="tk-fn">PersistentClient</span>(path=<span class="tk-string">"./data"</span>)        <span class="tk-comment"># disque</span>
+client = chromadb.<span class="tk-fn">HttpClient</span>(host=<span class="tk-string">"…"</span>, port=<span class="tk-num">8000</span>)     <span class="tk-comment"># serveur</span></code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (collection)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>col = client.<span class="tk-fn">get_or_create_collection</span>(<span class="tk-string">"docs"</span>)
+col.<span class="tk-fn">add</span>(ids=[<span class="tk-string">"d1"</span>], documents=[<span class="tk-string">"…"</span>], metadatas=[{<span class="tk-string">"k"</span>: <span class="tk-string">"v"</span>}])
+col.<span class="tk-fn">upsert</span>(ids=[…], documents=[…])
+col.<span class="tk-fn">delete</span>(ids=[…])
+col.<span class="tk-fn">count</span>()</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (query)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code>res = col.<span class="tk-fn">query</span>(
+    query_texts=[<span class="tk-string">"…"</span>],
+    n_results=<span class="tk-num">5</span>,
+    where={<span class="tk-string">"lang"</span>: <span class="tk-string">"fr"</span>},
+    where_document={<span class="tk-string">"$contains"</span>: <span class="tk-string">"…"</span>},
+)
+res[<span class="tk-string">"documents"</span>][<span class="tk-num">0</span>]; res[<span class="tk-string">"distances"</span>][<span class="tk-num">0</span>]</code></pre>
+                </div>
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">python (embedding custom)</span>
+                        <button class="copy-btn">Copier</button>
+                    </div>
+                    <pre><code><span class="tk-keyword">from</span> chromadb.utils.embedding_functions <span class="tk-keyword">import</span> OllamaEmbeddingFunction
+ef = <span class="tk-fn">OllamaEmbeddingFunction</span>(model_name=<span class="tk-string">"nomic-embed-text"</span>)
+col = client.<span class="tk-fn">get_or_create_collection</span>(<span class="tk-string">"docs"</span>, embedding_function=ef)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Chroma et le reste de l'écosystème</h2>
+                <ul>
+                    <li>
+                        <strong><a href="qdrant.html">Qdrant</a></strong> — le grand frère
+                        prod-ready. Même concept (collections, embeddings, recherche
+                        ANN + filtres), mais serveur dédié en Rust. À choisir dès qu'on
+                        dépasse quelques millions de vecteurs ou qu'on veut un service
+                        partagé entre plusieurs apps.
+                    </li>
+                    <li>
+                        <strong><a href="langchain.html">LangChain</a></strong> — Chroma
+                        est l'un des vector stores de référence de LangChain. Un
+                        <code>Chroma.from_documents(docs, embeddings)</code> et tu as un
+                        retriever prêt à brancher dans une chain RAG.
+                    </li>
+                    <li>
+                        <strong><a href="llamaindex.html">LlamaIndex</a></strong> — même
+                        intégration que LangChain, via
+                        <code>ChromaVectorStore</code>. Très utilisé en démo car
+                        l'ensemble tourne sans Docker.
+                    </li>
+                    <li>
+                        <strong><a href="ollama.html">Ollama</a></strong> — pour les
+                        embeddings en local. La combinaison Chroma + Ollama est le stack
+                        RAG « 100% local, gratuit » le plus simple à mettre en place.
+                    </li>
+                    <li>
+                        <strong><a href="huggingface.html">Hugging Face</a></strong> —
+                        l'embedding function par défaut de Chroma vient de
+                        sentence-transformers, qui est lui-même un projet HF. Tu peux
+                        charger n'importe quel modèle Sentence-BERT depuis le hub.
+                    </li>
+                    <li>
+                        <strong><a href="fastapi.html">FastAPI</a></strong> — pour
+                        exposer un RAG basé sur Chroma comme service web : on instancie
+                        le client au démarrage, chaque requête fait un
+                        <code>collection.query(...)</code>. Attention à la concurrence :
+                        Chroma persistant écrit dans un SQLite, donc pas idéal pour des
+                        écritures parallèles intensives.
+                    </li>
+                    <li>
+                        <strong><a href="duckdb.html">DuckDB</a></strong> /
+                        <strong><a href="sqlite.html">SQLite</a></strong> — Chroma s'appuie
+                        sur eux pour le stockage des métadonnées et des index. C'est ce
+                        qui rend la base si légère à embarquer.
+                    </li>
+                </ul>
+
+                <div class="info-box tip">
+                    <div class="info-title">Quand migrer de Chroma à Qdrant&nbsp;?</div>
+                    <p>
+                        Trois signaux pour passer à Qdrant : (1) tu dépasses ~1 million
+                        de vecteurs et les requêtes ralentissent, (2) plusieurs services
+                        ont besoin d'écrire en parallèle dans la même base, (3) tu veux
+                        de la réplication / sharding. Avant ces seuils, Chroma est
+                        largement suffisant — et la migration est triviale puisque
+                        LangChain et LlamaIndex abstraient le vector store.
+                    </p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Pour aller plus loin</h2>
+                <ul>
+                    <li>Site officiel : <a href="https://www.trychroma.com/" target="_blank" rel="noopener noreferrer">trychroma.com</a></li>
+                    <li>Documentation : <a href="https://docs.trychroma.com/" target="_blank" rel="noopener noreferrer">docs.trychroma.com</a></li>
+                    <li>GitHub : <a href="https://github.com/chroma-core/chroma" target="_blank" rel="noopener noreferrer">github.com/chroma-core/chroma</a></li>
+                    <li>Intégration LangChain : <a href="https://python.langchain.com/docs/integrations/vectorstores/chroma/" target="_blank" rel="noopener noreferrer">python.langchain.com/docs/integrations/vectorstores/chroma</a></li>
+                    <li>Intégration LlamaIndex : <a href="https://docs.llamaindex.ai/en/stable/examples/vector_stores/ChromaIndexDemo/" target="_blank" rel="noopener noreferrer">docs.llamaindex.ai/.../ChromaIndexDemo</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>DevIA Notes — un pense-bête perso partagé.</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
